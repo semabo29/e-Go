@@ -1,6 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-// Para cambiar el contenido principal: busca "PANTALLA PRINCIPAL" en este archivo y edita ese bloque.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapView, Marker } from '../components/MapWrapper';
 import {
   Image,
@@ -11,29 +10,67 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/constants/api';
 
 const LOGO = require('../_assets/favicon.png');
 
+interface Estacion {
+  id: number;
+  nom: string;
+  latitud: string;
+  longitud: string;
+  municipi: string;
+  adreca: string;
+  kw: string;
+  promotor?: string;
+  acces?: string;
+  tipus_velocitat?: string;
+}
+
 export default function InicioScreen() {
   const router = useRouter();
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [estaciones, setEstaciones] = useState<Estacion[]>([]);
+  const [loadingEstaciones, setLoadingEstaciones] = useState(false);
+  const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
 
-  if (isLoading) {
+  // Cargar estaciones de la base de datos
+  useEffect(() => {
+    if (user) {
+      fetchEstaciones();
+    }
+  }, [user]);
+
+  const fetchEstaciones = async () => {
+    setLoadingEstaciones(true);
+    try {
+      const response = await fetch(`${API_URL}/stations`);
+      const data = await response.json();
+      setEstaciones(data);
+    } catch (error) {
+      console.error('Error cargando estaciones:', error);
+    } finally {
+      setLoadingEstaciones(false);
+    }
+  };
+
+  if (authLoading) {
     return (
       <View style={[styles.screen, styles.centered]}>
+        <ActivityIndicator size="large" color="#10b981" />
         <Text style={styles.loadingText}>Cargando…</Text>
       </View>
     );
   }
 
   if (!user) {
-    // Sin login: bienvenida y botón Google
     return (
       <View style={styles.screen}>
         <ScrollView
@@ -64,10 +101,8 @@ export default function InicioScreen() {
     );
   }
 
-  // Con sesión: botón menú (3 barras) + contenido principal
   return (
     <View style={styles.screen}>
-      {/* Botón menú (tres barras) flotante arriba a la izq */}
       <TouchableOpacity
         style={styles.menuButton}
         onPress={() => setMenuOpen(true)}
@@ -78,26 +113,90 @@ export default function InicioScreen() {
         <View style={styles.menuBar} />
       </TouchableOpacity>
 
-      <View style={styles.mainContent}>
+      <View style={styles.mapContainer}>
         <MapView
-          style={{ width: '100%', height: '100%' }}
+          style={StyleSheet.absoluteFillObject}
           initialRegion={{
-            latitude: 41.3879,      // Barcelona
+            latitude: 41.3879,
             longitude: 2.16992,
-            latitudeDelta: 0.05,    // Zoom aproximado
-            longitudeDelta: 0.05,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
           }}
+          onPress={() => setSelectedStation(null)} // Cerrar al clicar en el mapa
         >
-          {/* Marcador de ejemplo en Barcelona */}
-          <Marker
-            coordinate={{ latitude: 41.3879, longitude: 2.16992 }}
-            title="Barcelona"
-            description="Centro de la ciudad"
-          />
+          {estaciones.map((est) => (
+            <Marker
+              key={est.id}
+              coordinate={{
+                latitude: parseFloat(est.latitud),
+                longitude: parseFloat(est.longitud),
+              }}
+              onPress={(e: any) => {
+                e.stopPropagation(); // Evitar que el clic llegue al mapa y lo cierre
+                setSelectedStation(est);
+              }}
+            />
+          ))}
         </MapView>
+
+        {loadingEstaciones && (
+          <View style={styles.mapLoading}>
+            <ActivityIndicator size="small" color="#10b981" />
+          </View>
+        )}
+
+        {/* Mini panel de información de la estación */}
+        {selectedStation && (
+          <View style={styles.infoPanel}>
+            <View style={styles.infoHandle} />
+            <View style={styles.infoTitleRow}>
+              <Text style={styles.infoTitle} numberOfLines={2}>
+                {selectedStation.nom || 'Punto de carga'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setSelectedStation(null)}
+                style={styles.infoCloseBtn}
+              >
+                <MaterialIcons name="close" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.infoContent}>
+              <View style={styles.infoItem}>
+                <MaterialIcons name="location-on" size={18} color="#10b981" />
+                <Text style={styles.infoText}>{selectedStation.adreca}, {selectedStation.municipi}</Text>
+              </View>
+
+              <View style={styles.infoBadgeRow}>
+                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                  <MaterialIcons name="bolt" size={14} color="#10b981" />
+                  <Text style={[styles.badgeText, { color: '#047857' }]}>{selectedStation.kw} kW</Text>
+                </View>
+                {selectedStation.tipus_velocitat && (
+                  <View style={[styles.badge, { backgroundColor: '#eff6ff' }]}>
+                    <Text style={[styles.badgeText, { color: '#1d4ed8' }]}>{selectedStation.tipus_velocitat}</Text>
+                  </View>
+                )}
+              </View>
+
+              {selectedStation.promotor && (
+                <Text style={styles.infoPromotor}>
+                  Gestor: {selectedStation.promotor}
+                </Text>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.routeButton}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="directions" size={20} color="#fff" />
+              <Text style={styles.routeButtonText}>Cómo llegar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {/* Menú desplegable (ajustes / cerrar sesión) */}
       <Modal
         visible={menuOpen}
         transparent
@@ -146,8 +245,8 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#64748b',
+    marginTop: 10,
   },
-  // Pantalla sin login (card bienvenida)
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -196,7 +295,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 0,
+    borderRadius: 12,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -210,7 +309,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1f2937',
   },
-  // Botón menú (tres barras) sin header
   menuButton: {
     position: 'absolute',
     top: 48,
@@ -235,20 +333,112 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f2937',
     borderRadius: 2,
   },
-  // Contenido principal
-  mainContent: {
+  mapContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
-  mainLabel: {
+  mapLoading: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  // Panel de información (Mini Card)
+  infoPanel: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  infoHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  infoTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  infoTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#9ca3af',
-    letterSpacing: 1,
+    fontWeight: '700',
+    color: '#1e293b',
+    flex: 1,
   },
-  // Menú lateral (ajustes / cerrar sesión)
+  infoCloseBtn: {
+    padding: 4,
+  },
+  infoContent: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#64748b',
+    flex: 1,
+  },
+  infoBadgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoPromotor: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  routeButton: {
+    backgroundColor: '#10b981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  routeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Menú lateral
   menuBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

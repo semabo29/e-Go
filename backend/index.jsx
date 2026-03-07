@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const { pool } = require('./lib/db');
 const authRoutes = require('./routes/auth');
+const stationRoutes = require('./routes/stations'); // Importamos la nueva ruta
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/auth', authRoutes);
+app.use('/stations', stationRoutes); // Registramos la nueva ruta
 
 // Comprueba que API y BD responden
 app.get('/', async (req, res) => {

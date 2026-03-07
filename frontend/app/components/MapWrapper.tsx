@@ -1,18 +1,22 @@
-import React from 'react';
-import { View, Text, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
-export const MapView = ({ children, ...props }: any) => {
-  if (Platform.OS !== 'web') {
-    const RNMapView = require('react-native-maps').default;
-    return <RNMapView {...props}>{children}</RNMapView>;
-  }
-  return null;
-};
+// Este archivo decide qué versión del mapa cargar según la plataforma.
+// En la web cargará MapWrapper.web.tsx automáticamente si existe.
 
-export const Marker = (props: any) => {
-  if (Platform.OS !== 'web') {
-    const { Marker: RNMarker } = require('react-native-maps');
-    return <RNMarker {...props} />;
-  }
-  return null;
-};
+let MapComponent: any;
+let MarkerComponent: any;
+
+if (Platform.OS === 'web') {
+  // En web, importamos la versión de Google Maps
+  const WebMap = require('./MapWrapper.web');
+  MapComponent = WebMap.MapView;
+  MarkerComponent = WebMap.Marker;
+} else {
+  // En nativo, importamos react-native-maps
+  const NativeMap = require('react-native-maps');
+  MapComponent = NativeMap.default;
+  MarkerComponent = NativeMap.Marker;
+}
+
+export const MapView = MapComponent;
+export const Marker = MarkerComponent;
