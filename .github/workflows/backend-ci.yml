@@ -1,0 +1,71 @@
+name: Backend CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+    paths:
+      - "backend/**"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Aixequem una BD PostgreSQL temporal per als tests
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout del codi
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "./backend/package-lock.json"
+
+      - name: Instal·lar dependències
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Crear taules a la BD
+        env:
+          # Contrasenya per poder executar la comanda psql
+          PGPASSWORD: test_password
+        # Executem el fitxer SQL per crear la taula usuarios i els triggers
+        run: psql -h localhost -U test_user -d test_db -f ./backend/sql/001_create_users.sql
+
+      - name: Executar tests (Jest)
+        working-directory: ./backend
+        env:
+          # Variables que llegeix backend/lib/db.js
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_NAME: test_db
+          DB_SCHEMA: public
+          DB_TABLE_USUARIOS: usuarios
+
+          # Variables que llegeix backend/lib/authHelpers.js
+          GOOGLE_CLIENT_ID: test_client_id
+          GOOGLE_CLIENT_SECRET: test_client_secret
+          PENDING_SECRET: test_pending_secret
+        run: npm test
