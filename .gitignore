@@ -5,3 +5,6 @@
 
 # Dependencias
 node_modules/
+
+.idea/
+
