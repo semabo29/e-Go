@@ -1,6 +1,7 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
 // Para cambiar el contenido principal: busca "PANTALLA PRINCIPAL" en este archivo y edita ese bloque.
 import { useState } from 'react';
+import { MapView, Marker } from '../components/MapWrapper';
 import {
   Image,
   Modal,
@@ -77,9 +78,23 @@ export default function InicioScreen() {
         <View style={styles.menuBar} />
       </TouchableOpacity>
 
-      {/* ========== PANTALLA PRINCIPAL: edita aquí el contenido (mapa, listas, etc.) ========== */}
       <View style={styles.mainContent}>
-        <Text style={styles.mainLabel}>PANTALLA PRINCIPAL</Text>
+        <MapView
+          style={{ width: '100%', height: '100%' }}
+          initialRegion={{
+            latitude: 41.3879,      // Barcelona
+            longitude: 2.16992,
+            latitudeDelta: 0.05,    // Zoom aproximado
+            longitudeDelta: 0.05,
+          }}
+        >
+          {/* Marcador de ejemplo en Barcelona */}
+          <Marker
+            coordinate={{ latitude: 41.3879, longitude: 2.16992 }}
+            title="Barcelona"
+            description="Centro de la ciudad"
+          />
+        </MapView>
       </View>
 
       {/* Menú desplegable (ajustes / cerrar sesión) */}
