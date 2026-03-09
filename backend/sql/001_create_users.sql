@@ -19,9 +19,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger: al hacer UPDATE en usuarios, se actualiza updated_at
-DROP TRIGGER IF EXISTS usuarios_updated_at ON usuarios;
+DROP TRIGGER IF EXISTS usuarios_updated_at ON Usuari;
 CREATE TRIGGER usuarios_updated_at
-  BEFORE UPDATE ON usuarios
+  BEFORE UPDATE ON Usuari
   FOR EACH ROW
   EXECUTE PROCEDURE set_updated_at();
 
