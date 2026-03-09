@@ -2,7 +2,7 @@
 
 App para incidencias y movilidad sostenible. Frontend con Expo (React Native), backend con Node, Express y PostgreSQL.
 
-## Qué hay donde
+## Qué hay donde 
 
 En frontend/app está todo lo de pantallas. La pestaña Inicio es (tabs)/index.tsx: si no hay usuario muestra la bienvenida y el botón de Google; si hay usuario, el menú de tres barras y la pantalla principal. La otra pestaña es Explorar (explore.tsx). El login está en login.tsx. Los datos del usuario (quién está logueado, cerrar sesión) están en contexts/AuthContext.tsx y se usa con useAuth().
 
