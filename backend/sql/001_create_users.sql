@@ -1,7 +1,7 @@
 -- Tabla de usuarios (login/registro con Google)
 -- Ejecutar en la base de datos que uses (postgres o ego) desde pgAdmin o psql.
 
-CREATE TABLE IF NOT EXISTS usuarios (
+CREATE TABLE IF NOT EXISTS Usuari (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL UNIQUE,
   username   VARCHAR(100) NOT NULL UNIQUE,
