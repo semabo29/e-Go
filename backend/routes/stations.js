@@ -41,7 +41,7 @@ router.get('/sync', async (req, res) => {
     }
 
     const query = `
-      INSERT INTO estaciones (
+      INSERT INTO ego.estaciones (
         external_id, promotor, acces, tipus_velocitat, tipus_connexio,
         latitud, longitud, nom, kw, ac_dc, adreca, municipi, provincia
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -118,7 +118,7 @@ router.get('/sync', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM estaciones ORDER BY id DESC');
+    const result = await pool.query('SELECT * FROM ego.estaciones ORDER BY id DESC');
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener estaciones:', err);

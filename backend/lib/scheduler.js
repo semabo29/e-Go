@@ -26,7 +26,7 @@ async function syncStations() {
     }
 
     const query = `
-      INSERT INTO estaciones (
+      INSERT INTO ego.estaciones (
         external_id, promotor, acces, tipus_velocitat, tipus_connexio,
         latitud, longitud, nom, kw, ac_dc, adreca, municipi, provincia
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
