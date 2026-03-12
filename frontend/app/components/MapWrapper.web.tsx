@@ -7,7 +7,20 @@ const containerStyle = {
   height: '100%',
 };
 
-export const MapView = ({ children, initialRegion, center, zoom, style, onPress, ...props }: any) => {
+const defaultOptions = {
+  fullscreenControl: false,    // Elimina el botón de pantalla completa
+  mapTypeControl: false,       // Elimina el selector de tipo de mapa
+  streetViewControl: false,    // Elimina el monigote de Street View
+  zoomControl: false,          // Elimina los botones de zoom
+  panControl: false,           // Elimina el control de desplazamiento
+  scaleControl: false,         // Elimina la escala
+  rotateControl: false,        // Elimina el control de rotación
+  keyboardShortcuts: false,    // Desactiva atajos de teclado
+  gestureHandling: 'greedy',   // Opcional: mejora el scroll en móviles web
+  disableDefaultUI: true,      // DESACTIVA TODA LA UI POR DEFECTO DE GOLPE
+};
+
+export const MapView = ({ children, initialRegion, center, zoom, style, onPress, options, ...props }: any) => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -48,6 +61,7 @@ export const MapView = ({ children, initialRegion, center, zoom, style, onPress,
         center={mapCenter}
         zoom={mapZoom}
         onClick={handleMapClick}
+        options={{ ...defaultOptions, ...options }}
         {...props}
       >
         {children}

@@ -1,4 +1,6 @@
 -- Tabla para los puntos de carga (estaciones) de la Generalitat
+CREATE SCHEMA IF NOT EXISTS ego;
+
 CREATE TABLE IF NOT EXISTS estaciones (
   id                     SERIAL PRIMARY KEY,
   external_id            VARCHAR(100) UNIQUE, -- El ":id" de la API (ej: "row-ktat-bcq8.qbut")
