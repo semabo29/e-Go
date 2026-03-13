@@ -84,6 +84,13 @@ export default function InicioScreen() {
               Tu navegador de estaciones de carga en Catalunya
             </Text>
             <TouchableOpacity
+              style={styles.adminLink}
+              onPress={() => router.push('/admin-login')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.adminLinkText}>Acceso Admin</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.loginButton}
               onPress={() => router.push({ pathname: '/login', params: { openGoogle: '1' } })}
               activeOpacity={0.8}
@@ -308,6 +315,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1f2937',
+  },
+  adminLink: {
+    marginBottom: 16,
+  },
+  adminLinkText: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
   },
   menuButton: {
     position: 'absolute',

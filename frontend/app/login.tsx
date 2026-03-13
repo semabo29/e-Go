@@ -32,6 +32,7 @@ export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [googleFlowStarted, setGoogleFlowStarted] = useState(false);
   const openedGoogleRef = useRef(false);
 
   const discovery = useAutoDiscovery('https://accounts.google.com');
@@ -62,6 +63,7 @@ export default function LoginScreen() {
   useEffect(() => {
     if (openGoogle === '1' && request && !openedGoogleRef.current) {
       openedGoogleRef.current = true;
+      setGoogleFlowStarted(true);
       promptAsync();
     }
   }, [openGoogle, request]);
@@ -183,6 +185,16 @@ export default function LoginScreen() {
         <Text style={styles.title}>Bienvenido a e-Go</Text>
         <Text style={styles.subtitle}>Tu navegador de estaciones de carga en Catalunya</Text>
 
+        {!googleFlowStarted && (
+          <TouchableOpacity
+            style={styles.adminLink}
+            onPress={() => router.push('/admin-login')}
+            disabled={loading}
+          >
+            <Text style={styles.adminLinkText}>Acceso Admin</Text>
+          </TouchableOpacity>
+        )}
+
         {!GOOGLE_WEB_CLIENT_ID ? (
           <Text style={styles.errorText}>
             Configura EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en el .env del frontend
@@ -197,7 +209,7 @@ export default function LoginScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => promptAsync()}
+              onPress={() => { setGoogleFlowStarted(true); promptAsync(); }}
               disabled={!request || loading}
               activeOpacity={0.8}
             >
@@ -326,6 +338,14 @@ const styles = StyleSheet.create({
   backLinkText: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  adminLink: {
+    marginTop: 18,
+  },
+  adminLinkText: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
   },
   openingGoogle: {
     alignItems: 'center',
