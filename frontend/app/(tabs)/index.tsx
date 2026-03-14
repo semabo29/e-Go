@@ -1,5 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapView, Marker } from '../components/MapWrapper';
 import {
   Image,
@@ -11,9 +11,11 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as Location from 'expo-location';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URL } from '@/constants/api';
@@ -40,12 +42,43 @@ export default function InicioScreen() {
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const mapRef = useRef<any>(null);
 
   // Cargar estaciones de la base de datos
   useEffect(() => {
     if (user) {
       fetchEstaciones();
     }
+  }, [user]);
+
+  // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
+  useEffect(() => {
+    if (!user) return;
+
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso necesario',
+          'Para mostrarte los puntos de carga más cercanos, necesitamos acceso a tu ubicación.'
+        );
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setUserLocation(location);
+
+      // Animar mapa a la ubicación del usuario comprobando compatibilidad
+      if (location && mapRef.current) {
+        if (typeof mapRef.current.animateToRegion === 'function') {
+          mapRef.current.animateToRegion(
+            { ...location.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+            1000
+          );
+        }
+      }
+    })();
   }, [user]);
 
   const fetchEstaciones = async () => {
@@ -58,6 +91,20 @@ export default function InicioScreen() {
       console.error('Error cargando estaciones:', error);
     } finally {
       setLoadingEstaciones(false);
+    }
+  };
+
+  const centerMapOnUser = () => {
+    if (userLocation && mapRef.current) {
+      // Comprobación de seguridad multiplataforma
+      if (typeof mapRef.current.animateToRegion === 'function') {
+        mapRef.current.animateToRegion({
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
+      }
     }
   };
 
@@ -115,15 +162,34 @@ export default function InicioScreen() {
 
       <View style={styles.mapContainer}>
         <MapView
+          ref={mapRef}
           style={StyleSheet.absoluteFillObject}
           initialRegion={{
             latitude: 41.3879,
             longitude: 2.16992,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
+            latitudeDelta: 0.5,
+            longitudeDelta: 0.5,
           }}
-          onPress={() => setSelectedStation(null)} // Cerrar al clicar en el mapa
+          showsUserLocation // Se activará en iOS/Android
+          onPress={() => setSelectedStation(null)}
         >
+          {/* MARCADOR DE UBICACIÓN MANUAL (Para Web) */}
+          {userLocation && (
+            <Marker
+              coordinate={{
+                latitude: userLocation.coords.latitude,
+                longitude: userLocation.coords.longitude,
+              }}
+              title="Tu ubicación"
+              // Esto le dice a la Web que use el pin azul de Google
+              options={{
+                icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+              }}
+              // Esto le dice al móvil que use un pin azul (por si acaso el showsUserLocation falla)
+              pinColor="blue"
+            />
+          )}
+
           {estaciones.map((est) => (
             <Marker
               key={est.id}
@@ -132,7 +198,7 @@ export default function InicioScreen() {
                 longitude: parseFloat(est.longitud),
               }}
               onPress={(e: any) => {
-                e.stopPropagation(); // Evitar que el clic llegue al mapa y lo cierre
+                e.stopPropagation();
                 setSelectedStation(est);
               }}
             />
@@ -143,6 +209,16 @@ export default function InicioScreen() {
           <View style={styles.mapLoading}>
             <ActivityIndicator size="small" color="#10b981" />
           </View>
+        )}
+
+        {/* Botón para centrar en el usuario */}
+        {userLocation && (
+          <TouchableOpacity
+            style={styles.centerMapButton}
+            onPress={centerMapOnUser}
+            activeOpacity={0.8}>
+            <MaterialIcons name="my-location" size={24} color="#1f2937" />
+          </TouchableOpacity>
         )}
 
         {/* Mini panel de información de la estación */}
@@ -327,6 +403,23 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+  centerMapButton: {
+    position: 'absolute',
+    top: 48,
+    right: 16,
+    zIndex: 10,
+    width: 48,
+    height: 48,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   menuBar: {
     width: 22,
     height: 2.5,
@@ -349,7 +442,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  // Panel de información (Mini Card)
   infoPanel: {
     position: 'absolute',
     bottom: 30,
@@ -438,7 +530,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // Menú lateral
   menuBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -478,5 +569,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#1f2937',
+  },
+  userDot: {
+    width: 18,
+    height: 18,
+    backgroundColor: '#3b82f6',
+    borderRadius: 9,
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
 });
