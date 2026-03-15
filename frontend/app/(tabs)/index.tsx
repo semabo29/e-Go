@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 
@@ -37,6 +37,10 @@ interface Estacion {
 
 export default function InicioScreen() {
   const router = useRouter();
+  //Llegim els paràmetres de la URL
+  const params = useLocalSearchParams();
+  const minKw = params.minKw as string | undefined;
+  const maxKw = params.maxKw as string | undefined;
   const { user, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
@@ -50,7 +54,7 @@ export default function InicioScreen() {
     if (user) {
       fetchEstaciones();
     }
-  }, [user]);
+  }, [user, minKw, maxKw]);
 
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
@@ -85,7 +89,15 @@ export default function InicioScreen() {
   const fetchEstaciones = async () => {
     setLoadingEstaciones(true);
     try {
-      const response = await fetch(`${API_URL}/stations`);
+      // Construïm els paràmetres de la URL del backend
+      let queryParams = [];
+      if (minKw) queryParams.push(`minKw=${minKw}`);
+      if (maxKw) queryParams.push(`maxKw=${maxKw}`);
+
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const url = `${API_URL}/stations${queryString}`;
+
+      const response = await fetch(url);
       const data = await response.json();
       setEstaciones(data);
     } catch (error) {
@@ -290,6 +302,26 @@ export default function InicioScreen() {
                 <MaterialIcons name="close" size={24} color="#1f2937" />
               </TouchableOpacity>
             </View>
+
+            {/*Boton para añadir filtros*/}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false); // Tanquem el menú
+                router.push({
+                  pathname: '/filters',
+                  params: {
+                    minKw: minKw || '',
+                    maxKw: maxKw || ''
+                  }
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="filter-list" size={22} color="#1f2937" />
+              <Text style={styles.menuItemText}>Añadir Filtros</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -299,7 +331,7 @@ export default function InicioScreen() {
               activeOpacity={0.7}
             >
               <MaterialIcons name="logout" size={22} color="#1f2937" />
-              <Text style={styles.menuItemText}>Cerrar sesión</Text>
+              <Text style={styles.menuItemText}>Cerrar Sesión</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
