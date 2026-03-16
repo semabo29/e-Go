@@ -195,7 +195,7 @@ export default function FiltersScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
+  contentContainer: {
     flex: 1,
   },
   container: {
