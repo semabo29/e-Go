@@ -1,6 +1,7 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
 import { useState, useEffect, useRef } from 'react';
-import { MapView, Marker } from '../components/MapWrapper';
+{/*import { MapView, Marker } from '../components/MapWrapper';*/}
+import { MapView, Marker } from '../../components/MapWrapper';
 import {
   Image,
   Modal,
@@ -229,7 +230,7 @@ export default function InicioScreen() {
             />
           )}
 
-          {estaciones.map((est) => (
+          {estaciones.slice(0, 50).map((est) => (
             <Marker
               key={est.id}
               coordinate={{
@@ -491,7 +492,7 @@ const styles = StyleSheet.create({
   mapLoading: {
     position: 'absolute',
     top: 60,
-    right: 16,
+    right: 24,
     backgroundColor: '#fff',
     padding: 8,
     borderRadius: 20,
@@ -644,7 +645,7 @@ const styles = StyleSheet.create({
   // --- ESTILS DE LA CAIXETA DE FILTRES ---
   activeFiltersBadge: {
     position: 'absolute',
-    top: 48,
+    top: 100,
     right: 16, // A dalt a la dreta!
     zIndex: 10,
     backgroundColor: '#fff',

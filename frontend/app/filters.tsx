@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Platform } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
@@ -48,10 +48,14 @@ export default function FiltersScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Potencia mínima (kW)</Text>
           <TextInput
-            style={[styles.input, focusedInput === 'min' && styles.inputFocused]}
+            style={[
+              styles.input, focusedInput === 'min' && styles.inputFocused,
+              Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
+            ]}
             placeholder="50"
             placeholderTextColor="#94a3b8" // Gris claret pel text d'exemple
             keyboardType="numeric"
+            cursorColor="#10b981"
             value={minKw}
             onChangeText={setMinKw}
             maxLength={4}
@@ -64,10 +68,14 @@ export default function FiltersScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Potencia máxima (kW)</Text>
           <TextInput
-            style={[styles.input, focusedInput === 'max' && styles.inputFocused]}
+            style={[
+              styles.input, focusedInput === 'max' && styles.inputFocused,
+              Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
+            ]}
             placeholder="150"
             placeholderTextColor="#94a3b8"
             keyboardType="numeric"
+            cursorColor="#10b981"
             value={maxKw}
             onChangeText={setMaxKw}
             maxLength={4}
@@ -144,12 +152,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1f2937',
     width: '100%',
-    outlineStyle: 'none',
   },
   inputFocused: {
     borderColor: '#10b981', // El verd de la teva App
     borderWidth: 2,
-    outlineColor: '#10b981',
   },
   footer: {
     flexDirection: 'row',
