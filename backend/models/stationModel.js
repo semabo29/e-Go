@@ -41,7 +41,7 @@ async function upsertStation(est) {
 }
 
 async function getAllStations(filters = {}) {
-  const {minKw, maxKw} = filters;
+  const {minKw, maxKw, connectorType} = filters;
 
   // Base de la consulta.
   let query = 'SELECT * FROM ego.estaciones';
@@ -60,6 +60,15 @@ async function getAllStations(filters = {}) {
   if (maxKw) {
     conditions.push(`kw <= $${paramIndex}`);
     values.push(parseFloat(maxKw));
+    paramIndex++;
+  }
+
+  // Filtre per Tipus de Connector
+  if (connectorType) {
+    // Utilitzem ILIKE per fer una cerca flexible (ignora majúscules/minúscules)
+    // i % als extrems perquè ho trobi encara que el text sigui "Schuko i MENNEKES"
+    conditions.push(`tipus_connexio ILIKE $${paramIndex}`);
+    values.push(`%${connectorType}%`);
     paramIndex++;
   }
 

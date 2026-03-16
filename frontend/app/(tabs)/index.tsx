@@ -1,6 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
 import { useState, useEffect, useRef } from 'react';
-{/*import { MapView, Marker } from '../components/MapWrapper';*/}
 import { MapView, Marker } from '../../components/MapWrapper';
 import {
   Image,
@@ -42,6 +41,8 @@ export default function InicioScreen() {
   const params = useLocalSearchParams();
   const minKw = params.minKw as string | undefined;
   const maxKw = params.maxKw as string | undefined;
+  const connectorType = params.connectorType as string | undefined;
+
   const { user, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
@@ -55,7 +56,7 @@ export default function InicioScreen() {
     if (user) {
       fetchEstaciones();
     }
-  }, [user, minKw, maxKw]);
+  }, [user, minKw, maxKw, connectorType]);
 
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function InicioScreen() {
       let queryParams = [];
       if (minKw) queryParams.push(`minKw=${minKw}`);
       if (maxKw) queryParams.push(`maxKw=${maxKw}`);
+      if (connectorType) queryParams.push(`connectorType=${encodeURIComponent(connectorType)}`);
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
       const url = `${API_URL}/stations${queryString}`;
@@ -123,15 +125,16 @@ export default function InicioScreen() {
   };
 
   // --- LÒGICA PEL TEXT DELS FILTRES ---
-  let filterText = '';
+  let powerText = '';
   if (minKw && maxKw) {
-    filterText = `${minKw} - ${maxKw} kW`;
+    powerText = `${minKw} - ${maxKw} kW`;
   } else if (minKw) {
-    filterText = `≥ ${minKw} kW`;
+    powerText = `≥ ${minKw} kW`;
   } else if (maxKw) {
-    filterText = `≤ ${maxKw} kW`;
+    powerText = `≤ ${maxKw} kW`;
   }
-  const hasFilters = !!minKw || !!maxKw;
+
+  const hasFilters = !!minKw || !!maxKw || !!connectorType;
 
   if (authLoading) {
     return (
@@ -185,20 +188,40 @@ export default function InicioScreen() {
         <View style={styles.menuBar} />
       </TouchableOpacity>
 
-      {/* --- CAIXETA DE FILTRES ACTIUS --- */}
+      {/* --- CAIXETA DE FILTRES ACTIUS APILATS --- */}
       {hasFilters && (
         <View style={styles.activeFiltersBadge}>
-          <MaterialIcons name="bolt" size={18} color="#10b981" />
-          <Text style={styles.activeFiltersText}>{filterText}</Text>
 
-          {/* Botó per netejar els filtres ràpidament des del mapa */}
+          {/* Columna esquerra: Llista de filtres */}
+          <View style={styles.filtersColumn}>
+
+            {/* Fila de Potència (només es mostra si n'hi ha) */}
+            {!!powerText && (
+              <View style={styles.filterRow}>
+                <MaterialIcons name="bolt" size={18} color="#10b981" />
+                <Text style={styles.activeFiltersText}>{powerText}</Text>
+              </View>
+            )}
+
+            {/* Fila de Connector (només es mostra si n'hi ha) */}
+            {!!connectorType && (
+              <View style={styles.filterRow}>
+                <MaterialIcons name="ev-station" size={18} color="#10b981" />
+                <Text style={styles.activeFiltersText}>{connectorType}</Text>
+              </View>
+            )}
+
+          </View>
+
+          {/* Columna dreta: Botó de tancar */}
           <TouchableOpacity
-            onPress={() => router.setParams({ minKw: '', maxKw: '' })}
+            onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: '' })}
             hitSlop={8}
-            style={{ marginLeft: 4 }}
+            style={styles.clearFilterButton}
           >
-            <MaterialIcons name="close" size={18} color="#94a3b8" />
+            <MaterialIcons name="close" size={20} color="#94a3b8" />
           </TouchableOpacity>
+
         </View>
       )}
 
@@ -341,7 +364,8 @@ export default function InicioScreen() {
                   pathname: '/filters',
                   params: {
                     minKw: minKw || '',
-                    maxKw: maxKw || ''
+                    maxKw: maxKw || '',
+                    connectorType: connectorType || '',
                   }
                 });
               }}
@@ -645,17 +669,15 @@ const styles = StyleSheet.create({
   // --- ESTILS DE LA CAIXETA DE FILTRES ---
   activeFiltersBadge: {
     position: 'absolute',
-    top: 100,
-    right: 16, // A dalt a la dreta!
+    top: 110,
+    right: 16,
     zIndex: 10,
     backgroundColor: '#fff',
-    flexDirection: 'row',
+    flexDirection: 'row', // La columna de text a l'esquerra, la X a la dreta
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 24, // Forma de píndola (pill)
-    gap: 6,
-    // Ombra perquè floti
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -664,9 +686,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  filtersColumn: {
+    flexDirection: 'column',
+    gap: 6, // Espai vertical entre el llamp i el connector
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6, // Espai horitzontal entre la icona i el text
+  },
   activeFiltersText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1f2937',
+  },
+  clearFilterButton: {
+    marginLeft: 12,
+    paddingLeft: 12,
+    borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
+    borderLeftColor: '#e2e8f0',
   },
 });

@@ -10,13 +10,18 @@ export default function FiltersScreen() {
   // Estats per guardar els valors temporals abans d'aplicar
   const [minKw, setMinKw] = useState((params.minKw as string) || '');
   const [maxKw, setMaxKw] = useState((params.maxKw as string) || '');
+  const [connectorType, setConnectorType] = useState((params.connectorType as string) || '');
+
+  // Llista de connectors més habituals
+  const CONNECTOR_TYPES = ['CCS Combo2', 'CHAdeMO', 'Schuko', 'MENNEKES', 'TESLA'];
+
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const handleApply = () => {
     // Naveguem de tornada a l'Inici ('/') i li passem els paràmetres
     router.navigate({
       pathname: '/',
-      params: { minKw, maxKw }
+      params: { minKw, maxKw, connectorType }
     });
   };
 
@@ -26,7 +31,7 @@ export default function FiltersScreen() {
     // Naveguem de tornada enviant els paràmetres buits
     router.navigate({
       pathname: '/',
-      params: { minKw: '', maxKw: '' }
+      params: { minKw: '', maxKw: '', connectorType: '' }
     });
   };
 
@@ -83,7 +88,34 @@ export default function FiltersScreen() {
             onBlur={() => setFocusedInput(null)}
           />
         </View>
-      </View>
+
+        {/* Secció Tipus de Connector */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Tipo de Conector</Text>
+          <View style={styles.chipContainer}>
+            {CONNECTOR_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.chip,
+                  connectorType === type && styles.chipActive
+                ]}
+                // Si clica el que ja està actiu, el desmarca (el deixa buit)
+                onPress={() => setConnectorType(connectorType === type ? '' : type)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.chipText,
+                  connectorType === type && styles.chipTextActive
+                ]}>
+                  {type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+      </View> {/*<-- Final de content*/}
 
       {/* Botons d'acció */}
       <View style={styles.footer}>
@@ -133,6 +165,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   inputGroup: {
+
     marginBottom: 24,
     alignSelf: 'flex-start',
   },
@@ -190,6 +223,34 @@ const styles = StyleSheet.create({
   applyBtnText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  // --- Estils per els botons de connectors ---
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  chipActive: {
+    backgroundColor: '#ecfdf5', // Verd molt claret de fons
+    borderColor: '#10b981',     // Vora verda
+  },
+  chipText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: '#10b981',
     fontWeight: '700',
   },
 });
