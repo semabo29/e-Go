@@ -1,6 +1,7 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
 import { useState, useEffect, useRef } from 'react';
-import { MapView, Marker } from '../components/MapWrapper';
+{/*import { MapView, Marker } from '../components/MapWrapper';*/}
+import { MapView, Marker } from '../../components/MapWrapper';
 import {
   Image,
   Modal,
@@ -13,7 +14,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 
@@ -37,6 +38,10 @@ interface Estacion {
 
 export default function InicioScreen() {
   const router = useRouter();
+  //Llegim els paràmetres de la URL
+  const params = useLocalSearchParams();
+  const minKw = params.minKw as string | undefined;
+  const maxKw = params.maxKw as string | undefined;
   const { user, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
@@ -50,7 +55,7 @@ export default function InicioScreen() {
     if (user) {
       fetchEstaciones();
     }
-  }, [user]);
+  }, [user, minKw, maxKw]);
 
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
@@ -85,7 +90,15 @@ export default function InicioScreen() {
   const fetchEstaciones = async () => {
     setLoadingEstaciones(true);
     try {
-      const response = await fetch(`${API_URL}/stations`);
+      // Construïm els paràmetres de la URL del backend
+      let queryParams = [];
+      if (minKw) queryParams.push(`minKw=${minKw}`);
+      if (maxKw) queryParams.push(`maxKw=${maxKw}`);
+
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const url = `${API_URL}/stations${queryString}`;
+
+      const response = await fetch(url);
       const data = await response.json();
       setEstaciones(data);
     } catch (error) {
@@ -108,6 +121,17 @@ export default function InicioScreen() {
       }
     }
   };
+
+  // --- LÒGICA PEL TEXT DELS FILTRES ---
+  let filterText = '';
+  if (minKw && maxKw) {
+    filterText = `${minKw} - ${maxKw} kW`;
+  } else if (minKw) {
+    filterText = `≥ ${minKw} kW`;
+  } else if (maxKw) {
+    filterText = `≤ ${maxKw} kW`;
+  }
+  const hasFilters = !!minKw || !!maxKw;
 
   if (authLoading) {
     return (
@@ -161,6 +185,23 @@ export default function InicioScreen() {
         <View style={styles.menuBar} />
       </TouchableOpacity>
 
+      {/* --- CAIXETA DE FILTRES ACTIUS --- */}
+      {hasFilters && (
+        <View style={styles.activeFiltersBadge}>
+          <MaterialIcons name="bolt" size={18} color="#10b981" />
+          <Text style={styles.activeFiltersText}>{filterText}</Text>
+
+          {/* Botó per netejar els filtres ràpidament des del mapa */}
+          <TouchableOpacity
+            onPress={() => router.setParams({ minKw: '', maxKw: '' })}
+            hitSlop={8}
+            style={{ marginLeft: 4 }}
+          >
+            <MaterialIcons name="close" size={18} color="#94a3b8" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -189,7 +230,7 @@ export default function InicioScreen() {
             />
           )}
 
-          {estaciones.map((est) => (
+          {estaciones.slice(0, 50).map((est) => (
             <Marker
               key={est.id}
               coordinate={{
@@ -290,6 +331,26 @@ export default function InicioScreen() {
                 <MaterialIcons name="close" size={24} color="#1f2937" />
               </TouchableOpacity>
             </View>
+
+            {/*Boton para añadir filtros*/}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false); // Tanquem el menú
+                router.push({
+                  pathname: '/filters',
+                  params: {
+                    minKw: minKw || '',
+                    maxKw: maxKw || ''
+                  }
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="filter-list" size={22} color="#1f2937" />
+              <Text style={styles.menuItemText}>Añadir Filtros</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -299,7 +360,7 @@ export default function InicioScreen() {
               activeOpacity={0.7}
             >
               <MaterialIcons name="logout" size={22} color="#1f2937" />
-              <Text style={styles.menuItemText}>Cerrar sesión</Text>
+              <Text style={styles.menuItemText}>Cerrar Sesión</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -431,7 +492,7 @@ const styles = StyleSheet.create({
   mapLoading: {
     position: 'absolute',
     top: 60,
-    right: 16,
+    right: 24,
     backgroundColor: '#fff',
     padding: 8,
     borderRadius: 20,
@@ -580,5 +641,32 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+  },
+  // --- ESTILS DE LA CAIXETA DE FILTRES ---
+  activeFiltersBadge: {
+    position: 'absolute',
+    top: 100,
+    right: 16, // A dalt a la dreta!
+    zIndex: 10,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 24, // Forma de píndola (pill)
+    gap: 6,
+    // Ombra perquè floti
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  activeFiltersText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1f2937',
   },
 });

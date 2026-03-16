@@ -24,8 +24,8 @@ async function syncStations() {
   return count;
 }
 
-async function getStations() {
-  return stationModel.getAllStations();
+async function getStations(filters) {
+  return stationModel.getAllStations(filters);
 }
 
 module.exports = { syncStations, getStations };
