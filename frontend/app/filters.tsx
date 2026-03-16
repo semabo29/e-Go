@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Platform,
+  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback
+} from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
@@ -45,101 +56,111 @@ export default function FiltersScreen() {
         <View style={{ width: 24 }} /* Espai buit per centrar el títol */ />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.contentContainer}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        {/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
+          <View style={{flex: 1}}>
 
-        {/* Input Mínim */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Potencia mínima (kW)</Text>
-          <TextInput
-            style={[
-              styles.input, focusedInput === 'min' && styles.inputFocused,
-              Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
-            ]}
-            placeholder="50"
-            placeholderTextColor="#94a3b8" // Gris claret pel text d'exemple
-            keyboardType="numeric"
-            cursorColor="#10b981"
-            value={minKw}
-            onChangeText={setMinKw}
-            maxLength={4}
-            onFocus={() => setFocusedInput('min')} // Quan hi fem clic
-            onBlur={() => setFocusedInput(null)}   // Quan sortim
-          />
-        </View>
-
-        {/* Input Màxim */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Potencia máxima (kW)</Text>
-          <TextInput
-            style={[
-              styles.input, focusedInput === 'max' && styles.inputFocused,
-              Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
-            ]}
-            placeholder="150"
-            placeholderTextColor="#94a3b8"
-            keyboardType="numeric"
-            cursorColor="#10b981"
-            value={maxKw}
-            onChangeText={setMaxKw}
-            maxLength={4}
-            onFocus={() => setFocusedInput('max')}
-            onBlur={() => setFocusedInput(null)}
-          />
-        </View>
-
-        {/*Secció Tipo de corrient*/}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Tipo de corrient</Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {['AC', 'DC'].map((type) => (
-              <TouchableOpacity
-                key={type}
+            {/* Input Mínim */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Potencia mínima (kW)</Text>
+              <TextInput
                 style={[
-                  styles.typeBtn,
-                  acDc === type && styles.typeBtnActive
+                  styles.input, focusedInput === 'min' && styles.inputFocused,
+                  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
                 ]}
-                // Si ja estava seleccionat i hi tornem a clicar, el desmarquem
-                onPress={() => setAcDc(acDc === type ? '' : type)}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.typeBtnText,
-                  acDc === type && styles.typeBtnTextActive
-                ]}>
-                  {type === 'AC' ? 'AC' : 'DC'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+                placeholder="50"
+                placeholderTextColor="#94a3b8" // Gris claret pel text d'exemple
+                keyboardType="numeric"
+                cursorColor="#10b981"
+                value={minKw}
+                onChangeText={setMinKw}
+                maxLength={4}
+                onFocus={() => setFocusedInput('min')} // Quan hi fem clic
+                onBlur={() => setFocusedInput(null)}   // Quan sortim
+              />
+            </View>
 
-        {/* Secció Tipus de Connector */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Tipo de Conector</Text>
-          <View style={styles.chipContainer}>
-            {CONNECTOR_TYPES.map((type) => (
-              <TouchableOpacity
-                key={type}
+            {/* Input Màxim */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Potencia máxima (kW)</Text>
+              <TextInput
                 style={[
-                  styles.chip,
-                  connectorType === type && styles.chipActive
+                  styles.input, focusedInput === 'max' && styles.inputFocused,
+                  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
                 ]}
-                // Si clica el que ja està actiu, el desmarca (el deixa buit)
-                onPress={() => setConnectorType(connectorType === type ? '' : type)}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.chipText,
-                  connectorType === type && styles.chipTextActive
-                ]}>
-                  {type}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+                placeholder="150"
+                placeholderTextColor="#94a3b8"
+                keyboardType="numeric"
+                cursorColor="#10b981"
+                value={maxKw}
+                onChangeText={setMaxKw}
+                maxLength={4}
+                onFocus={() => setFocusedInput('max')}
+                onBlur={() => setFocusedInput(null)}
+              />
+            </View>
 
-      </View> {/*<-- Final de content*/}
+            {/*Secció Tipo de corrient*/}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Tipo de corrient</Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {['AC', 'DC'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.typeBtn,
+                      acDc === type && styles.typeBtnActive
+                    ]}
+                    // Si ja estava seleccionat i hi tornem a clicar, el desmarquem
+                    onPress={() => setAcDc(acDc === type ? '' : type)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.typeBtnText,
+                      acDc === type && styles.typeBtnTextActive
+                    ]}>
+                      {type === 'AC' ? 'AC' : 'DC'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Secció Tipus de Connector */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Tipo de Conector</Text>
+              <View style={styles.chipContainer}>
+                {CONNECTOR_TYPES.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.chip,
+                      connectorType === type && styles.chipActive
+                    ]}
+                    // Si clica el que ja està actiu, el desmarca (el deixa buit)
+                    onPress={() => setConnectorType(connectorType === type ? '' : type)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.chipText,
+                      connectorType === type && styles.chipTextActive
+                    ]}>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </ScrollView> {/*<-- Final de content*/}
 
       {/* Botons d'acció */}
       <View style={styles.footer}>
@@ -156,6 +177,9 @@ export default function FiltersScreen() {
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc', // Fons clar
@@ -179,8 +203,8 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   content: {
-    flex: 1,
     padding: 24,
+    paddingBottom: 40, // Espai pel bottom
   },
   description: {
     fontSize: 15,
