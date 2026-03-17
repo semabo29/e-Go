@@ -1,5 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapView, Marker } from '../../components/MapWrapper';
 import {
   Image,
@@ -11,9 +11,11 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as Location from 'expo-location';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URL } from '@/constants/api';
@@ -35,23 +37,72 @@ interface Estacion {
 
 export default function InicioScreen() {
   const router = useRouter();
+  //Llegim els paràmetres de la URL
+  const params = useLocalSearchParams();
+  const minKw = params.minKw as string | undefined;
+  const maxKw = params.maxKw as string | undefined;
+  const connectorType = params.connectorType as string | undefined;
+  const ac_dc = params.ac_dc as string | undefined;
+
   const { user, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const mapRef = useRef<any>(null);
 
   // Cargar estaciones de la base de datos
   useEffect(() => {
     if (user) {
       fetchEstaciones();
     }
+  }, [user, minKw, maxKw, connectorType, ac_dc]);
+
+  // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
+  useEffect(() => {
+    if (!user) return;
+    //metida dentro pq solo se usa una vez
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { //alerta para informar el proque de la necesidad de ubi
+        Alert.alert(
+          'Permiso necesario',
+          'Para mostrarte los puntos de carga más cercanos, necesitamos acceso a tu ubicación.'
+        );
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setUserLocation(location);
+
+      // Animar mapa a la ubicación del usuario comprobando compatibilidad
+      if (location && mapRef.current) {
+        //comprobamos que la funcion existe (en android/ios si pero en web no y petaria)
+        if (typeof mapRef.current.animateToRegion === 'function') {
+          mapRef.current.animateToRegion(
+            { ...location.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+            1000
+          );
+        }
+      }
+    })();
   }, [user]);
 
   const fetchEstaciones = async () => {
     setLoadingEstaciones(true);
     try {
-      const response = await fetch(`${API_URL}/stations`);
+      // Construïm els paràmetres de la URL del backend
+      let queryParams = [];
+      if (minKw) queryParams.push(`minKw=${minKw}`);
+      if (maxKw) queryParams.push(`maxKw=${maxKw}`);
+      if (connectorType) queryParams.push(`connectorType=${encodeURIComponent(connectorType)}`);
+      if (ac_dc) queryParams.push(`ac_dc=${ac_dc}`);
+
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const url = `${API_URL}/stations${queryString}`;
+
+      const response = await fetch(url);
       const data = await response.json();
       setEstaciones(data);
     } catch (error) {
@@ -60,6 +111,32 @@ export default function InicioScreen() {
       setLoadingEstaciones(false);
     }
   };
+
+  const centerMapOnUser = () => {
+    if (userLocation && mapRef.current) {
+      // Comprobación de seguridad multiplataforma
+      if (typeof mapRef.current.animateToRegion === 'function') {
+        mapRef.current.animateToRegion({
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
+      }
+    }
+  };
+
+  // --- LÒGICA PEL TEXT DELS FILTRES ---
+  let powerText = '';
+  if (minKw && maxKw) {
+    powerText = `${minKw} - ${maxKw} kW`;
+  } else if (minKw) {
+    powerText = `≥ ${minKw} kW`;
+  } else if (maxKw) {
+    powerText = `≤ ${maxKw} kW`;
+  }
+
+  const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc;
 
   if (authLoading) {
     return (
@@ -120,18 +197,82 @@ export default function InicioScreen() {
         <View style={styles.menuBar} />
       </TouchableOpacity>
 
+      {/* --- CAIXETA DE FILTRES ACTIUS APILATS --- */}
+      {hasFilters && (
+        <View style={styles.activeFiltersBadge}>
+
+          {/* Columna esquerra: Llista de filtres */}
+          <View style={styles.filtersColumn}>
+
+            {/* Fila de Potència (només es mostra si n'hi ha) */}
+            {!!powerText && (
+              <View style={styles.filterRow}>
+                <MaterialIcons name="bolt" size={18} color="#10b981" />
+                <Text style={styles.activeFiltersText}>{powerText}</Text>
+              </View>
+            )}
+
+            {/* Fila de AC/DC (només es mostra si n'hi ha) */}
+            {!!ac_dc && (
+              <View style={styles.filterRow}>
+                <MaterialIcons name="ev-station" size={18} color="#10b981" />
+                <Text style={styles.activeFiltersText}>
+                  {ac_dc === 'AC' ? 'AC' : ac_dc === 'DC' ? 'DC' : ac_dc}
+                </Text>
+              </View>
+            )}
+
+            {/* Fila de Connector (només es mostra si n'hi ha) */}
+            {!!connectorType && (
+              <View style={styles.filterRow}>
+                <MaterialIcons name="electrical-services" size={18} color="#10b981" />
+                <Text style={styles.activeFiltersText}>{connectorType}</Text>
+              </View>
+            )}
+
+          </View>
+
+          {/* Columna dreta: Botó de tancar */}
+          <TouchableOpacity
+            onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: '', ac_dc: '' })}
+            hitSlop={8}
+            style={styles.clearFilterButton}
+          >
+            <MaterialIcons name="close" size={20} color="#94a3b8" />
+          </TouchableOpacity>
+
+        </View>
+      )}
+
       <View style={styles.mapContainer}>
         <MapView
+          ref={mapRef}
           style={StyleSheet.absoluteFillObject}
-          initialRegion={{
-            latitude: 41.3879,
-            longitude: 2.16992,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
+          initialRegion={{ //en caso de disponer de la ubi, se inicia ahi el mapa
+            latitude: userLocation?.coords.latitude || 41.3879,
+            longitude: userLocation?.coords.longitude || 2.16992,
+            latitudeDelta: 0.5,
+            longitudeDelta: 0.5,
           }}
-          onPress={() => setSelectedStation(null)} // Cerrar al clicar en el mapa
+          showsUserLocation //muestra ubi en movil 
+          onPress={() => setSelectedStation(null)}
         >
-          {estaciones.map((est) => (
+          {userLocation && ( //marcamos la ubi del user manualmente en la web (showsUserLocation no sirve aqui)
+            <Marker
+              coordinate={{
+                latitude: userLocation.coords.latitude,
+                longitude: userLocation.coords.longitude,
+              }}
+              title="Tu ubicación"
+              options={{
+                icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+              }}
+              //(por si acaso el showsUserLocation falla)
+              pinColor="blue"
+            />
+          )}
+
+          {estaciones.slice(0, 50).map((est) => (
             <Marker
               key={est.id}
               coordinate={{
@@ -139,7 +280,7 @@ export default function InicioScreen() {
                 longitude: parseFloat(est.longitud),
               }}
               onPress={(e: any) => {
-                e.stopPropagation(); // Evitar que el clic llegue al mapa y lo cierre
+                e.stopPropagation();
                 setSelectedStation(est);
               }}
             />
@@ -150,6 +291,16 @@ export default function InicioScreen() {
           <View style={styles.mapLoading}>
             <ActivityIndicator size="small" color="#10b981" />
           </View>
+        )}
+
+        {/* Botón para centrar en el usuario */}
+        {userLocation && (
+          <TouchableOpacity
+            style={styles.centerMapButton}
+            onPress={centerMapOnUser}
+            activeOpacity={0.8}>
+            <MaterialIcons name="my-location" size={24} color="#1f2937" />
+          </TouchableOpacity>
         )}
 
         {/* Mini panel de información de la estación */}
@@ -179,7 +330,7 @@ export default function InicioScreen() {
                   <MaterialIcons name="bolt" size={14} color="#10b981" />
                   <Text style={[styles.badgeText, { color: '#047857' }]}>{selectedStation.kw} kW</Text>
                 </View>
-                {selectedStation.tipus_velocitat && (
+                {!!selectedStation.tipus_velocitat && (
                   <View style={[styles.badge, { backgroundColor: '#eff6ff' }]}>
                     <Text style={[styles.badgeText, { color: '#1d4ed8' }]}>{selectedStation.tipus_velocitat}</Text>
                   </View>
@@ -222,6 +373,28 @@ export default function InicioScreen() {
                 <MaterialIcons name="close" size={24} color="#1f2937" />
               </TouchableOpacity>
             </View>
+
+            {/*Boton para añadir filtros*/}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false); // Tanquem el menú
+                router.push({
+                  pathname: '/filters',
+                  params: {
+                    minKw: minKw || '',
+                    maxKw: maxKw || '',
+                    connectorType: connectorType || '',
+                    ac_dc: ac_dc || '',
+                  }
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="filter-list" size={22} color="#1f2937" />
+              <Text style={styles.menuItemText}>Añadir Filtros</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -231,7 +404,7 @@ export default function InicioScreen() {
               activeOpacity={0.7}
             >
               <MaterialIcons name="logout" size={22} color="#1f2937" />
-              <Text style={styles.menuItemText}>Cerrar sesión</Text>
+              <Text style={styles.menuItemText}>Cerrar Sesión</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -268,10 +441,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)', // width, height, blur, color amb opacitat
     elevation: 4,
   },
   logo: {
@@ -336,10 +506,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
+    elevation: 3,
+  },
+  centerMapButton: {
+    position: 'absolute',
+    top: 48,
+    right: 16,
+    zIndex: 10,
+    width: 48,
+    height: 48,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
     elevation: 3,
   },
   menuBar: {
@@ -354,17 +535,13 @@ const styles = StyleSheet.create({
   mapLoading: {
     position: 'absolute',
     top: 60,
-    right: 16,
+    right: 24,
     backgroundColor: '#fff',
     padding: 8,
     borderRadius: 20,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
   },
-  // Panel de información (Mini Card)
   infoPanel: {
     position: 'absolute',
     bottom: 30,
@@ -373,10 +550,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
     elevation: 10,
   },
   infoHandle: {
@@ -453,7 +627,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // Menú lateral
   menuBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -493,5 +666,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#1f2937',
+  },
+  userDot: {
+    width: 18,
+    height: 18,
+    backgroundColor: '#3b82f6',
+    borderRadius: 9,
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    boxShadow: '0px 2px 3px rgba(0, 0, 0, 0.3)', // width, height, blur, color amb opacitat
+  },
+  // --- ESTILS DE LA CAIXETA DE FILTRES ---
+  activeFiltersBadge: {
+    position: 'absolute',
+    top: 110,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: '#fff',
+    flexDirection: 'row', // La columna de text a l'esquerra, la X a la dreta
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  filtersColumn: {
+    flexDirection: 'column',
+    gap: 6, // Espai vertical entre el llamp i el connector
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6, // Espai horitzontal entre la icona i el text
+  },
+  activeFiltersText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  clearFilterButton: {
+    marginLeft: 12,
+    paddingLeft: 12,
+    borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
+    borderLeftColor: '#e2e8f0',
   },
 });

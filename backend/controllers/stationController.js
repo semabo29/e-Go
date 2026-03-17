@@ -4,7 +4,13 @@ const stationService = require('../services/stationService');
 // obtener todas las estaciones
 async function getStations(req, res) {
   try {
-    const stations = await stationService.getStations();
+    // Agafem els possibles paràmetres de la URL
+    const { minKw, maxKw, connectorType, ac_dc } = req.query;
+
+    // Creem un objecte amb els filtres
+    const filters = { minKw, maxKw, connectorType, ac_dc};
+
+    const stations = await stationService.getStations(filters);
     res.json(stations);
   } catch (err) {
     console.error('Error obteniendo estaciones:', err);
