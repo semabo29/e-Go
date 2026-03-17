@@ -1,7 +1,6 @@
 // Login solo con Google; si es usuario nuevo pedimos username y registramos
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri, useAuthRequest, useAutoDiscovery } from 'expo-auth-session';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,56 +17,39 @@ import { useAuth } from '@/contexts/AuthContext';
 import { API_URL, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 
-WebBrowser.maybeCompleteAuthSession();
-
 const BRAND_GREEN = Colors.light.tint;
 const LOGO = require('./_assets/favicon.png');
+
+GoogleSignin.configure({
+  webClientId: GOOGLE_WEB_CLIENT_ID,
+});
 
 export default function LoginScreen() {
   const { setUser } = useAuth();
   const router = useRouter();
-  useLocalSearchParams<{ openGoogle?: string }>(); // openGoogle ya no auto-abre el popup (el navegador lo bloqueaba)
   const [step, setStep] = useState<'google' | 'username'>('google');
   const [pendingAuth, setPendingAuth] = useState<{ pending_token: string } | null>(null);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const discovery = useAutoDiscovery('https://accounts.google.com');
-  const redirectUri = makeRedirectUri({ scheme: 'frontend' });
-
-  useEffect(() => {
-    if (redirectUri) console.log('[e-Go] URI para Google Cloud:', redirectUri);
-  }, [redirectUri]);
-
-  const [request, response, promptAsync] = useAuthRequest(
-    {
-      clientId: GOOGLE_WEB_CLIENT_ID,
-      scopes: ['openid', 'email', 'profile'],
-      redirectUri,
-    },
-    discovery ?? null
-  );
-
-  useEffect(() => {
-    if (response?.type !== 'success' || !request) return;
-    const { code } = response.params;
-    const verifier = (request as { codeVerifier?: string }).codeVerifier;
-    if (!code) return;
-    loginWithCode(code, redirectUri, verifier);
-  }, [response]);
-
-  // No abrimos el popup en useEffect: el navegador lo bloquea (debe ser un gesto directo del usuario).
-  // El usuario pulsa "Continuar con Google" en esta pantalla para que el popup se abra correctamente.
-
-  async function loginWithCode(code: string, redirectUri: string, codeVerifier?: string) {
+  async function handleGoogleLogin() {
     setLoading(true);
     setError('');
     try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken;
+
+      if (!idToken) {
+        setError('No se pudo obtener el token de Google');
+        return;
+      }
+
       const res = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirectUri, code_verifier: codeVerifier }),
+        body: JSON.stringify({ idToken }),
       });
       const data = await res.json();
 
@@ -85,8 +67,17 @@ export default function LoginScreen() {
         setPendingAuth({ pending_token: data.pending_token });
         setStep('username');
       }
-    } catch (err) {
-      setError('No se pudo conectar con el servidor. Comprueba la URL del backend.');
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // usuario canceló, no mostramos error
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        setError('Ya hay un inicio de sesión en curso');
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setError('Google Play Services no disponible');
+      } else {
+        setError('No se pudo conectar con el servidor');
+        console.error('[Google Login]', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -127,7 +118,7 @@ export default function LoginScreen() {
     }
   }
 
-  // Paso 2: elegir nombre de usuario (mismo estilo blanco)
+  // Paso 2: elegir nombre de usuario
   if (step === 'username') {
     return (
       <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
@@ -147,7 +138,7 @@ export default function LoginScreen() {
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <TouchableOpacity
-            style={[styles.primaryButton]}
+            style={styles.primaryButton}
             onPress={registerWithUsername}
             disabled={loading}
           >
@@ -169,7 +160,7 @@ export default function LoginScreen() {
     );
   }
 
-  // Pantalla principal: solo Google (mockup)
+  // Pantalla principal
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
@@ -186,8 +177,8 @@ export default function LoginScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => promptAsync()}
-              disabled={!request || loading}
+              onPress={handleGoogleLogin}
+              disabled={loading}
               activeOpacity={0.8}
             >
               {loading ? (
@@ -215,120 +206,31 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    paddingVertical: 40,
-  },
+  screen: { flex: 1, backgroundColor: '#f5f5f5' },
+  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
   card: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 16,
+    padding: 28, alignItems: 'center', shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  logo: {
-    width: 180,
-    height: 180,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1f2937',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 28,
-  },
+  logo: { width: 180, height: 180, marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: '700', color: '#1f2937', textAlign: 'center', marginBottom: 8 },
+  subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center', marginBottom: 28 },
   googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    width: '100%',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: '#fff',
-    borderRadius: 0,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
+    width: '100%', paddingVertical: 14, paddingHorizontal: 24,
+    backgroundColor: '#fff', borderRadius: 0, borderWidth: 1, borderColor: '#e5e7eb',
   },
-  googleIcon: {
-    width: 22,
-    height: 22,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  primaryButton: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: BRAND_GREEN,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  googleIcon: { width: 22, height: 22 },
+  googleButtonText: { fontSize: 16, fontWeight: '600', color: '#1f2937' },
+  primaryButton: { width: '100%', paddingVertical: 14, borderRadius: 10, backgroundColor: BRAND_GREEN, alignItems: 'center', marginTop: 8 },
+  primaryButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   input: {
-    width: '100%',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    marginBottom: 16,
+    width: '100%', paddingVertical: 12, paddingHorizontal: 16, fontSize: 16,
+    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#fff', marginBottom: 16,
   },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  backLink: {
-    marginTop: 16,
-  },
-  backLinkText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  openingGoogle: {
-    alignItems: 'center',
-    gap: 16,
-    paddingVertical: 24,
-  },
-  openingGoogleText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  terms: {
-    marginTop: 24,
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
+  errorText: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 12 },
+  backLink: { marginTop: 16 },
+  backLinkText: { fontSize: 14, color: '#6b7280' },
+  terms: { marginTop: 24, fontSize: 12, color: '#9ca3af', textAlign: 'center' },
 });
