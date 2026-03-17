@@ -13,13 +13,11 @@ async function syncStations() {
   if (!Array.isArray(estaciones) && estaciones.results) estaciones = estaciones.results;
   if (!Array.isArray(estaciones)) throw new Error('Formato de API inválido');
 
-  let count = 0;
-  for (const est of estaciones) {
-    if (!est.latitud || !est.longitud) continue; //si no hay coordenadas, no se guarda
-    await stationModel.upsertStation(est); //guarda o actualiza
-    count++;
-  }
 
+  const estacionesValidas = estaciones.filter(est => est.latitud && est.longitud);
+  await Promise.all(estacionesValidas.map(est => stationModel.upsertStation(est)));
+
+  let count = estacionesValidas.length;
   console.log(`Sincronizadas ${count} estaciones`);
   return count;
 }

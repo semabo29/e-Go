@@ -5,10 +5,10 @@ const stationService = require('../services/stationService');
 async function getStations(req, res) {
   try {
     // Agafem els possibles paràmetres de la URL
-    const { minKw, maxKw, connectorType, ac_dc } = req.query;
+    const { minKw, maxKw, connectorType, ac_dc, north, south, east, west } = req.query;
 
     // Creem un objecte amb els filtres
-    const filters = { minKw, maxKw, connectorType, ac_dc};
+    const filters = { minKw, maxKw, connectorType, ac_dc, north, south, east, west};
 
     const stations = await stationService.getStations(filters);
     res.json(stations);

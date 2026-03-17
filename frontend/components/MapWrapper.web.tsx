@@ -2,65 +2,69 @@ import React from 'react';
 import { GoogleMap, useJsApiLoader, Marker as GoogleMarker } from '@react-google-maps/api';
 import { View, Text } from 'react-native';
 
-const containerStyle = {
-  width: '100%',
-  height: '100%',
-};
+const containerStyle = { width: '100%', height: '100%' };
 
 const defaultOptions = {
-  fullscreenControl: false,    // Elimina el botón de pantalla completa
-  mapTypeControl: false,       // Elimina el selector de tipo de mapa
-  streetViewControl: false,    // Elimina el monigote de Street View
-  zoomControl: false,          // Elimina los botones de zoom
-  panControl: false,           // Elimina el control de desplazamiento
-  scaleControl: false,         // Elimina la escala
-  rotateControl: false,        // Elimina el control de rotación
-  keyboardShortcuts: false,    // Desactiva atajos de teclado
-  gestureHandling: 'greedy',   // Opcional: mejora el scroll en móviles web
-  disableDefaultUI: true,      // DESACTIVA TODA LA UI POR DEFECTO DE GOLPE
+  fullscreenControl: false,
+  mapTypeControl: false,
+  streetViewControl: false,
+  zoomControl: false,
+  panControl: false,
+  scaleControl: false,
+  rotateControl: false,
+  keyboardShortcuts: false,
+  gestureHandling: 'greedy',
+  disableDefaultUI: true,
 };
 
-export const MapView = ({ children, initialRegion, center, zoom, style, onPress, options, ...props }: any) => {
+export const MapView = ({ children, initialRegion, style, onPress, onRegionChangeComplete, options, ...props }: any) => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   });
 
-  const mapCenter = center || (initialRegion ? {
-    lat: initialRegion.latitude,
-    lng: initialRegion.longitude,
-  } : { lat: 41.3879, lng: 2.16992 });
+  const [map, setMap] = React.useState<google.maps.Map | null>(null);
 
-  const mapZoom = zoom || 13;
+  // MEMORIZAMOS EL CENTRO: Así el mapa solo se centra al cargar la primera vez
+  // y no "salta" cada vez que mueves el ratón o llegan datos nuevos.
+  const initialCenter = React.useMemo(() => ({
+    lat: initialRegion?.latitude || 41.3879,
+    lng: initialRegion?.longitude || 2.16992
+  }), []);
 
-  const handleMapClick = (e: any) => {
-    if (onPress) {
-      onPress({
-        nativeEvent: {
-          coordinate: {
-            latitude: e.latLng.lat(),
-            longitude: e.latLng.lng(),
-          },
-        },
-      });
+  const handleIdle = () => {
+    if (map && onRegionChangeComplete) {
+      const center = map.getCenter();
+      const bounds = map.getBounds();
+      if (center && bounds) {
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+
+        onRegionChangeComplete({
+          latitude: center.lat(),
+          longitude: center.lng(),
+          latitudeDelta: ne.lat() - sw.lat(),
+          longitudeDelta: ne.lng() - sw.lng(),
+        });
+      }
     }
   };
 
-  if (!isLoaded) {
-    return (
-      <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, style]}>
-        <Text>Cargando Mapa...</Text>
-      </View>
-    );
-  }
+  if (!isLoaded) return (
+    <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, style]}>
+      <Text>Cargando Mapa...</Text>
+    </View>
+  );
 
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <GoogleMap
         mapContainerStyle={containerStyle}
-        center={mapCenter}
-        zoom={mapZoom}
-        onClick={handleMapClick}
+        center={initialCenter}
+        zoom={12}
+        onClick={(e) => onPress && onPress({ nativeEvent: { coordinate: { latitude: e.latLng.lat(), longitude: e.latLng.lng() } } })}
+        onLoad={setMap}
+        onIdle={handleIdle}
         options={{ ...defaultOptions, ...options }}
         {...props}
       >
@@ -71,24 +75,14 @@ export const MapView = ({ children, initialRegion, center, zoom, style, onPress,
 };
 
 export const Marker = ({ coordinate, position, onPress, ...props }: any) => {
-  const markerPosition = position || (coordinate ? {
-    lat: coordinate.latitude,
-    lng: coordinate.longitude,
-  } : null);
-
+  const markerPosition = position || (coordinate ? { lat: coordinate.latitude, lng: coordinate.longitude } : null);
   if (!markerPosition) return null;
 
-  const handleMarkerClick = (e: any) => {
-    if (onPress) {
-      // Simulamos la estructura de evento de react-native-maps
-      onPress({
-        stopPropagation: () => {},
-        nativeEvent: {
-          coordinate: markerPosition,
-        },
-      });
-    }
-  };
-
-  return <GoogleMarker position={markerPosition} onClick={handleMarkerClick} {...props} />;
+  return (
+    <GoogleMarker
+      position={markerPosition}
+      onClick={() => onPress && onPress({ stopPropagation: () => {}, nativeEvent: { coordinate: markerPosition } })}
+      {...props}
+    />
+  );
 };

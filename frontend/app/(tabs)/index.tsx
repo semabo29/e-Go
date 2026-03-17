@@ -33,6 +33,8 @@ interface Estacion {
   promotor?: string;
   acces?: string;
   tipus_velocitat?: string;
+  tipus_connexio?: string;
+  ac_dc?: string;
 }
 
 export default function InicioScreen() {
@@ -50,14 +52,23 @@ export default function InicioScreen() {
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+
+  // Estado para controlar la región visible del mapa
+  const [region, setRegion] = useState({
+    latitude: 41.3879,
+    longitude: 2.16992,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
+
   const mapRef = useRef<any>(null);
 
-  // Cargar estaciones de la base de datos
+  // Cargar estaciones de la base de datos cada vez que cambian filtros o región
   useEffect(() => {
     if (user) {
       fetchEstaciones();
     }
-  }, [user, minKw, maxKw, connectorType, ac_dc]);
+  }, [user, minKw, maxKw, connectorType, ac_dc, region]);
 
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
@@ -78,7 +89,6 @@ export default function InicioScreen() {
 
       // Animar mapa a la ubicación del usuario comprobando compatibilidad
       if (location && mapRef.current) {
-        //comprobamos que la funcion existe (en android/ios si pero en web no y petaria)
         if (typeof mapRef.current.animateToRegion === 'function') {
           mapRef.current.animateToRegion(
             { ...location.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
@@ -92,8 +102,20 @@ export default function InicioScreen() {
   const fetchEstaciones = async () => {
     setLoadingEstaciones(true);
     try {
-      // Construïm els paràmetres de la URL del backend
-      let queryParams = [];
+      // Calculamos límites del Viewport para el filtrado en Backend
+      const north = region.latitude + region.latitudeDelta / 2;
+      const south = region.latitude - region.latitudeDelta / 2;
+      const east = region.longitude + region.longitudeDelta / 2;
+      const west = region.longitude - region.longitudeDelta / 2;
+
+      // Construimos los parámetros de la URL unificados
+      let queryParams = [
+        `north=${north}`,
+        `south=${south}`,
+        `east=${east}`,
+        `west=${west}`
+      ];
+
       if (minKw) queryParams.push(`minKw=${minKw}`);
       if (maxKw) queryParams.push(`maxKw=${maxKw}`);
       if (connectorType) queryParams.push(`connectorType=${encodeURIComponent(connectorType)}`);
@@ -104,12 +126,19 @@ export default function InicioScreen() {
 
       const response = await fetch(url);
       const data = await response.json();
-      setEstaciones(data);
+
+      // Seguridad: aseguramos que data sea una lista antes de guardarla
+      setEstaciones(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error cargando estaciones:', error);
+      setEstaciones([]); // Si falla la red, vaciamos para evitar errores de .map()
     } finally {
       setLoadingEstaciones(false);
     }
+  };
+
+  const handleRegionChangeComplete = (newRegion: any) => {
+    setRegion(newRegion);
   };
 
   const centerMapOnUser = () => {
@@ -248,13 +277,9 @@ export default function InicioScreen() {
         <MapView
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
-          initialRegion={{ //en caso de disponer de la ubi, se inicia ahi el mapa
-            latitude: userLocation?.coords.latitude || 41.3879,
-            longitude: userLocation?.coords.longitude || 2.16992,
-            latitudeDelta: 0.5,
-            longitudeDelta: 0.5,
-          }}
-          showsUserLocation //muestra ubi en movil 
+          initialRegion={region}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          showsUserLocation
           onPress={() => setSelectedStation(null)}
         >
           {userLocation && ( //marcamos la ubi del user manualmente en la web (showsUserLocation no sirve aqui)
@@ -272,7 +297,7 @@ export default function InicioScreen() {
             />
           )}
 
-          {estaciones.slice(0, 50).map((est) => (
+          {estaciones.map((est) => (
             <Marker
               key={est.id}
               coordinate={{
