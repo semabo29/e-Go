@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Añadido useEffect
 import { TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { API_URL } from '@/constants/api';
@@ -7,19 +7,24 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Props {
   estacio_id: number;
   isInitiallyFavorite: boolean;
+  onToggle?: (isFav: boolean) => void;
 }
 
-export function FavoriteButton({ estacio_id, isInitiallyFavorite }: Props) {
+export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Props) {
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(isInitiallyFavorite);
   const [loading, setLoading] = useState(false);
+
+  // Sincronizar cuando cambias de estación en el mapa
+  useEffect(() => {
+    setIsFavorite(isInitiallyFavorite);
+  }, [isInitiallyFavorite, estacio_id]);
 
   const toggleFavorite = async () => {
     if (!user) return;
     setLoading(true);
 
     try {
-      // Usamos el método correcto: POST para añadir, DELETE para quitar
       const method = isFavorite ? 'DELETE' : 'POST';
       const res = await fetch(`${API_URL}/favorites`, {
         method: method,
@@ -28,11 +33,15 @@ export function FavoriteButton({ estacio_id, isInitiallyFavorite }: Props) {
       });
 
       if (res.ok) {
-        setIsFavorite(!isFavorite); // Invertimos el estado local solo si el servidor respondió bien
+        const newStatus = !isFavorite;
+        setIsFavorite(newStatus);
+        if (onToggle) onToggle(newStatus);
+      } else {
+        Alert.alert("Error", "No se pudo actualizar el favorito");
       }
     } catch (e) {
       console.error('Error al cambiar favorito', e);
-      Alert.alert("Error", "No se pudo actualizar");
+      Alert.alert("Error", "Error de conexión");
     } finally {
       setLoading(false);
     }

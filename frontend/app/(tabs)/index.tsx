@@ -51,12 +51,11 @@ export default function InicioScreen() {
   const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const mapRef = useRef<any>(null);
-  const [favoritos, setFavoritos] = useState<number[]>([]); //Guardará los IDs de las estaciones favoritas del usuario
-
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   // Cargar estaciones de la base de datos
   useEffect(() => {
     if (user) {
-      fetchFavorites();
+      fetchUserFavorites();
       fetchEstaciones();
     }
   }, [user, minKw, maxKw]);
@@ -112,21 +111,26 @@ export default function InicioScreen() {
     }
   };
 
-const fetchFavorites = async () => {
-  if (!user?.id) return; // Si no hay usuario, no pedimos favoritos
+const fetchUserFavorites = async () => {
+  if (!user?.id) return;
   try {
-    //Hacemos la consulta al backend
-    const res = await fetch(`${API_URL}/favorites?usuari_id=${user.id}`);
-    const data = await res.json();
+    const response = await fetch(`${API_URL}/favorites?usuari_id=${user.id}`); // Ajustado a tu ruta GET
+    const data = await response.json();
+    const ids = data.map((fav: any) => fav.id);
 
-    // Asumiendo que el backend devuelve un array de objetos o IDs,
-    // mapeamos para obtener solo los números de ID
-    const favIds = data.map((item: any) => item.estacio_id);
-    setFavoritos(favIds);
-  } catch (err) {
-    console.error('Error al cargar favoritos:', err);
+    console.log("IDs favoritos cargados:", ids); // Para que verifiques en consola
+    setFavoriteIds(ids);
+  } catch (error) {
+    console.error("Error cargando favoritos:", error);
   }
 };
+
+// Ejecutarlo cuando el componente carga o cuando el usuario cambia
+useEffect(() => {
+  fetchUserFavorites();
+}, [user]);
+
+
 
   const centerMapOnUser = () => {
     if (userLocation && mapRef.current) {
@@ -285,30 +289,40 @@ const fetchFavorites = async () => {
         {selectedStation && (
           <View style={styles.infoPanel}>
             <View style={styles.infoHandle} />
+
             <View style={styles.infoTitleRow}>
+              {/* 1. Nombre de la estación */}
               <Text style={styles.infoTitle} numberOfLines={2}>
                 {selectedStation.nom || 'Punto de carga'}
               </Text>
 
+              {/* 2. Botón de favoritos (solo si hay usuario) */}
+              {user && (
+                <FavoriteButton
+                  estacio_id={selectedStation.id}
+                  isInitiallyFavorite={favoriteIds.includes(selectedStation.id)}
+                  onToggle={(isFav) => {
+                    if (isFav) {
+                      setFavoriteIds([...favoriteIds, selectedStation.id]);
+                    } else {
+                      setFavoriteIds(favoriteIds.filter(id => id !== selectedStation.id));
+                    }
+                  }}
+                />
+              )}
 
-              {/* --- Boton de favorito --- */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <FavoriteButton
-                          estacio_id={selectedStation.id}
-                          isInitiallyFavorite={favoritos.includes(selectedStation.id)}
-                        />
-              {/* --- Fin boton de favorito --- */}
-
-
+              {/* 3. Botón de cerrar */}
               <TouchableOpacity
                 onPress={() => setSelectedStation(null)}
                 style={styles.infoCloseBtn}
               >
                 <MaterialIcons name="close" size={20} color="#94a3b8" />
               </TouchableOpacity>
-              </View>
             </View>
 
+
+
+            {/* CONTENIDO DEL PANEL: Dirección, kW, etc. */}
             <View style={styles.infoContent}>
               <View style={styles.infoItem}>
                 <MaterialIcons name="location-on" size={18} color="#10b981" />
