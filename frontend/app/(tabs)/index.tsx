@@ -297,7 +297,7 @@ export default function InicioScreen() {
             />
           )}
 
-          {estaciones.map((est) => (
+          {estaciones.slice(0,50).map((est) => (
             <Marker
               key={est.id}
               coordinate={{
