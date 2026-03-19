@@ -1,10 +1,5 @@
-import React from 'react';
-import {
-  GoogleMap,
-  useJsApiLoader,
-  Marker as GoogleMarker,
-  MarkerClusterer,
-} from '@react-google-maps/api';
+import React, { forwardRef, useImperativeHandle, useMemo, useState, Children, isValidElement, cloneElement } from 'react';
+import { GoogleMap, useJsApiLoader, Marker as GoogleMarker, MarkerClusterer } from '@react-google-maps/api';
 import { View, Text } from 'react-native';
 
 const containerStyle = { width: '100%', height: '100%' };
@@ -22,7 +17,7 @@ const defaultOptions = {
   disableDefaultUI: true,
 };
 
-export const MapView = ({
+export const MapView = forwardRef(({
   children,
   initialRegion,
   style,
@@ -30,22 +25,28 @@ export const MapView = ({
   onRegionChangeComplete,
   options,
   ...props
-}: any) => {
+}: any, ref) => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   });
 
-  const [map, setMap] = React.useState<google.maps.Map | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
 
-  // Memorizamos el centro inicial para evitar que el mapa "salte" al recibir datos
-  const initialCenter = React.useMemo(
-    () => ({
-      lat: initialRegion?.latitude || 41.3879,
-      lng: initialRegion?.longitude || 2.16992,
-    }),
-    []
-  );
+  useImperativeHandle(ref, () => ({
+    animateToRegion: (region: any) => {
+      if (map) {
+        map.panTo({ lat: region.latitude, lng: region.longitude });
+        const zoom = Math.round(Math.log2(360 / region.latitudeDelta));
+        map.setZoom(zoom);
+      }
+    }
+  }));
+
+  const initialCenter = useMemo(() => ({
+    lat: initialRegion?.latitude || 41.3879,
+    lng: initialRegion?.longitude || 2.16992
+  }), []);
 
   const handleIdle = () => {
     if (map && onRegionChangeComplete) {
@@ -54,25 +55,39 @@ export const MapView = ({
       if (center && bounds) {
         const ne = bounds.getNorthEast();
         const sw = bounds.getSouthWest();
+        const latDelta = Math.max(0.0001, ne.lat() - sw.lat());
+        const lngDelta = Math.max(0.0001, ne.lng() - sw.lng());
         onRegionChangeComplete({
           latitude: center.lat(),
           longitude: center.lng(),
-          latitudeDelta: ne.lat() - sw.lat(),
-          longitudeDelta: ne.lng() - sw.lng(),
+          latitudeDelta: latDelta,
+          longitudeDelta: lngDelta,
         });
       }
     }
   };
 
-  if (!isLoaded) return <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, style]}><Text>Cargando Mapa...</Text></View>;
+  // Mejora de zoom: calcula el área exacta del cluster y se mueve a ella
+  const handleClusterClick = (cluster: any) => {
+    if (map) {
+      const center = cluster.getCenter();
 
-  // Separamos los marcadores de las estaciones para agruparlos
+      map.panTo(center);
+      map.setZoom((map.getZoom() || 12) + 2);
+    }
+  };
+
+  if (!isLoaded) return (
+    <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, style]}>
+      <Text>Cargando Mapa...</Text>
+    </View>
+  );
+
   const clusterableMarkers: any[] = [];
   const otherChildren: any[] = [];
 
-  React.Children.forEach(children, (child) => {
-    if (React.isValidElement(child)) {
-      // Si el marcador es de usuario (tu punto azul), NO lo agrupamos
+  Children.forEach(children, (child) => {
+    if (isValidElement(child)) {
       if ((child.props as any).isUserLocation) {
         otherChildren.push(child);
       } else {
@@ -85,26 +100,33 @@ export const MapView = ({
     <div style={{ width: '100%', height: '100%' }}>
       <GoogleMap
         mapContainerStyle={containerStyle}
-        center={initialCenter}
-        zoom={12}
-        onClick={(e) => onPress && onPress({ nativeEvent: { coordinate: { latitude: e.latLng.lat(), longitude: e.latLng.lng() } } })}
+        center={map ? undefined : initialCenter}
+        zoom={map ? undefined : 12}
         onLoad={setMap}
         onIdle={handleIdle}
+        onZoomChanged={handleIdle}
+        onClick={(e) => {
+          if (e.latLng && onPress) {
+            onPress({ nativeEvent: { coordinate: { latitude: e.latLng.lat(), longitude: e.latLng.lng() } } });
+          }
+        }}
         options={{ ...defaultOptions, ...options }}
         {...props}
       >
         <MarkerClusterer
+          onClick={handleClusterClick}
           options={{
             imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m',
-            gridSize: 60,
+            gridSize: 50,
+            minimumClusterSize: 2,
             maxZoom: 15,
-            zoomOnClick: true,
+            zoomOnClick: false, // Usamos nuestra función manual
           }}
         >
           {(clusterer) => (
             <>
               {clusterableMarkers.map((child, index) =>
-                React.cloneElement(child, { key: `marker-cluster-${index}`, clusterer })
+                cloneElement(child, { key: `c-${index}`, clusterer } as any)
               )}
             </>
           )}
@@ -113,17 +135,17 @@ export const MapView = ({
       </GoogleMap>
     </div>
   );
-};
+});
 
-export const Marker = ({ coordinate, position, onPress, clusterer, isUserLocation, ...props }: any) => {
-  const markerPosition = position || (coordinate ? { lat: coordinate.latitude, lng: coordinate.longitude } : null);
-  if (!markerPosition) return null;
+export const Marker = ({ coordinate, position, onPress, clusterer, ...props }: any) => {
+  const pos = position || (coordinate ? { lat: coordinate.latitude, lng: coordinate.longitude } : null);
+  if (!pos) return null;
 
   return (
     <GoogleMarker
-      position={markerPosition}
+      position={pos}
       clusterer={clusterer}
-      onClick={() => onPress && onPress({ stopPropagation: () => {}, nativeEvent: { coordinate: markerPosition } })}
+      onClick={() => onPress && onPress({ stopPropagation: () => {}, nativeEvent: { coordinate: pos } })}
       {...props}
     />
   );

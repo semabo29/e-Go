@@ -62,6 +62,9 @@ export default function InicioScreen() {
   });
 
   const mapRef = useRef<any>(null);
+  // Ref para el temporizador del delay (debounce)
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const requestIdRef = useRef(0);
 
   // Cargar estaciones de la base de datos cada vez que cambian filtros o región
   useEffect(() => {
@@ -100,6 +103,7 @@ export default function InicioScreen() {
   }, [user]);
 
   const fetchEstaciones = async () => {
+    const requestId = ++requestIdRef.current;
     setLoadingEstaciones(true);
     try {
       // Calculamos límites del Viewport para el filtrado en Backend
@@ -128,17 +132,26 @@ export default function InicioScreen() {
       const data = await response.json();
 
       // Seguridad: aseguramos que data sea una lista antes de guardarla
-      setEstaciones(Array.isArray(data) ? data : []);
+      if (requestId === requestIdRef.current) {
+        setEstaciones(Array.isArray(data) ? data : []);
+      }
     } catch (error) {
       console.error('Error cargando estaciones:', error);
       setEstaciones([]); // Si falla la red, vaciamos para evitar errores de .map()
     } finally {
-      setLoadingEstaciones(false);
+      if (requestId === requestIdRef.current) {
+        setLoadingEstaciones(false);
+      }
     }
   };
 
+  // Implementación del DELAY (Debounce) para evitar lag al mover el mapa
   const handleRegionChangeComplete = (newRegion: any) => {
-    setRegion(newRegion);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    debounceTimer.current = setTimeout(() => {
+      setRegion(newRegion);
+    }, 400); // Espera 400ms después de que el mapa se detenga antes de pedir datos
   };
 
   const centerMapOnUser = () => {
