@@ -53,6 +53,11 @@ export default function InicioScreen() {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const mapRef = useRef<any>(null);
 
+  // --- NOUS ESTATS PEL BUSCADOR ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Estacion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   // Cargar estaciones de la base de datos
   useEffect(() => {
     if (user) {
@@ -127,6 +132,62 @@ export default function InicioScreen() {
     }
   };
 
+// Efecte per buscar quan l'usuari escriu (amb debounce de 500ms)
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setSearchResults([]); // Si hi ha menys de 3 lletres, no busquem
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        // Construïm els paràmetres de la URL afegint-hi la cerca I ELS FILTRES
+        let queryParams = [`q=${encodeURIComponent(searchQuery)}`];
+
+        if (minKw) queryParams.push(`minKw=${minKw}`);
+        if (maxKw) queryParams.push(`maxKw=${maxKw}`);
+        if (connectorType) queryParams.push(`connectorType=${encodeURIComponent(connectorType)}`);
+        if (ac_dc) queryParams.push(`ac_dc=${ac_dc}`);
+
+        // Ajuntem tots els paràmetres amb un "&"
+        const queryString = queryParams.join('&');
+
+        // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
+        const response = await fetch(`${API_URL}/stations/search?q=${encodeURIComponent(searchQuery)}`);
+        const data = await response.json();
+        setSearchResults(data);
+      } catch (error) {
+        console.error('Error cercant estacions:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500); // Espera mig segon després de parar d'escriure
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, minKw, maxKw, connectorType, ac_dc]);
+
+
+  // Funció que s'executa quan toquem un resultat del desplegable
+  const handleSelectSearchResult = (station: Estacion) => {
+    // 1. Tanquem el buscador i esborrem resultats
+    setSearchQuery('');
+    setSearchResults([]);
+
+    // 2. Centrem el mapa al punt exacte
+    if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
+      mapRef.current.animateToRegion({
+        latitude: parseFloat(station.latitud),
+        longitude: parseFloat(station.longitud),
+        latitudeDelta: 0.01, // Més a prop (zoom in)
+        longitudeDelta: 0.01,
+      }, 1000);
+    }
+
+    // 3. Obrim la informació de l'estació seleccionada (la caixeta de baix)
+    setSelectedStation(station);
+  };
+
   // --- LÒGICA PEL TEXT DELS FILTRES ---
   let powerText = '';
   if (minKw && maxKw) {
@@ -188,7 +249,14 @@ export default function InicioScreen() {
 
   return (
     <View style={styles.screen}>
-      <TopBar onPressMenu={() => setMenuOpen(true)} />
+      <TopBar
+        onPressMenu={() => setMenuOpen(true)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchResults={searchResults}
+        onSelectResult={handleSelectSearchResult}
+        isSearching={isSearching}
+      />
 
       {/* --- CAIXETA DE FILTRES ACTIUS APILATS --- */}
       {(hasFilters && selectedStation === null ) ? (

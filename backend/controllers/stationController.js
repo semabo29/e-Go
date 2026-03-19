@@ -18,6 +18,27 @@ async function getStations(req, res) {
   }
 }
 
+// Buscar estaciones por texto (nom, adreça, municipi)
+async function searchStations(req, res) {
+  try {
+    const { q, minKw, maxKw, connectorType, ac_dc } = req.query;
+
+    // Si no hi ha text de cerca, retornem un array buit
+    if (!q) {
+      return res.json([]);
+    }
+
+    const filters = { minKw, maxKw, connectorType, ac_dc };
+
+    // Cridem al servei passant el text i els filtres
+    const stations = await stationService.searchStations(q, filters);
+    res.json(stations);
+  } catch (err) {
+    console.error('Error buscando estaciones:', err);
+    res.status(500).json({ error: 'Error buscando estaciones' });
+  }
+}
+
 // sincronizar las estaciones
 async function syncStations(req, res) {
   try {
@@ -35,5 +56,6 @@ async function syncStations(req, res) {
 
 module.exports = {
   getStations,
+  searchStations,
   syncStations
 };

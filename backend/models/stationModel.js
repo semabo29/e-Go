@@ -92,7 +92,65 @@ async function getAllStations(filters = {}) {
   return result.rows;
 }
 
+async function searchStations(q, filters = {}) {
+  const { minKw, maxKw, connectorType, ac_dc } = filters;
+
+  // Base de la consulta
+  let query = 'SELECT * FROM ego.estaciones';
+  const conditions = [];
+  const values = [];
+  let paramIndex = 1;
+
+  // 1. Condició de cerca principal (Nom, Municipi o Adreça)
+  if (q) {
+    conditions.push(`(nom ILIKE $${paramIndex} OR municipi ILIKE $${paramIndex} OR adreca ILIKE $${paramIndex})`);
+    values.push(`%${q}%`); // Afegim % perquè busqui coincidències parcials
+    paramIndex++;
+  }
+
+  // 2. Filtre: Potència mínima
+  if (minKw) {
+    conditions.push(`kw >= $${paramIndex}`);
+    values.push(parseFloat(minKw));
+    paramIndex++;
+  }
+
+  // 3. Filtre: Potència màxima
+  if (maxKw) {
+    conditions.push(`kw <= $${paramIndex}`);
+    values.push(parseFloat(maxKw));
+    paramIndex++;
+  }
+
+  // 4. Filtre per Tipus de Connector
+  if (connectorType) {
+    conditions.push(`tipus_connexio ILIKE $${paramIndex}`);
+    values.push(`%${connectorType}%`);
+    paramIndex++;
+  }
+
+  // 5. Filtre per Tipus de corrent (AC/DC)
+  if (ac_dc) {
+    conditions.push(`ac_dc ILIKE $${paramIndex}`);
+    values.push(`%${ac_dc}%`);
+    paramIndex++;
+  }
+
+  // Ajuntem totes les condicions amb un AND
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  // Afegim un límit perquè el desplegable no es bloquegi carregant milers d'estacions
+  query += ' ORDER BY id DESC LIMIT 15';
+
+  // Executem la consulta
+  const result = await pool.query(query, values);
+  return result.rows;
+}
+
 module.exports = {
   upsertStation,
-  getAllStations
+  getAllStations,
+  searchStations
 };
