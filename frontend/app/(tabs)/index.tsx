@@ -161,7 +161,7 @@ useEffect(() => {
     powerText = `≤ ${maxKw} kW`;
   }
 
-  const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc;
+  const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc || !!showFavoritesFilter;
 
   if (authLoading) {
     return (
