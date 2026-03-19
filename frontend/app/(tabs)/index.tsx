@@ -71,7 +71,7 @@ export default function InicioScreen() {
     if (user) {
       fetchEstaciones();
     }
-  }, [user, minKw, maxKw, connectorType, ac_dc, region]);
+  }, [user, minKw, maxKw, connectorType, ac_dc]);
 
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
@@ -106,19 +106,7 @@ export default function InicioScreen() {
     const requestId = ++requestIdRef.current;
     setLoadingEstaciones(true);
     try {
-      // Calculamos límites del Viewport para el filtrado en Backend
-      const north = region.latitude + region.latitudeDelta / 2;
-      const south = region.latitude - region.latitudeDelta / 2;
-      const east = region.longitude + region.longitudeDelta / 2;
-      const west = region.longitude - region.longitudeDelta / 2;
-
-      // Construimos los parámetros de la URL unificados
-      let queryParams = [
-        `north=${north}`,
-        `south=${south}`,
-        `east=${east}`,
-        `west=${west}`
-      ];
+      let queryParams = [];
 
       if (minKw) queryParams.push(`minKw=${minKw}`);
       if (maxKw) queryParams.push(`maxKw=${maxKw}`);
@@ -131,17 +119,14 @@ export default function InicioScreen() {
       const response = await fetch(url);
       const data = await response.json();
 
-      // Seguridad: aseguramos que data sea una lista antes de guardarla
-      if (requestId === requestIdRef.current) {
-        setEstaciones(Array.isArray(data) ? data : []);
-      }
+      setEstaciones(Array.isArray(data) ? data : []);
+
     } catch (error) {
       console.error('Error cargando estaciones:', error);
       setEstaciones([]); // Si falla la red, vaciamos para evitar errores de .map()
     } finally {
-      if (requestId === requestIdRef.current) {
         setLoadingEstaciones(false);
-      }
+
     }
   };
 
