@@ -54,7 +54,7 @@ export default function FiltersScreen() {
       params: {//Enviamos los parametros de vuelta al index
           minKw,
           maxKw,
-          showFavorites: showFavorites ? 'true' : '' //Si es true mandamos 'true', si no, vacío
+          showFavorites: showFavorites ? 'true' : '', //Si es true mandamos 'true', si no, vacío
           ac_dc: acDc,
           connectorType
       }
