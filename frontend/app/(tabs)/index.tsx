@@ -237,6 +237,13 @@ useEffect(() => {
               <View style={styles.filterRow}>
                 <MaterialIcons name="bolt" size={18} color="#10b981" />
                 <Text style={styles.activeFiltersText}>{powerText}</Text>
+                <TouchableOpacity
+                  onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: showFavoritesFilter ? 'true' : ''})}
+                  hitSlop={8}
+                  style={{ marginLeft: 4 }}
+                >
+                  <MaterialIcons name="close" size={18} color="#94a3b8" />
+                </TouchableOpacity>
               </View>
             )}
 
@@ -247,6 +254,13 @@ useEffect(() => {
                 <Text style={styles.activeFiltersText}>
                   {ac_dc === 'AC' ? 'AC' : ac_dc === 'DC' ? 'DC' : ac_dc}
                 </Text>
+                <TouchableOpacity
+                  onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: connectorType || '', ac_dc: '', showFavorites: showFavoritesFilter ? 'true' : ''})}
+                  hitSlop={8}
+                  style={{ marginLeft: 4 }}
+                >
+                  <MaterialIcons name="close" size={18} color="#94a3b8" />
+                </TouchableOpacity>
               </View>
             )}
 
@@ -255,6 +269,13 @@ useEffect(() => {
               <View style={styles.filterRow}>
                 <MaterialIcons name="electrical-services" size={18} color="#10b981" />
                 <Text style={styles.activeFiltersText}>{connectorType}</Text>
+                <TouchableOpacity
+                  onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: '', ac_dc: ac_dc || '', showFavorites: showFavoritesFilter ? 'true' : ''})}
+                  hitSlop={8}
+                  style={{ marginLeft: 4 }}
+                >
+                  <MaterialIcons name="close" size={18} color="#94a3b8" />
+                </TouchableOpacity>
               </View>
             )}
             
@@ -264,7 +285,7 @@ useEffect(() => {
                 <MaterialIcons name="favorite" size={16} color="#ef4444" />
                 <Text style={styles.activeFiltersText}>Favoritos</Text>
                 <TouchableOpacity
-                  onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', showFavorites: '' })}
+                  onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: '' })}
                   hitSlop={8}
                   style={{ marginLeft: 4 }}
                 >
@@ -277,7 +298,7 @@ useEffect(() => {
 
           {/* Columna dreta: Botó de tancar */}
           <TouchableOpacity
-            onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: '', ac_dc: '' })}
+            onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: '', ac_dc: '', showFavorites: '' })}
             hitSlop={8}
             style={styles.clearFilterButton}
           >
