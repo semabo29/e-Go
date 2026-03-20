@@ -135,7 +135,6 @@ export default function AdminHomeScreen() {
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
         <Text style={styles.title}>Admin Home</Text>
-        <Text style={styles.subtitle}>Comprobacion de acceso admin</Text>
 
         {loading ? (
           <View style={styles.centered}>
