@@ -99,7 +99,8 @@ module.exports = {
   getAllStations,
   createManualStation,
   updateManualStation,
-  deleteManualStation
+  deleteManualStation,
+  getManualStationsByAdmin
 };
 
 async function createManualStation(data) {
@@ -161,4 +162,15 @@ async function deleteManualStation(id) {
     [id]
   );
   return result.rows[0];
+}
+
+async function getManualStationsByAdmin(adminUserId) {
+  const result = await pool.query(
+    `SELECT *
+     FROM ego.estaciones
+     WHERE is_manual = true AND created_by_admin_id = $1
+     ORDER BY created_at DESC`,
+    [adminUserId]
+  );
+  return result.rows;
 }

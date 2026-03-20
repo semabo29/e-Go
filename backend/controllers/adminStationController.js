@@ -132,4 +132,15 @@ module.exports = {
   createManualStation,
   updateManualStation,
   deleteManualStation,
+  listMyManualStations,
 };
+
+async function listMyManualStations(req, res) {
+  try {
+    const stations = await stationModel.getManualStationsByAdmin(req.admin.sub);
+    return res.json(stations);
+  } catch (err) {
+    console.error('Error listando estaciones manuales:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+}
