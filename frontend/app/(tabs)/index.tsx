@@ -54,7 +54,7 @@ export default function InicioScreen() {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
 
   // Estado para controlar la región visible del mapa
-  const [region, setRegion] = useState({
+  const [region] = useState({
     latitude: 41.3879,
     longitude: 2.16992,
     latitudeDelta: 0.05,
