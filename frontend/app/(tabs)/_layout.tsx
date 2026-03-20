@@ -5,7 +5,12 @@ import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { MaterialIcons } from '@expo/vector-icons';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function TabLayout() {
+
+  const { user } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
@@ -17,6 +22,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#10b981', // El color verd de la teva App
           borderTopWidth: 0, // Treu la línia grisa
+          display: user ? 'flex' : 'none', // només mostrem la barra inferior si el user ja ha fet loggin
         },
 
         headerShown: false,

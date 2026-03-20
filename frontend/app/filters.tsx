@@ -10,7 +10,8 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  Alert
+  Alert,
+  Switch
 } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -30,6 +31,10 @@ export default function FiltersScreen() {
 
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
+ //Estado para el filtro de favoritos (leemos si ya venía activado)
+  const [showFavorites, setShowFavorites] = useState(params.showFatvories === 'true');
+
+
   const handleApply = () => {
     // 1. Comprovem que cap dels dos estigui buit abans de comparar-los
     if (minKw !== '' && maxKw !== '') {
@@ -46,11 +51,12 @@ export default function FiltersScreen() {
     // 2. Si tot és correcte (o si falta algun dels dos camps), apliquem els filtres
     router.navigate({
       pathname: '/',
-      params: {
-        minKw,
-        maxKw,
-        ac_dc: acDc,
-        connectorType
+      params: {//Enviamos los parametros de vuelta al index
+          minKw,
+          maxKw,
+          showFavorites: showFavorites ? 'true' : '', //Si es true mandamos 'true', si no, vacío
+          ac_dc: acDc,
+          connectorType
       }
     });
   };
@@ -84,6 +90,25 @@ export default function FiltersScreen() {
         {/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
           <View style={{flex: 1}}>
+            
+          <Text style={styles.description}>
+                Ajusta los parámetros para encontrar el punto de carga ideal.
+              </Text>
+
+              {/*   INTERRUPTOR DE FAVORITOS*/}
+              <View style={styles.switchGroup}>
+                <Text style={styles.label}>Mis Estaciones</Text>
+                <View style={styles.switchRow}>
+                  <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? "#ef4444" : "#64748b"} />
+                  <Text style={styles.switchDescription}>Mostrar solo mis favoritos</Text>
+                  <Switch
+                    value={showFavorites}
+                    onValueChange={setShowFavorites}
+                    trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              </View>
 
             {/* Input Mínim */}
             <View style={styles.inputGroup}>
@@ -195,6 +220,26 @@ export default function FiltersScreen() {
 }
 
 const styles = StyleSheet.create({
+  //Estilos interruptor favoritos
+  switchGroup: {
+      marginBottom: 24,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f8fafc',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#e2e8f0',
+    },
+    switchDescription: {
+      flex: 1,
+      fontSize: 16,
+      color: '#334155',
+      marginLeft: 8,
+    },
+    //Fin estilos interruptor favoritos
   contentContainer: {
     flex: 1,
   },
