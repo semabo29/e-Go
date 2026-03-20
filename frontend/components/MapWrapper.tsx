@@ -16,9 +16,15 @@ export function ClusteredMapView({ stations, userLocation, onMarkerPress, ...pro
   return (
     <MapViewCluster
       {...props}
-      radius={50} // Distance in pixels to cluster markers
-      renderCluster={(cluster, onPress) => (
-        <Marker coordinate={cluster.coordinate} onPress={onPress}>
+      radius={50} // Distancia en píxeles para agrupar
+      renderCluster={(cluster: any) => ( // ← solo 1 parámetro
+        <Marker
+          coordinate={cluster.coordinate}
+          onPress={() => {
+            // Si quieres un callback al cluster
+            console.log('Cluster pulsado', cluster);
+          }}
+        >
           <View style={{
             backgroundColor: '#10b981',
             borderRadius: 20,
