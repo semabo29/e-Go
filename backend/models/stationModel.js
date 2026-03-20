@@ -96,7 +96,7 @@ async function searchStations(q, filters = {}) {
   const { minKw, maxKw, connectorType, ac_dc } = filters;
 
   // Base de la consulta
-  let query = 'SELECT * FROM ego.estaciones';
+  let query = 'SELECT DISTINCT * FROM ego.estaciones';
   const conditions = [];
   const values = [];
   let paramIndex = 1;
@@ -142,7 +142,7 @@ async function searchStations(q, filters = {}) {
   }
 
   // Afegim un límit perquè el desplegable no es bloquegi carregant milers d'estacions
-  query += ' ORDER BY id DESC LIMIT 15';
+  query += ' ORDER BY id DESC';
 
   // Executem la consulta
   const result = await pool.query(query, values);

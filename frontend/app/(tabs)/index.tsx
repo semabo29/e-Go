@@ -154,7 +154,7 @@ export default function InicioScreen() {
         const queryString = queryParams.join('&');
 
         // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
-        const response = await fetch(`${API_URL}/stations/search?q=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(`${API_URL}/stations/search?${queryString}`);
         const data = await response.json();
         setSearchResults(data);
       } catch (error) {
