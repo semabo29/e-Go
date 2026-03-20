@@ -62,9 +62,6 @@ export default function InicioScreen() {
   });
 
   const mapRef = useRef<any>(null);
-  // Ref para el temporizador del delay (debounce)
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const requestIdRef = useRef(0);
 
   // Cargar estaciones de la base de datos cada vez que cambian filtros o región
   useEffect(() => {
@@ -103,7 +100,6 @@ export default function InicioScreen() {
   }, [user]);
 
   const fetchEstaciones = async () => {
-    const requestId = ++requestIdRef.current;
     setLoadingEstaciones(true);
     try {
       let queryParams = [];
@@ -128,15 +124,6 @@ export default function InicioScreen() {
         setLoadingEstaciones(false);
 
     }
-  };
-
-  // Implementación del DELAY (Debounce) para evitar lag al mover el mapa
-  const handleRegionChangeComplete = (newRegion: any) => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
-    debounceTimer.current = setTimeout(() => {
-      setRegion(newRegion);
-    }, 400); // Espera 400ms después de que el mapa se detenga antes de pedir datos
   };
 
   const centerMapOnUser = () => {
@@ -276,7 +263,6 @@ export default function InicioScreen() {
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
-          onRegionChangeComplete={handleRegionChangeComplete}
           showsUserLocation
           onPress={() => setSelectedStation(null)}
         >
