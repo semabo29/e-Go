@@ -1,7 +1,7 @@
 -- Tabla de usuarios (login/registro con Google)
 -- Ejecutar en la base de datos que uses (postgres o ego) desde pgAdmin o psql.
 
-CREATE TABLE IF NOT EXISTS Usuari (
+CREATE TABLE IF NOT EXISTS usuari (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL UNIQUE,
   username   VARCHAR(100) NOT NULL UNIQUE,
@@ -19,9 +19,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger: al hacer UPDATE en usuarios, se actualiza updated_at
-DROP TRIGGER IF EXISTS usuarios_updated_at ON Usuari;
+DROP TRIGGER IF EXISTS usuarios_updated_at ON usuari;
 CREATE TRIGGER usuarios_updated_at
-  BEFORE UPDATE ON Usuari
+  BEFORE UPDATE ON usuari
   FOR EACH ROW
   EXECUTE PROCEDURE set_updated_at();
 

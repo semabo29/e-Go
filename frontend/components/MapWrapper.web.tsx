@@ -140,6 +140,8 @@ export const MapView = forwardRef((props: any, ref) => {
   );
 });
 
+MapView.displayName = "MapView";
+
 export const Marker = ({ coordinate, position, onPress, clusterer, ...props }: any) => {
   const pos = position || (coordinate ? { lat: coordinate.latitude, lng: coordinate.longitude } : null);
   if (!pos) return null;
