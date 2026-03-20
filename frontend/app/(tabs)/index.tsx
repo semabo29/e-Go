@@ -337,9 +337,6 @@ useEffect(() => {
                 longitude: userLocation.coords.longitude,
               }}
               title="Tu ubicación"
-              options={{
-                icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-              }}
               //(por si acaso el showsUserLocation falla)
               pinColor="blue"
               isUserLocation={true}
@@ -421,7 +418,7 @@ useEffect(() => {
               <View style={styles.infoBadgeRow}>
                 <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
                   <MaterialIcons name="bolt" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{(selectedStation.kw != 0)? selectedStation.kw : 'n/a'} kW</Text>
+                  <Text style={[styles.badgeText, { color: '#047857' }]}>{(parseFloat(selectedStation.kw) != 0)? selectedStation.kw : 'n/a'} kW</Text>
                 </View>
               <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
                 <MaterialIcons name="ev-station" size={14} color="#10b981" />
