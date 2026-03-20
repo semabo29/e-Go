@@ -3,6 +3,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { View, Text } from 'react-native';
 
 export { Marker };
+export { MapView };
 
 interface ClusteredMapViewProps {
   stations: any[];
