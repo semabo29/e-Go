@@ -1,22 +1,58 @@
-import { Platform } from 'react-native';
+import MapView from 'react-native-maps';
+import SuperCluster from 'react-native-maps-super-cluster';
+import { Marker } from 'react-native-maps';
+import { View, Text } from 'react-native';
 
-// Este archivo decide qué versión del mapa cargar según la plataforma.
-// En la web cargará MapWrapper.web.tsx automáticamente si existe.
+export { Marker };
 
-let MapComponent: any;
-let MarkerComponent: any;
-
-if (Platform.OS === 'web') {
-  // En web, importamos la versión de Google Maps
-  const WebMap = require('./MapWrapper.web');
-  MapComponent = WebMap.MapView;
-  MarkerComponent = WebMap.Marker;
-} else {
-  // En nativo, importamos react-native-maps
-  const NativeMap = require('react-native-maps');
-  MapComponent = NativeMap.default;
-  MarkerComponent = NativeMap.Marker;
+export function ClusteredMapView({ stations, userLocation, ...props }: any) {
+  return (
+    <MapView {...props}>
+      {userLocation && (
+        <Marker
+          coordinate={{
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+          }}
+          title="Tu ubicación"
+          pinColor="blue"
+        />
+      )}
+      <SuperCluster
+        data={stations.map((s) => ({
+          ...s,
+          location: {
+            latitude: parseFloat(s.latitud),
+            longitude: parseFloat(s.longitud),
+          },
+        }))}
+        renderMarker={(item) => (
+          <Marker
+            key={item.id}
+            coordinate={item.location}
+            onPress={() => props.onMarkerPress?.(item)}
+          />
+        )}
+        renderCluster={(cluster) => (
+          <Marker
+            key={`cluster-${cluster.clusterId}`}
+            coordinate={cluster.coordinate}
+            onPress={() => cluster.onPress()}
+          >
+            <View style={{
+              backgroundColor: '#10b981',
+              borderRadius: 20,
+              padding: 8,
+              borderWidth: 2,
+              borderColor: '#fff',
+            }}>
+              <Text style={{ color: '#fff', fontWeight: '700' }}>
+                {cluster.pointCount}
+              </Text>
+            </View>
+          </Marker>
+        )}
+      />
+    </MapView>
+  );
 }
-
-export const MapView = MapComponent;
-export const Marker = MarkerComponent;

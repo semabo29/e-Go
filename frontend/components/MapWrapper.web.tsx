@@ -114,6 +114,7 @@ export const MapView = forwardRef(({
         {...props}
       >
         <MarkerClusterer
+          key={clusterableMarkers.length}
           onClick={handleClusterClick}
           options={{
             imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m',
