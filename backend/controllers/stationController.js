@@ -7,6 +7,10 @@ async function getStations(req, res) {
     // Agafem els possibles paràmetres de la URL
     const { minKw, maxKw, connectorType, ac_dc, north, south, east, west } = req.query;
 
+    if (minKw && maxKw && parseFloat(minKw) > parseFloat(maxKw)) {
+      return res.status(400).json({ error: 'La potencia mínima no puede ser mayor que la máxima' });
+    }
+
     // Creem un objecte amb els filtres
     const filters = { minKw, maxKw, connectorType, ac_dc, north, south, east, west};
 
@@ -22,6 +26,10 @@ async function getStations(req, res) {
 async function searchStations(req, res) {
   try {
     const { q, minKw, maxKw, connectorType, ac_dc } = req.query;
+
+    if (minKw && maxKw && parseFloat(minKw) > parseFloat(maxKw)) {
+      return res.status(400).json({ error: 'La potencia mínima no puede ser mayor que la máxima' });
+    }
 
     // Si no hi ha text de cerca, retornem un array buit
     if (!q) {

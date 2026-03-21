@@ -11,7 +11,8 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
-  Switch
+  Switch,
+  Modal
 } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -25,6 +26,7 @@ export default function FiltersScreen() {
   const [maxKw, setMaxKw] = useState((params.maxKw as string) || '');
   const [connectorType, setConnectorType] = useState((params.connectorType as string) || '');
   const [acDc, setAcDc] = useState((params.ac_dc as string) || '');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Llista de connectors més habituals
   const CONNECTOR_TYPES = ['CCS Combo2', 'CHAdeMO', 'Schuko', 'MENNEKES', 'TESLA'];
@@ -36,6 +38,9 @@ export default function FiltersScreen() {
 
 
   const handleApply = () => {
+    // Netegem l'error abans de tornar a comprovar
+    setErrorMessage('');
+
     // 1. Comprovem que cap dels dos estigui buit abans de comparar-los
     if (minKw !== '' && maxKw !== '') {
       const min = parseFloat(minKw);
@@ -43,7 +48,7 @@ export default function FiltersScreen() {
 
       // Si el mínim és estrictament major que el màxim, llancem error i no avancem
       if (min > max) {
-        Alert.alert('La potencia mínima no puede ser mayor que la máxima');
+        setErrorMessage('La potencia mínima no puede ser mayor que la máxima');
         return; // Això atura l'execució i no canvia de pantalla
       }
     }
@@ -150,7 +155,7 @@ export default function FiltersScreen() {
               />
             </View>
 
-            {/*Secció Tipo de corrient*/}
+            {/*Secció Tipo de corriente*/}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Tipo de Corriente</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -215,6 +220,35 @@ export default function FiltersScreen() {
           <Text style={styles.applyBtnText}>Aplicar Filtros</Text>
         </TouchableOpacity>
       </View>
+
+      {/* --- POP-UP FLOTANT D'ERROR --- */}
+      <Modal
+        visible={errorMessage !== ''}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setErrorMessage('')} // Per quan l'usuari clica el botó "Enrere" d'Android
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalPopup}>
+
+            {/* Capçalera del pop-up amb la icona i el text */}
+            <View style={styles.modalContent}>
+              <MaterialIcons name="error" size={28} color="#ef4444" />
+              <Text style={styles.modalText}>{errorMessage}</Text>
+            </View>
+
+            {/* Botó per tancar / Creueta */}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setErrorMessage('')}
+            >
+              <MaterialIcons name="close" size={24} color="#94a3b8" />
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -385,5 +419,47 @@ const styles = StyleSheet.create({
   },
   typeBtnTextActive: {
     color: '#10b981',
+  },
+  // --- Estils del Pop-up Modal ---
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Fons semi-transparent per ressaltar el pop-up
+    justifyContent: 'center', // Centra verticalment
+    alignItems: 'center',     // Centra horitzontalment
+    padding: 20,              // Marge de seguretat perquè no toqui les vores en pantalles petites
+  },
+  modalPopup: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400, // Topall màxim perquè en tauletes no es vegi gegant
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  modalContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1, // Ocupa l'espai restant
+    gap: 12,
+  },
+  modalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    flexShrink: 1, // Fa que el text salti de línia si és llarg en comptes de tallar-se
+    lineHeight: 24,
+  },
+  modalCloseButton: {
+    marginLeft: 16,
+    padding: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 20,
   },
 });

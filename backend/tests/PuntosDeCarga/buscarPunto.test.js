@@ -38,6 +38,8 @@ describe("Cercador d'Estacions (GET /stations/search)", () => {
 
   // TANQUEM LA CONNEXIÓ AL FINAL PER EVITAR EL "OPEN HANDLES"
   afterAll(async () => {
+    // Esborrem TOTES les estacions de prova abans de marxar
+    await pool.query('DELETE FROM ego.estaciones');
     await pool.end();
   });
 
