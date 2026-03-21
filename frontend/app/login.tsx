@@ -1,7 +1,11 @@
-// Login solo con Google; si es usuario nuevo pedimos username y registramos
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router'; // Añadido useLocalSearchParams
+import { useState, useEffect, useRef } from 'react';
+import {
+  makeRedirectUri,
+  useAuthRequest,
+  useAutoDiscovery,
+} from 'expo-auth-session'; // IMPORTANTE: Añadir esta librería
 import {
   ActivityIndicator,
   Image,
@@ -27,6 +31,7 @@ GoogleSignin.configure({
 export default function LoginScreen() {
   const { setUser } = useAuth();
   const router = useRouter();
+  const { openGoogle } = useLocalSearchParams<{ openGoogle?: string }>(); // Definimos openGoogle
   const [step, setStep] = useState<'google' | 'username'>('google');
   const [pendingAuth, setPendingAuth] = useState<{ pending_token: string } | null>(null);
   const [username, setUsername] = useState('');
@@ -56,7 +61,7 @@ export default function LoginScreen() {
     const { code } = response.params;
     const verifier = (request as { codeVerifier?: string }).codeVerifier;
     if (!code) return;
-    loginWithCode(code, redirectUri, verifier);
+    loginWithCode();
   }, [response]);
 
   // Si vienes desde Home con openGoogle, abre Google al entrar (sin tener que pulsar otra vez)
@@ -68,10 +73,11 @@ export default function LoginScreen() {
     }
   }, [openGoogle, request]);
 
-  async function loginWithCode(code: string, redirectUri: string, codeVerifier?: string) {
+  async function loginWithCode() {
     setLoading(true);
     setError('');
     try {
+      // 1. Verifica servicios de Google y abre el selector de cuentas nativo
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken;
@@ -81,11 +87,13 @@ export default function LoginScreen() {
         return;
       }
 
+      // 2. Envía el idToken al backend de AWS
       const res = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
+      
       const data = await res.json();
 
       if (!res.ok) {
@@ -93,25 +101,26 @@ export default function LoginScreen() {
         return;
       }
 
+      // 3. Si el usuario ya existe, entra directo
       if (data.user) {
         setUser(data.user);
         router.replace('/(tabs)');
         return;
       }
+
+      // 4. Si es usuario nuevo, pasamos al paso del username (lógica de development)
       if (data.needsUsername && data.pending_token) {
         setPendingAuth({ pending_token: data.pending_token });
         setStep('username');
       }
     } catch (err: any) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-        // usuario canceló, no mostramos error
+        // El usuario cerró el modal, no hacemos nada
       } else if (err.code === statusCodes.IN_PROGRESS) {
         setError('Ya hay un inicio de sesión en curso');
-      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services no disponible');
       } else {
-        setError('No se pudo conectar con el servidor');
-        console.error('[Google Login]', err);
+        setError('Error al conectar con Google');
+        console.error('[Google Login Native]', err);
       }
     } finally {
       setLoading(false);
@@ -222,7 +231,7 @@ export default function LoginScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => { setGoogleFlowStarted(true); promptAsync(); }}
+              onPress={loginWithCode}
               disabled={!request || loading}
               activeOpacity={0.8}
             >
