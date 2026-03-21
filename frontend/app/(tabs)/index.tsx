@@ -1,7 +1,7 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
 import { useState, useEffect, useRef } from 'react';
 import { MapView, Marker } from '../_components/MapWrapper';
-import TopBar from '../components/TopBar';
+import TopBar from '../../components/TopBar';
 
 import {
   Image,
