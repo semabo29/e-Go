@@ -38,10 +38,16 @@ app.get('/', async (req, res) => {
   }
 });
 
-// Iniciamos el servidor
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
+// Només iniciem el servidor i el scheduler si NO estem en l'entorn de tests
+if (process.env.NODE_ENV !== 'test') {
+  // Iniciamos el servidor
+  app.listen(PORT, () => {
+     console.log(`Servidor escuchando en el puerto ${PORT}`);
 
-  // Iniciamos la actualización automática de estaciones cada 5 minutos
-  startScheduler(5 * 60 * 1000);
-});
+     // Iniciamos la actualización automática de estaciones cada 5 minutos
+     startScheduler(5 * 60 * 1000);
+  });
+}
+
+// AIXÒ ÉS CLAU: Exportem l'app perquè el test la pugui utilitzar (soluciona el app.address is not a function)
+module.exports = app;

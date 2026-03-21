@@ -23,6 +23,11 @@ export default function TabLayout() {
           backgroundColor: '#10b981', // El color verd de la teva App
           borderTopWidth: 0, // Treu la línia grisa
           display: user ? 'flex' : 'none', // només mostrem la barra inferior si el user ja ha fet loggin
+          // --- MILLORES PER A ANDROID ---
+          elevation: 10, // Dóna una ombra superior suau per separar-ho del mapa
+          height: 65, // Li donem una mica més d'alçada perquè respirin les icones
+          paddingBottom: 10, // Puja les icones perquè no xoquin amb la barra del sistema
+          paddingTop: 10, // Centra visualment les icones
         },
 
         headerShown: false,
@@ -34,7 +39,7 @@ export default function TabLayout() {
         name="car" // Aquest serà el nom de l'arxiu (car.tsx)
         options={{
           title: '',
-          tabBarIcon: ({ color }) => <MaterialIcons name="electric-car" size={36} color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons name="electric-car" size={28} color={color} />,
         }}
       />
 
@@ -44,7 +49,7 @@ export default function TabLayout() {
         options={{
           title: '',
           href: '/', // Força la redirecció a l'inici
-          tabBarIcon: ({ color }) => <MaterialIcons name="map" size={36} color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons name="map" size={28} color={color} />,
         }}
       />
 
@@ -53,7 +58,7 @@ export default function TabLayout() {
         name="payments" // Aquest serà el nom de l'arxiu (payments.tsx)
         options={{
           title: '',
-          tabBarIcon: ({ color }) => <MaterialIcons name="credit-card" size={36} color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons name="credit-card" size={28} color={color} />,
         }}
       />
 

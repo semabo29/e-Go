@@ -26,4 +26,9 @@ async function getStations(filters) {
   return stationModel.getAllStations(filters);
 }
 
-module.exports = { syncStations, getStations };
+// Funció per buscar estacions
+async function searchStations(q, filters) {
+  return stationModel.searchStations(q, filters);
+}
+
+module.exports = { syncStations, getStations, searchStations };

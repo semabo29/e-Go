@@ -152,7 +152,7 @@ export default function FiltersScreen() {
 
             {/*Secció Tipo de corrient*/}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Corrient</Text>
+              <Text style={styles.label}>Tipo de Corriente</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 {['AC', 'DC'].map((type) => (
                   <TouchableOpacity
