@@ -73,10 +73,6 @@ describe('Tests de estaciones completos', () => {
       await pool.query('DELETE FROM ego.estaciones');
     });
 
-    afterAll(async () => {
-      await pool.end();
-    });
-
     test('comprobar que un mismo punto no se inserta más de una vez', async () => {
       const mockEst = {
         id: 'ID-UNICO-123',
@@ -129,5 +125,101 @@ describe('Tests de estaciones completos', () => {
       expect(parseFloat(res.rows[0].kw)).toBe(100);
     });
 
+  });
+
+  // ==========================================
+  // TESTS DELS FILTRES (AC/DC i Connector)
+  // ==========================================
+  describe('Filtres de cerca: ac_dc i connectorType', () => {
+    beforeEach(async () => {
+      // 1. Netegem la taula per tenir un entorn controlat
+      await pool.query('DELETE FROM ego.estaciones');
+
+      // 2. Inserim estacions amb dades variades per poder-les filtrar
+      await upsertStation({
+        id: 'ST-AC-TYPE2',
+        designaci_descriptiva: 'Càrrega Lenta',
+        latitud: '41.0',
+        longitud: '2.0',
+        kw: '22',
+        ac_dc: 'AC',
+        tipus_connexi: 'Type 2' // Segons el teu model upsertStation, s'anomena "tipus_connexi" quan ve de l'API
+      });
+
+      await upsertStation({
+        id: 'ST-DC-CCS2',
+        designaci_descriptiva: 'Càrrega Ràpida',
+        latitud: '41.1',
+        longitud: '2.1',
+        kw: '150',
+        ac_dc: 'DC',
+        tipus_connexi: 'CCS2'
+      });
+
+      await upsertStation({
+        id: 'ST-MIX',
+        designaci_descriptiva: 'Càrrega Mixta',
+        latitud: '41.2',
+        longitud: '2.2',
+        kw: '50',
+        ac_dc: 'AC/DC', // Cas híbrid per provar l'ILIKE '%AC%'
+        tipus_connexi: 'CHAdeMO'
+      });
+    });
+
+    test('retorna només les estacions de corrent altern quan passem ac_dc=AC', async () => {
+      const res = await request(app).get('/stations?ac_dc=AC');
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(2); // Ha de trobar ST-AC-TYPE2 i ST-MIX (perquè porta "AC/DC")
+
+      // Comprovem que cap de les retornades és exclusivament DC
+      res.body.forEach(est => {
+        expect(est.ac_dc.toUpperCase()).toContain('AC');
+      });
+    });
+
+    test('retorna només les estacions de corrent continu quan passem ac_dc=DC', async () => {
+      const res = await request(app).get('/stations?ac_dc=DC');
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(2); // Ha de trobar ST-DC-CCS2 i ST-MIX
+
+      res.body.forEach(est => {
+        expect(est.ac_dc.toUpperCase()).toContain('DC');
+      });
+    });
+
+    test('retorna l\'estació correcta quan es filtra per tipus de connector', async () => {
+      const res = await request(app).get('/stations?connectorType=CCS2');
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(1);
+      expect(res.body[0].external_id).toBe('ST-DC-CCS2');
+      expect(res.body[0].tipus_connexio).toBe('CCS2');
+    });
+
+    test('retorna estacions filtrant de manera combinada (potència mínima + connector + corrent)', async () => {
+      // Volem una estació DC, de més de 100kW, amb connector CCS2
+      const res = await request(app).get('/stations?ac_dc=DC&minKw=100&connectorType=CCS2');
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(1);
+      expect(res.body[0].external_id).toBe('ST-DC-CCS2');
+      expect(parseFloat(res.body[0].kw)).toBeGreaterThanOrEqual(100);
+    });
+
+    test('retorna un array buit (200 OK) si cap estació compleix els filtres', async () => {
+      // Busquem un connector inventat
+      const res = await request(app).get('/stations?connectorType=ConnectorInventat');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(0);
+    });
+  });
+
+  afterAll(async () => {
+    await pool.end();
   });
 });
