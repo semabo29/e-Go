@@ -20,7 +20,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL } from '@/constants/api';
+import { getApiUrl } from '@/constants/api';
 
 const LOGO = require('../_assets/favicon.png');
 //Importamos el boton de favoritos
@@ -121,7 +121,7 @@ export default function InicioScreen() {
       if (ac_dc) queryParams.push(`ac_dc=${ac_dc}`);
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
-      const url = `${API_URL}/stations${queryString}`;
+      const url = `${getApiUrl()}/stations${queryString}`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -140,7 +140,7 @@ export default function InicioScreen() {
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
   try {
-    const response = await fetch(`${API_URL}/favorites?usuari_id=${user.id}`);
+    const response = await fetch(`${getApiUrl()}/favorites?usuari_id=${user.id}`);
     const data = await response.json();
 
     // Verificamos si data existe y es un array antes de hacer el map
@@ -203,7 +203,7 @@ useEffect(() => {
         const queryString = queryParams.join('&');
 
         // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
-        const response = await fetch(`${API_URL}/stations/search?${queryString}`);
+        const response = await fetch(`${getApiUrl()}/stations/search?${queryString}`);
         const data = await response.json();
 
         // --- APLIQUEM EL FILTRE DE FAVORITS LOCALMENT ---

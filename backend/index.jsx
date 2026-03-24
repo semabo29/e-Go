@@ -62,8 +62,8 @@ module.exports.handler = serverless(app);
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 3000;
   
-  app.listen(PORT, () => {
-    console.log(`Servidor escuchando en el puerto ${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor escuchando en 0.0.0.0:${PORT} (accesible desde LAN y adb reverse)`);
     // Iniciamos la actualización automática de estaciones cada 5 minutos
     startScheduler(5 * 60 * 1000); 
   });

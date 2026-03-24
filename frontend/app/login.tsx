@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 
 const BRAND_GREEN = Colors.light.tint;
@@ -47,12 +47,29 @@ export default function LoginScreen() {
         return;
       }
 
-      const res = await fetch(`${API_URL}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-      
+      let res: Response;
+      try {
+        res = await fetch(`${getApiUrl()}/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+      } catch (fetchErr: any) {
+        const msg = fetchErr?.message || String(fetchErr);
+        const base = getApiUrl();
+        console.error('[Login] fetch /auth/google:', fetchErr, '→ URL:', `${base}/auth/google`);
+        if (msg.includes('Network request failed')) {
+          setError(
+            __DEV__
+              ? `No llega al backend. URL usada: ${base}. Con USB usa npm run start:usb (cierra Metro y vuelve a abrir), adb reverse y backend en marcha en el PC.`
+              : 'No llega al backend. Comprueba conexión y que el servidor esté en marcha.'
+          );
+        } else {
+          setError('No se pudo conectar con el servidor.');
+        }
+        return;
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -96,7 +113,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
+      const res = await fetch(`${getApiUrl()}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

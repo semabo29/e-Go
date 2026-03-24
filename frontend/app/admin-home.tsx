@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_URL } from '@/constants/api';
+import { getApiUrl } from '@/constants/api';
 
 const ADMIN_TOKEN_KEY = '@ego_admin_token';
 const ADMIN_USER_KEY = '@ego_admin_user';
@@ -39,7 +39,7 @@ export default function AdminHomeScreen() {
           setError('No hay sesion admin');
           return;
         }
-        const res = await fetch(`${API_URL}/admin/me`, {
+        const res = await fetch(`${getApiUrl()}/admin/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

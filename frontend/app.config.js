@@ -12,6 +12,8 @@ module.exports = ({ config }) => {
     },
     android: {
       ...config.android,
+      // En desarrollo el backend suele ser http://IP_DEL_PC:3000; sin esto Android 9+ bloquea HTTP.
+      usesCleartextTraffic: true,
       config: {
         ...config.android?.config,
         googleMaps: {
