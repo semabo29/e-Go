@@ -1,14 +1,16 @@
-name: Backend CI
+name: Backend CI  
 
 on:
   push:
-    branches: ["main", "develop"]
+    branches: ["main", "development"]
     paths:
       - "backend/**"
+      - ".github/workflows/**"
   pull_request:
-    branches: ["main", "develop"]
+    branches: ["main", "development"]
     paths:
       - "backend/**"
+      - ".github/workflows/**"
 
 jobs:
   test:
@@ -47,10 +49,12 @@ jobs:
 
       - name: Crear taules a la BD
         env:
-          # Contrasenya per poder executar la comanda psql
           PGPASSWORD: test_password
-        # Executem el fitxer SQL per crear la taula usuarios i els triggers
-        run: psql -h localhost -U test_user -d test_db -f ./backend/sql/001_create_users.sql
+        run: |
+          for f in ./backend/sql/*.sql; do
+            echo "Executant script: $f"
+            psql -h localhost -U test_user -d test_db -f "$f"
+          done
 
       - name: Executar tests (Jest)
         working-directory: ./backend

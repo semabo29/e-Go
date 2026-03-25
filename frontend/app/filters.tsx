@@ -10,7 +10,9 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  Alert
+  Alert,
+  Switch,
+  Modal
 } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -24,13 +26,21 @@ export default function FiltersScreen() {
   const [maxKw, setMaxKw] = useState((params.maxKw as string) || '');
   const [connectorType, setConnectorType] = useState((params.connectorType as string) || '');
   const [acDc, setAcDc] = useState((params.ac_dc as string) || '');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Llista de connectors més habituals
   const CONNECTOR_TYPES = ['CCS Combo2', 'CHAdeMO', 'Schuko', 'MENNEKES', 'TESLA'];
 
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
+ //Estado para el filtro de favoritos (leemos si ya venía activado)
+  const [showFavorites, setShowFavorites] = useState(params.showFatvories === 'true');
+
+
   const handleApply = () => {
+    // Netegem l'error abans de tornar a comprovar
+    setErrorMessage('');
+
     // 1. Comprovem que cap dels dos estigui buit abans de comparar-los
     if (minKw !== '' && maxKw !== '') {
       const min = parseFloat(minKw);
@@ -38,7 +48,7 @@ export default function FiltersScreen() {
 
       // Si el mínim és estrictament major que el màxim, llancem error i no avancem
       if (min > max) {
-        Alert.alert('La potencia mínima no puede ser mayor que la máxima');
+        setErrorMessage('La potencia mínima no puede ser mayor que la máxima');
         return; // Això atura l'execució i no canvia de pantalla
       }
     }
@@ -46,11 +56,12 @@ export default function FiltersScreen() {
     // 2. Si tot és correcte (o si falta algun dels dos camps), apliquem els filtres
     router.navigate({
       pathname: '/',
-      params: {
-        minKw,
-        maxKw,
-        ac_dc: acDc,
-        connectorType
+      params: {//Enviamos los parametros de vuelta al index
+          minKw,
+          maxKw,
+          showFavorites: showFavorites ? 'true' : '', //Si es true mandamos 'true', si no, vacío
+          ac_dc: acDc,
+          connectorType
       }
     });
   };
@@ -84,6 +95,25 @@ export default function FiltersScreen() {
         {/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
           <View style={{flex: 1}}>
+            
+          <Text style={styles.description}>
+                Ajusta los parámetros para encontrar el punto de carga ideal.
+              </Text>
+
+              {/*   INTERRUPTOR DE FAVORITOS*/}
+              <View style={styles.switchGroup}>
+                <Text style={styles.label}>Mis Estaciones</Text>
+                <View style={styles.switchRow}>
+                  <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? "#ef4444" : "#64748b"} />
+                  <Text style={styles.switchDescription}>Mostrar solo mis favoritos</Text>
+                  <Switch
+                    value={showFavorites}
+                    onValueChange={setShowFavorites}
+                    trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              </View>
 
             {/* Input Mínim */}
             <View style={styles.inputGroup}>
@@ -125,9 +155,9 @@ export default function FiltersScreen() {
               />
             </View>
 
-            {/*Secció Tipo de corrient*/}
+            {/*Secció Tipo de corriente*/}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Corrient</Text>
+              <Text style={styles.label}>Tipo de Corriente</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 {['AC', 'DC'].map((type) => (
                   <TouchableOpacity
@@ -190,11 +220,60 @@ export default function FiltersScreen() {
           <Text style={styles.applyBtnText}>Aplicar Filtros</Text>
         </TouchableOpacity>
       </View>
+
+      {/* --- POP-UP FLOTANT D'ERROR --- */}
+      <Modal
+        visible={errorMessage !== ''}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setErrorMessage('')} // Per quan l'usuari clica el botó "Enrere" d'Android
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalPopup}>
+
+            {/* Capçalera del pop-up amb la icona i el text */}
+            <View style={styles.modalContent}>
+              <MaterialIcons name="error" size={28} color="#ef4444" />
+              <Text style={styles.modalText}>{errorMessage}</Text>
+            </View>
+
+            {/* Botó per tancar / Creueta */}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setErrorMessage('')}
+            >
+              <MaterialIcons name="close" size={24} color="#94a3b8" />
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  //Estilos interruptor favoritos
+  switchGroup: {
+      marginBottom: 24,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f8fafc',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#e2e8f0',
+    },
+    switchDescription: {
+      flex: 1,
+      fontSize: 16,
+      color: '#334155',
+      marginLeft: 8,
+    },
+    //Fin estilos interruptor favoritos
   contentContainer: {
     flex: 1,
   },
@@ -340,5 +419,47 @@ const styles = StyleSheet.create({
   },
   typeBtnTextActive: {
     color: '#10b981',
+  },
+  // --- Estils del Pop-up Modal ---
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Fons semi-transparent per ressaltar el pop-up
+    justifyContent: 'center', // Centra verticalment
+    alignItems: 'center',     // Centra horitzontalment
+    padding: 20,              // Marge de seguretat perquè no toqui les vores en pantalles petites
+  },
+  modalPopup: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400, // Topall màxim perquè en tauletes no es vegi gegant
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  modalContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1, // Ocupa l'espai restant
+    gap: 12,
+  },
+  modalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    flexShrink: 1, // Fa que el text salti de línia si és llarg en comptes de tallar-se
+    lineHeight: 24,
+  },
+  modalCloseButton: {
+    marginLeft: 16,
+    padding: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 20,
   },
 });

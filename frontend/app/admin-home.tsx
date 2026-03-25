@@ -11,8 +11,8 @@ import {
   View,
 } from 'react-native';
 
-import { API_URL } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { getApiUrl } from '@/constants/api';
 
 const ADMIN_TOKEN_KEY = '@ego_admin_token';
 const ADMIN_USER_KEY = '@ego_admin_user';
@@ -63,7 +63,7 @@ export default function AdminHomeScreen() {
           setError('No hay sesion admin');
           return;
         }
-        const res = await fetch(`${API_URL}/admin/me`, {
+        const res = await fetch(`${getApiUrl()}/admin/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -90,7 +90,7 @@ export default function AdminHomeScreen() {
   async function loadMyStations(token: string) {
     setLoadingStations(true);
     try {
-      const res = await fetch(`${API_URL}/admin/stations/mine`, {
+      const res = await fetch(`${getApiUrl}/admin/stations/mine`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -114,7 +114,7 @@ export default function AdminHomeScreen() {
     }
     setLoadingStations(true);
     try {
-      const res = await fetch(`${API_URL}/admin/stations/${id}`, {
+      const res = await fetch(`${getApiUrl}/admin/stations/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -175,7 +175,7 @@ export default function AdminHomeScreen() {
                       setError('No hay sesion admin');
                       return;
                     }
-                    const userRes = await fetch(`${API_URL}/admin/user`, {
+                    const userRes = await fetch(`${getApiUrl}/admin/user`, {
                       headers: { Authorization: `Bearer ${token}` },
                     });
                     const userData = await userRes.json();
@@ -411,126 +411,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  section: {
-    marginTop: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  stationItem: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  stationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stationName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  stationMeta: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  stationActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  editButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#111827',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#ef4444',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  confirmCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 18,
-  },
-  confirmTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  confirmText: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 14,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  confirmCancel: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-  },
-  confirmCancelText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  confirmDelete: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#ef4444',
-  },
-  confirmDeleteText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
 });
-

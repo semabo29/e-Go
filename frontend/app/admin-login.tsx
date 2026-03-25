@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_URL, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -70,7 +70,7 @@ export default function AdminLoginScreen() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/admin/google`, {
+      const res = await fetch(`${getApiUrl()}/auth/admin/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, redirectUri, code_verifier: codeVerifier }),

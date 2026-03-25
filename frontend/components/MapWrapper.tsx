@@ -1,22 +1,65 @@
-import { Platform } from 'react-native';
+import MapViewCluster from 'react-native-map-clustering';
+import MapView, { Marker } from 'react-native-maps';
+import { View, Text } from 'react-native';
 
-// Este archivo decide qué versión del mapa cargar según la plataforma.
-// En la web cargará MapWrapper.web.tsx automáticamente si existe.
+export { Marker };
+export { MapView };
 
-let MapComponent: any;
-let MarkerComponent: any;
-
-if (Platform.OS === 'web') {
-  // En web, importamos la versión de Google Maps
-  const WebMap = require('./MapWrapper.web');
-  MapComponent = WebMap.MapView;
-  MarkerComponent = WebMap.Marker;
-} else {
-  // En nativo, importamos react-native-maps
-  const NativeMap = require('react-native-maps');
-  MapComponent = NativeMap.default;
-  MarkerComponent = NativeMap.Marker;
+interface ClusteredMapViewProps {
+  stations: any[];
+  userLocation?: { latitude: number; longitude: number };
+  onMarkerPress?: (item: any) => void;
+  [key: string]: any;
 }
 
-export const MapView = MapComponent;
-export const Marker = MarkerComponent;
+export function ClusteredMapView({ stations, userLocation, onMarkerPress, ...props }: ClusteredMapViewProps) {
+  return (
+    <MapViewCluster
+      {...props}
+      radius={50} // Distancia en píxeles para agrupar
+      renderCluster={(cluster: any) => ( // ← solo 1 parámetro
+        <Marker
+          coordinate={cluster.coordinate}
+          onPress={() => {
+            // Si quieres un callback al cluster
+            console.log('Cluster pulsado', cluster);
+          }}
+        >
+          <View style={{
+            backgroundColor: '#10b981',
+            borderRadius: 20,
+            padding: 8,
+            borderWidth: 2,
+            borderColor: '#fff',
+          }}>
+            <Text style={{ color: '#fff', fontWeight: '700' }}>
+              {cluster.pointCount}
+            </Text>
+          </View>
+        </Marker>
+      )}
+    >
+      {userLocation && (
+        <Marker
+          coordinate={{
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+          }}
+          title="Tu ubicación"
+          pinColor="blue"
+        />
+      )}
+
+      {stations.map((s) => (
+        <Marker
+          key={s.id}
+          coordinate={{
+            latitude: parseFloat(s.latitud),
+            longitude: parseFloat(s.longitud),
+          }}
+          onPress={() => onMarkerPress?.(s)}
+        />
+      ))}
+    </MapViewCluster>
+  );
+}
