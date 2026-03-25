@@ -153,5 +153,5 @@ export function getApiUrl(): string {
   } catch {
     memo = ENV_API || `http://localhost:${defaultApiPort()}`;
   }
-  return memo;
+  return memo ?? (ENV_API || `http://localhost:${defaultApiPort()}`);
 }
