@@ -3,8 +3,15 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID_ANDROID = process.env.GOOGLE_CLIENT_ID_ANDROID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+// Incluye ambos audiences (web + android)
+const GOOGLE_AUDIENCES = [
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_ID_ANDROID,
+].filter(Boolean); // elimina los undefined si alguno no está en .env
 
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
@@ -16,7 +23,10 @@ const PENDING_EXP_SEC = 300; // 5 min
 async function verifyGoogleToken(idToken) {
   if (!googleClient) return null;
   try {
-    const ticket = await googleClient.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID });
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_AUDIENCES, // acepta ambos
+    });
     return ticket.getPayload();
   } catch (err) {
     console.error('Error verificando token Google:', err.message);

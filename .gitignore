@@ -43,6 +43,9 @@ out/
 .next/
 .cache/
 coverage/
+# Lambda deploy (backend)
+backend/lambda_deploy.zip
+backend/.lambda-build/
 
 # ==========================================
 # EDITORES DE CÓDIGO (VS Code, Cursor, IntelliJ)

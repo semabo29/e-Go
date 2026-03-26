@@ -1,0 +1,42 @@
+name: Deploy Backend to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # El backend vive en ./backend (no hay package.json en la raíz del repo).
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      # Lambda: handler index.handler. El zip debe incluir TODO lo que require() carga en runtime.
+      # Antes faltaban controllers, models, services y middleware → la función fallaba al arrancar.
+      - name: Create Zip Bundle
+        working-directory: backend
+        run: |
+          cp index.jsx index.js
+          zip -r deploy.zip index.js package.json node_modules routes lib controllers models services middleware
+
+      - name: Deploy to AWS Lambda
+        uses: appleboy/lambda-action@v0.2.0
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: eu-north-1
+          function_name: backend-ego-api
+          zip_file: backend/deploy.zip

@@ -1,5 +1,6 @@
 // Login admin con Google; devuelve JWT para backoffice
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri, useAuthRequest, useAutoDiscovery } from 'expo-auth-session';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -12,9 +13,10 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
 
-import { API_URL, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { Colors } from '@/constants/theme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -23,6 +25,11 @@ const BRAND_GREEN = Colors.light.tint;
 const LOGO = require('./_assets/favicon.png');
 const ADMIN_TOKEN_KEY = '@ego_admin_token';
 const ADMIN_USER_KEY = '@ego_admin_user';
+const IS_WEB = Platform.OS === 'web';
+
+GoogleSignin.configure({
+  webClientId: GOOGLE_WEB_CLIENT_ID,
+});
 
 type AdminUser = {
   id: number;
@@ -52,6 +59,7 @@ export default function AdminLoginScreen() {
   );
 
   useEffect(() => {
+    if (!IS_WEB) return;
     if (response?.type !== 'success' || !request) return;
     const { code } = response.params;
     const verifier = (request as { codeVerifier?: string }).codeVerifier;
@@ -60,17 +68,43 @@ export default function AdminLoginScreen() {
   }, [response]);
 
   useEffect(() => {
+    if (!IS_WEB) return;
     if (openGoogle === '1' && request && !openedGoogleRef.current) {
       openedGoogleRef.current = true;
       promptAsync();
     }
   }, [openGoogle, request]);
 
+  async function loginAdminWithIdToken(idToken: string) {
+    try {
+      const res = await fetch(`${getApiUrl()}/auth/admin/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Error al iniciar sesion admin');
+        return;
+      }
+
+      if (data.admin && data.token) {
+        setAdmin(data.admin);
+        await AsyncStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+        await AsyncStorage.setItem(ADMIN_USER_KEY, JSON.stringify(data.admin));
+        router.replace('/admin-home');
+      }
+    } catch (err) {
+      setError('No se pudo conectar con el servidor. Comprueba la URL del backend.');
+    }
+  }
+
   async function loginAdminWithCode(code: string, redirectUri: string, codeVerifier?: string) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/admin/google`, {
+      const res = await fetch(`${getApiUrl()}/auth/admin/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, redirectUri, code_verifier: codeVerifier }),
@@ -90,6 +124,38 @@ export default function AdminLoginScreen() {
       }
     } catch (err) {
       setError('No se pudo conectar con el servidor. Comprueba la URL del backend.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAdminLogin() {
+    if (IS_WEB) {
+      promptAsync();
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken;
+
+      if (!idToken) {
+        setError('No se pudo obtener el token de Google');
+        return;
+      }
+
+      await loginAdminWithIdToken(idToken);
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // Cancelado por el usuario
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        setError('Ya hay un inicio de sesion en curso');
+      } else {
+        setError('Error al conectar con Google');
+        console.error('[Google Native Error]', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -117,7 +183,7 @@ export default function AdminLoginScreen() {
               <Text style={styles.secondaryButtonText}>Ir a la app</Text>
             </TouchableOpacity>
           </View>
-        ) : openGoogle === '1' ? (
+        ) : openGoogle === '1' && IS_WEB ? (
           <View style={styles.openingGoogle}>
             <ActivityIndicator size="large" color={BRAND_GREEN} />
             <Text style={styles.openingGoogleText}>Iniciando sesion…</Text>
@@ -127,8 +193,8 @@ export default function AdminLoginScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => promptAsync()}
-              disabled={!request || loading}
+              onPress={handleAdminLogin}
+              disabled={(IS_WEB && !request) || loading}
               activeOpacity={0.8}
             >
               {loading ? (

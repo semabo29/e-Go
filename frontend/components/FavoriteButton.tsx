@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'; // Añadido useEffect
 import { TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { API_URL } from '@/constants/api';
+import { getApiUrl } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
@@ -26,7 +26,7 @@ export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Pr
 
     try {
       const method = isFavorite ? 'DELETE' : 'POST';
-      const res = await fetch(`${API_URL}/favorites`, {
+      const res = await fetch(`${getApiUrl()}/favorites`, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuari_id: user.id, estacio_id }),

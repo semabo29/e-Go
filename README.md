@@ -32,8 +32,9 @@ El repositorio está dividido en dos microservicios principales:
 La base de datos se inicializa mediante scripts numerados en `backend/sql/`. **Deben ejecutarse en orden cronológico:**
 
 1.  `001_create_users.sql`: Estructura de la tabla de usuarios y esquemas base.
-2.  `002_create_stations.sql`: Definición de estaciones de carga y servicios.
-3.  *(Siguientes scripts se añadirán siguiendo esta nomenclatura: 00X_nombre.sql)*
+2.  `002_create_admins.sql`: Estructura de la tabla de admins.
+3.  `003_create_stations.sql`: Definición de estaciones de carga y servicios.
+4.  *(Siguientes scripts se añadirán siguiendo esta nomenclatura: 00X_nombre.sql)*
 
 ---
 
@@ -50,9 +51,61 @@ cd backend
 npm install
 npx nodemon index.jsx
 ```
+
 ### 3. Configuración del Frontend
 ```bash
 cd frontend
 npm install
 npx expo start
 ```
+
+# **Guía de Setup: e-Go Nativo** 
+
+## Preparación de Android Studio
+Abre Android Studio > SDK Manager.
+En la pestaña SDK Platforms: Asegúrate de tener instalado Android 14.0 ("UpsideDownCake")
+En la pestaña SDK Tools:
+- Android SDK Build-Tools
+- NDK (Side by side)
+- Android SDK Command-line Tools (latest)
+- CMake
+- Android Emulator
+## Configuración de las Variables de Entorno (Linux): (.bashrc  o .zshrc)
+nano ~/.bashrc     
+Añadir el bloque de Android: (copiar todo y pegar al final) :
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/tools
+
+Aplicar los cambios: (.bashrc  o .zshrc)
+source ~/.bashrc
+
+## Configuración de las Variables de Entorno (Windows): 
+Buscar en Windows: "Editar las variables de entorno del sistema".
+Botón "Variables de entorno".
+En "Variables de usuario" darle a Nueva:
+Nombre: ANDROID_HOME
+Valor: %LOCALAPPDATA%\Android\Sdk
+En "Variables del sistema" buscar "Path", darle a Editar y añadir estas 3 rutas:
+%LOCALAPPDATA%\Android\Sdk\platform-tools
+%LOCALAPPDATA%\Android\Sdk\emulator
+%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin
+
+## Actualizar .env
+## backend:
+npm install
+npx nodemon index.jsx
+
+## frontend:
+npm install
+npx expo prebuild --platform android --clean     //Borra la caché y genera el código nativo
+npx expo run:android                                              //npx expo run:android (tarda)
+
+## El Login de Google (Importante para nuevos PCs)
+cd frontend
+cd android
+./gradlew signingReport 
+(puede que en Windows sea .\gradlew signingReport)
+- Copia el código SHA-1 que sale bajo la variante debug.
+- Pásale ese código a la persona que administre Google Cloud para que lo añada a las credenciales de la app.

@@ -1,25 +1,23 @@
-const appJson = require('./app.json');
-
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-
 module.exports = ({ config }) => {
-  const expo = appJson.expo || {};
+  const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
   return {
     ...config,
-    ...expo,
     ios: {
-      ...(expo.ios || {}),
+      ...config.ios,
       config: {
-        ...(expo.ios?.config || {}),
+        ...config.ios?.config,
         googleMapsApiKey,
       },
     },
     android: {
-      ...(expo.android || {}),
+      ...config.android,
+      // En desarrollo el backend suele ser http://IP_DEL_PC:3000; sin esto Android 9+ bloquea HTTP.
+      usesCleartextTraffic: true,
       config: {
-        ...(expo.android?.config || {}),
+        ...config.android?.config,
         googleMaps: {
-          ...(expo.android?.config?.googleMaps || {}),
+          ...config.android?.config?.googleMaps,
           apiKey: googleMapsApiKey,
         },
       },

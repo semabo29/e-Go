@@ -1,7 +1,8 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
 import { useState, useEffect, useRef } from 'react';
-import { MapView, Marker } from '../../components/MapWrapper';
+import { MapView, Marker } from '../_components/MapWrapper';
 import TopBar from '../../components/TopBar';
+
 import {
   Image,
   Modal,
@@ -19,7 +20,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL } from '@/constants/api';
+import { getApiUrl } from '@/constants/api';
 
 const LOGO = require('../_assets/favicon.png');
 //Importamos el boton de favoritos
@@ -120,7 +121,7 @@ export default function InicioScreen() {
       if (ac_dc) queryParams.push(`ac_dc=${ac_dc}`);
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
-      const url = `${API_URL}/stations${queryString}`;
+      const url = `${getApiUrl()}/stations${queryString}`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -139,11 +140,20 @@ export default function InicioScreen() {
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
   try {
-    const response = await fetch(`${API_URL}/favorites?usuari_id=${user.id}`); // Ajustado a tu ruta GET
+    const response = await fetch(`${getApiUrl()}/favorites?usuari_id=${user.id}`);
     const data = await response.json();
-    const ids = data.map((fav: any) => fav.id);
 
-    console.log("IDs favoritos cargados:", ids); // Para que verifiques en consola
+    // Verificamos si data existe y es un array antes de hacer el map
+    let ids = [];
+    if (Array.isArray(data)) {
+      ids = data.map((fav: any) => fav.id);
+    } else if (data && Array.isArray(data.favorites)) {
+      // Por si el backend lo devuelve dentro de una propiedad 'favorites'
+      ids = data.favorites.map((fav: any) => fav.id);
+    } else {
+      console.warn("El backend no devolvió un array de favoritos:", data);
+    }
+    console.log("IDs favoritos cargados:", ids);
     setFavoriteIds(ids);
   } catch (error) {
     console.error("Error cargando favoritos:", error);
@@ -193,7 +203,7 @@ useEffect(() => {
         const queryString = queryParams.join('&');
 
         // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
-        const response = await fetch(`${API_URL}/stations/search?${queryString}`);
+        const response = await fetch(`${getApiUrl()}/stations/search?${queryString}`);
         const data = await response.json();
 
         // --- APLIQUEM EL FILTRE DE FAVORITS LOCALMENT ---
@@ -392,34 +402,37 @@ useEffect(() => {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
+          key={`map-${displayedStations.length}`} // <-- TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
-          showsUserLocation
+          showsUserLocation={true}
           onPress={() => setSelectedStation(null)}
         >
-          {userLocation && ( //marcamos la ubi del user manualmente en la web (showsUserLocation no sirve aqui)
+          {/* Marcador manual del usuario para la Web */}
+          {userLocation && (
             <Marker
               coordinate={{
                 latitude: userLocation.coords.latitude,
                 longitude: userLocation.coords.longitude,
               }}
               title="Tu ubicación"
-              //(por si acaso el showsUserLocation falla)
               pinColor="blue"
-              //isUserLocation={true}
+              // @ts-ignore
+              cluster={false} // <-- SÚPER IMPORTANTE: Evita que tu ubicación se agrupe con las estaciones
             />
           )}
 
+          {/* Puntos de recarga (Estos sí se agruparán automáticamente) */}
           {displayedStations.map((est) => (
             <Marker
-              key={est.id}
+              key={`station-${est.id}`}
               coordinate={{
                 latitude: parseFloat(est.latitud),
                 longitude: parseFloat(est.longitud),
               }}
-              pinColor = {favoriteIds.includes(est.id) ? 'red' : 'green'}
+              pinColor={favoriteIds.includes(est.id) ? 'red' : 'green'}
               onPress={(e: any) => {
-                e.stopPropagation();
+                e.stopPropagation(); // Evita que el toque pase al mapa y cierre el panel
                 setSelectedStation(est);
               }}
             />

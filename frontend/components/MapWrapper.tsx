@@ -6,13 +6,13 @@ export { Marker };
 export { MapView };
 
 interface ClusteredMapViewProps {
-  stations: any[];
+  stations?: any[];
   userLocation?: { latitude: number; longitude: number };
   onMarkerPress?: (item: any) => void;
   [key: string]: any;
 }
 
-export function ClusteredMapView({ stations, userLocation, onMarkerPress, ...props }: ClusteredMapViewProps) {
+export function ClusteredMapView({ stations = [], userLocation, onMarkerPress, ...props }: ClusteredMapViewProps) {
   return (
     <MapViewCluster
       {...props}
@@ -60,6 +60,7 @@ export function ClusteredMapView({ stations, userLocation, onMarkerPress, ...pro
           onPress={() => onMarkerPress?.(s)}
         />
       ))}
+      {props.children}
     </MapViewCluster>
   );
 }
