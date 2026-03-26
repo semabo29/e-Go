@@ -10,7 +10,6 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  Alert,
   Switch,
   Modal
 } from 'react-native';
@@ -33,33 +32,27 @@ export default function FiltersScreen() {
 
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
- //Estado para el filtro de favoritos (leemos si ya venía activado)
-  const [showFavorites, setShowFavorites] = useState(params.showFatvories === 'true');
-
+  const [showFavorites, setShowFavorites] = useState(params.showFavorites === 'true');
 
   const handleApply = () => {
-    // Netegem l'error abans de tornar a comprovar
     setErrorMessage('');
 
-    // 1. Comprovem que cap dels dos estigui buit abans de comparar-los
     if (minKw !== '' && maxKw !== '') {
       const min = parseFloat(minKw);
       const max = parseFloat(maxKw);
 
-      // Si el mínim és estrictament major que el màxim, llancem error i no avancem
       if (min > max) {
         setErrorMessage('La potencia mínima no puede ser mayor que la máxima');
-        return; // Això atura l'execució i no canvia de pantalla
+        return;
       }
     }
 
-    // 2. Si tot és correcte (o si falta algun dels dos camps), apliquem els filtres
     router.navigate({
       pathname: '/',
-      params: {//Enviamos los parametros de vuelta al index
+      params: {
           minKw,
           maxKw,
-          showFavorites: showFavorites ? 'true' : '', //Si es true mandamos 'true', si no, vacío
+          showFavorites: showFavorites ? 'true' : '',
           ac_dc: acDc,
           connectorType
       }
@@ -82,7 +75,8 @@ export default function FiltersScreen() {
           <MaterialIcons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
         <Text style={styles.title}>Filtrar Estaciones</Text>
-        <View style={{ width: 24 }} /* Espai buit per centrar el títol */ />
+        {/* Espai buit per centrar el títol */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView
@@ -92,15 +86,14 @@ export default function FiltersScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
-        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
           <View style={{flex: 1}}>
-            
+
           <Text style={styles.description}>
                 Ajusta los parámetros para encontrar el punto de carga ideal.
               </Text>
 
-              {/*   INTERRUPTOR DE FAVORITOS*/}
+              {/* INTERRUPTOR DE FAVORITOS */}
               <View style={styles.switchGroup}>
                 <Text style={styles.label}>Mis Estaciones</Text>
                 <View style={styles.switchRow}>
@@ -124,14 +117,14 @@ export default function FiltersScreen() {
                   Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
                 ]}
                 placeholder="50"
-                placeholderTextColor="#94a3b8" // Gris claret pel text d'exemple
+                placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
                 cursorColor="#10b981"
                 value={minKw}
                 onChangeText={setMinKw}
                 maxLength={4}
-                onFocus={() => setFocusedInput('min')} // Quan hi fem clic
-                onBlur={() => setFocusedInput(null)}   // Quan sortim
+                onFocus={() => setFocusedInput('min')}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 
@@ -155,7 +148,7 @@ export default function FiltersScreen() {
               />
             </View>
 
-            {/*Secció Tipo de corriente*/}
+            {/* Secció Tipo de corriente */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Tipo de Corriente</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -166,7 +159,6 @@ export default function FiltersScreen() {
                       styles.typeBtn,
                       acDc === type && styles.typeBtnActive
                     ]}
-                    // Si ja estava seleccionat i hi tornem a clicar, el desmarquem
                     onPress={() => setAcDc(acDc === type ? '' : type)}
                     activeOpacity={0.8}
                   >
@@ -192,7 +184,6 @@ export default function FiltersScreen() {
                       styles.chip,
                       connectorType === type && styles.chipActive
                     ]}
-                    // Si clica el que ja està actiu, el desmarca (el deixa buit)
                     onPress={() => setConnectorType(connectorType === type ? '' : type)}
                     activeOpacity={0.7}
                   >
@@ -208,7 +199,7 @@ export default function FiltersScreen() {
             </View>
           </View>
         </TouchableWithoutFeedback>
-      </ScrollView> {/*<-- Final de content*/}
+      </ScrollView>
 
       {/* Botons d'acció */}
       <View style={styles.footer}>
@@ -226,35 +217,28 @@ export default function FiltersScreen() {
         visible={errorMessage !== ''}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setErrorMessage('')} // Per quan l'usuari clica el botó "Enrere" d'Android
+        onRequestClose={() => setErrorMessage('')}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalPopup}>
-
-            {/* Capçalera del pop-up amb la icona i el text */}
             <View style={styles.modalContent}>
               <MaterialIcons name="error" size={28} color="#ef4444" />
               <Text style={styles.modalText}>{errorMessage}</Text>
             </View>
-
-            {/* Botó per tancar / Creueta */}
             <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setErrorMessage('')}
             >
               <MaterialIcons name="close" size={24} color="#94a3b8" />
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  //Estilos interruptor favoritos
   switchGroup: {
       marginBottom: 24,
     },
@@ -273,13 +257,12 @@ const styles = StyleSheet.create({
       color: '#334155',
       marginLeft: 8,
     },
-    //Fin estilos interruptor favoritos
   contentContainer: {
     flex: 1,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc', // Fons clar
+    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -301,7 +284,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingBottom: 40, // Espai pel bottom
+    paddingBottom: 40,
   },
   description: {
     fontSize: 15,
@@ -310,7 +293,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   inputGroup: {
-
     marginBottom: 24,
     alignSelf: 'flex-start',
   },
@@ -332,13 +314,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputFocused: {
-    borderColor: '#10b981', // El verd de la teva App
+    borderColor: '#10b981',
     borderWidth: 2,
   },
   footer: {
     flexDirection: 'row',
     padding: 24,
-    paddingBottom: 40, // Espai pel bottom
+    paddingBottom: 40,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
@@ -361,7 +343,7 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#10b981', // El verd de la teva App
+    backgroundColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -370,7 +352,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // --- Estils per els botons de connectors ---
   chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -386,8 +367,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   chipActive: {
-    backgroundColor: '#ecfdf5', // Verd molt claret de fons
-    borderColor: '#10b981',     // Vora verda
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
   },
   chipText: {
     fontSize: 14,
@@ -398,7 +379,6 @@ const styles = StyleSheet.create({
     color: '#10b981',
     fontWeight: '700',
   },
-  // --- Estils per els botons de les corrents ---
   typeBtn: {
     flex: 1,
     paddingVertical: 14,
@@ -420,20 +400,19 @@ const styles = StyleSheet.create({
   typeBtnTextActive: {
     color: '#10b981',
   },
-  // --- Estils del Pop-up Modal ---
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Fons semi-transparent per ressaltar el pop-up
-    justifyContent: 'center', // Centra verticalment
-    alignItems: 'center',     // Centra horitzontalment
-    padding: 20,              // Marge de seguretat perquè no toqui les vores en pantalles petites
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalPopup: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     width: '100%',
-    maxWidth: 400, // Topall màxim perquè en tauletes no es vegi gegant
+    maxWidth: 400,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
@@ -446,14 +425,14 @@ const styles = StyleSheet.create({
   modalContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1, // Ocupa l'espai restant
+    flex: 1,
     gap: 12,
   },
   modalText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1f2937',
-    flexShrink: 1, // Fa que el text salti de línia si és llarg en comptes de tallar-se
+    flexShrink: 1,
     lineHeight: 24,
   },
   modalCloseButton: {

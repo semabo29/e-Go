@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { getApiUrl } from '@/constants/api';
-import { MapView, Marker } from '@/components/MapWrapper';
+import { MapView, Marker } from '@/app/_components/MapWrapper';
 
 const ADMIN_TOKEN_KEY = '@ego_admin_token';
 const CATALUNYA_MUNICIPALITIES_BY_PROVINCE = require('@/constants/catalunyaMunicipalities.json') as Record<
