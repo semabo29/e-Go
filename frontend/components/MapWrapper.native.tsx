@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import { MapView as WebMapView, Marker as WebMarker } from './MapWrapper.web';
-import { ClusteredMapView as MobileMapView, Marker as MobileMarker } from './MapWrapper.tsx';
+import { ClusteredMapView as MobileMapView, Marker as MobileMarker } from './MapWrapper';
 
 let MapView: any;
 let Marker: any;
