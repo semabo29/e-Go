@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const stationRoutes = require('./routes/stations');
 const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de favoritos
+const vehicleRoutes = require('./routes/vehicles');//Importamos la ruta de vehiculos
 
 const { pool } = require('./lib/db');
 const { startScheduler } = require('./lib/scheduler'); // Importamos el planificador
@@ -27,6 +28,7 @@ app.use('/admin', adminRoutes);
 app.use('/stations', stationRoutes);
 // Cualquier petición que empiece con la URL /favorites debe ser gestionada por las reglas de favoriteRoutes
 app.use('/favorites', favoriteRoutes);
+app.use('/car', vehicleRoutes);
 
 // 1. Root / Health Check
 app.get('/', async (req, res) => {
