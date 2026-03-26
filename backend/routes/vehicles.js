@@ -5,7 +5,7 @@ const vehicleController = require('../controllers/vehicleController');
 // Guardar vehicle
 router.post('/', vehicleController.addCar);
 
-//Obtener lista de favoritos de un usuario
+//Obtenir llista de vehicles d'un usuari
 router.get('/', vehicleController.getVehicles);
 
 module.exports = router;

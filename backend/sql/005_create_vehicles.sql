@@ -1,8 +1,6 @@
 --Script para gestionar los vehiculos de los usuarios
 --Como ejecutar: psql -U postgres -d nombre_de_tu_bd (postgres) -f 005_create_vehicles.sql
 -- psql -U postgres -d postgres -f .\backend\sql\005_create_vehicles.sql desde el inicio.
---Aseguramos que trabajamos sobre el esquema ego y no el public
-CREATE SCHEMA IF NOT EXISTS ego;
 
 CREATE TABLE IF NOT EXISTS ego.vehicles (
   usuari_id		INTEGER NOT NULL,

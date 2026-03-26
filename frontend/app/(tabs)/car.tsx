@@ -32,12 +32,14 @@ export default function VehiclesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Estats per guardar els valors temporals abans d'aplicar
+  // Estats per guardar els valors del formulari abans de guardar el vehicle
   const [nom, setNom] = useState((params.potencia as string) || '');
   const [potencia, setPotencia] = useState((params.potencia as string) || '');
   const [connectorType, setConnectorType] = useState((params.connectorType as string) || '');
   const [acDc, setAcDc] = useState((params.ac_dc as string) || '');
   const [errorMessage, setErrorMessage] = useState('');
+  
+  // Llista de vehicles
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   
   const { user } = useAuth();
@@ -47,6 +49,7 @@ export default function VehiclesScreen() {
 
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   
+  // Carregar vehicles inicialment
   useEffect(() => {
     if (user) {
       fetchVehicles();
@@ -56,7 +59,7 @@ export default function VehiclesScreen() {
   const fetchVehicles = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`); // Ajustado a tu ruta GET
+      const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`); // vehicles d'un usuari
       const data = await response.json();
       setVehicles(Array.isArray(data) ? data : []);
       console.log(data);
@@ -65,7 +68,7 @@ export default function VehiclesScreen() {
     }
   };
 
-
+  // Guardar vehicle
   const saveCar = async () => {
     // Netegem l'error abans de tornar a comprovar
     setErrorMessage('');
@@ -85,14 +88,15 @@ export default function VehiclesScreen() {
 
       if (res.ok) {
         try {
-          const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`); // Ajustado a tu ruta GET
+          // És fetchvehicles() però fa la cerca després
+          const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
           console.log(data);
           router.navigate({
             pathname: '/',
-            params: {//Enviamos los parametros de vuelta al index
-              minKw: potencia - 20,
+            params: {// Paràmetres de la cerca
+              minKw: potencia - 20, // L'òptim és 20 kW menys de la potencia màxima
               ac_dc: acDc,
               connectorType: connectorType
             }
@@ -109,22 +113,14 @@ export default function VehiclesScreen() {
     }
   };
 
-  const handleClear = () => {
-    setPotencia('');
-    if (setAcDc) setAcDc('');
-    if (setConnectorType) setConnectorType('');
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       {/* Capçalera */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#1f2937" />
-        </TouchableOpacity>
+				<Text></Text>
         <Text style={styles.title}>Garaje</Text>
-        <View style={{ width: 24 }} /* Espai buit per centrar el títol */ />
+        <Text></Text>
       </View>
 
       <ScrollView
@@ -134,18 +130,15 @@ export default function VehiclesScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {vehicles.map((v, i) => {
+        {vehicles.map((v, i) => { // Llistat de vehicles
           return (
             <View style={styles.infoPanel}>
-            
               <View style={styles.infoContent}>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <MaterialIcons name="electric-car" size={24} color="#10b981" align="center"/> {/*cambiar por skin cuando se implementen*/}
-                  <Text style={styles.title}>
-                    {v.nom}
-                  </Text>
-                </View>
-
+		            <Text style={styles.title}>
+		              {v.nom}
+		            </Text>
+		            
+								{/* Informació del vahicle */}
                 <View style={styles.infoBadgeRow}>
                   <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
                     <MaterialIcons name="bolt" size={14} color="#10b981" />
@@ -160,128 +153,128 @@ export default function VehiclesScreen() {
                     <Text style={[styles.badgeText, { color: '#047857' }]}>{v.tipus_connexio}</Text>
                   </View>
                 </View>
+                
                 <TouchableOpacity style={styles.applyBtn} onPress={() => router.navigate({
-          pathname: '/',
-          params: {//Enviamos los parametros de vuelta al index
-            minKw: v.kw - 20,
-            ac_dc: v.ac_dc,
-            connectorType: v.tipus_connexio
-          }
-        })} activeOpacity={0.8}>
-                  <Text style={styles.applyBtnText}>Buscar estaciones</Text>
+								  pathname: '/',
+								  params: { // Filtre en el mapa
+										  minKw: v.kw - 20,
+										  ac_dc: v.ac_dc,
+										  connectorType: v.tipus_connexio
+									}
+				        })} activeOpacity={0.8}>
+          	      <Text style={styles.applyBtnText}>Buscar estaciones</Text>
                 </TouchableOpacity>
               </View>
             </View>
           );
         })}
         <View style={styles.lastinfoPanel}>
-        {/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
-        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
-          <View style={{flex: 1}}>
+        	{/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
+        	<TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
+        	  <View style={{flex: 1}}>
             
-          <Text style={styles.titleNew}>
-                Nuevo vehículo
-              </Text>
+        	  	<Text style={styles.titleNew}>
+        	  	  Nuevo vehículo
+        	  	</Text>
 
-            {/* Input Nom */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nombre</Text>
-              <TextInput
-                style={[
-                  styles.input, focusedInput === 'nom' && styles.inputFocused,
-                  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
-                ]}
-                keyboardType="text"
-                cursorColor="#10b981"
-                value={nom}
-                onChangeText={setNom}
-                maxLength={15} //50
-                onFocus={() => setFocusedInput('nom')}
-                onBlur={() => setFocusedInput(null)}
-              />
-            </View>
+				      {/* Input Nom */}
+				      <View style={styles.inputGroup}>
+				        <Text style={styles.label}>Nombre</Text>
+				        <TextInput
+				          style={[
+				            styles.input, focusedInput === 'nom' && styles.inputFocused,
+				            Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
+				          ]}
+				          keyboardType="text"
+				          cursorColor="#10b981"
+				          value={nom}
+				          onChangeText={setNom}
+				          maxLength={50}
+				          onFocus={() => setFocusedInput('nom')}
+				          onBlur={() => setFocusedInput(null)}
+				        />
+				      </View>
 
-            {/* Input Màxim */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Potencia máxima (kW)</Text>
-              <TextInput
-                style={[
-                  styles.input, focusedInput === 'max' && styles.inputFocused,
-                  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
-                ]}
-                placeholder="150"
-                placeholderTextColor="#94a3b8"
-                keyboardType="numeric"
-                cursorColor="#10b981"
-                value={potencia}
-                onChangeText={setPotencia}
-                maxLength={4}
-                onFocus={() => setFocusedInput('max')}
-                onBlur={() => setFocusedInput(null)}
-              />
-            </View>
+				      {/* Input Màxim */}
+				      <View style={styles.inputGroup}>
+				        <Text style={styles.label}>Potencia máxima (kW)</Text>
+				        <TextInput
+				          style={[
+				            styles.input, focusedInput === 'max' && styles.inputFocused,
+				            Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
+				          ]}
+				          placeholderTextColor="#94a3b8"
+				          keyboardType="numeric"
+				          cursorColor="#10b981"
+				          value={potencia}
+				          onChangeText={setPotencia}
+				          maxLength={4}
+				          onFocus={() => setFocusedInput('max')}
+				          onBlur={() => setFocusedInput(null)}
+				        />
+				      </View>
 
-            {/*Secció Tipo de corriente*/}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Corriente</Text>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                {['AC', 'DC'].map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.typeBtn,
-                      acDc === type && styles.typeBtnActive
-                    ]}
-                    // Si ja estava seleccionat i hi tornem a clicar, el desmarquem
-                    onPress={() => setAcDc(acDc === type ? '' : type)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[
-                      styles.typeBtnText,
-                      acDc === type && styles.typeBtnTextActive
-                    ]}>
-                      {type === 'AC' ? 'AC' : 'DC'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+				      {/*Secció Tipo de corriente*/}
+				      <View style={styles.inputGroup}>
+				        <Text style={styles.label}>Tipo de Corriente</Text>
+				        <View style={{ flexDirection: 'row', gap: 12 }}>
+				          {['AC', 'DC'].map((type) => (
+				            <TouchableOpacity
+				              key={type}
+				              style={[
+				                styles.typeBtn,
+				                acDc === type && styles.typeBtnActive
+				              ]}
+				              // Si ja estava seleccionat i hi tornem a clicar, el desmarquem
+				              onPress={() => setAcDc(acDc === type ? '' : type)}
+				              activeOpacity={0.8}
+				            >
+				              <Text style={[
+				                styles.typeBtnText,
+				                acDc === type && styles.typeBtnTextActive
+				              ]}>
+				                {type === 'AC' ? 'AC' : 'DC'}
+				              </Text>
+				            </TouchableOpacity>
+				          ))}
+				        </View>
+				      </View>
 
-            {/* Secció Tipus de Connector */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Conector</Text>
-              <View style={styles.chipContainer}>
-                {CONNECTOR_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.chip,
-                      connectorType === type && styles.chipActive
-                    ]}
-                    // Si clica el que ja està actiu, el desmarca (el deixa buit)
-                    onPress={() => setConnectorType(connectorType === type ? '' : type)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.chipText,
-                      connectorType === type && styles.chipTextActive
-                    ]}>
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-        {/* Botons d'acció */}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.applyBtn} onPress={saveCar} activeOpacity={0.8}>
-            <Text style={styles.applyBtnText}>Guardar vehículo</Text>
-          </TouchableOpacity>
-        </View>
-        </View>
-      </ScrollView> {/*<-- Final de content*/}
+				      {/* Secció Tipus de Connector */}
+				      <View style={styles.inputGroup}>
+				        <Text style={styles.label}>Tipo de Conector</Text>
+				        <View style={styles.chipContainer}>
+				          {CONNECTOR_TYPES.map((type) => (
+				            <TouchableOpacity
+				              key={type}
+				              style={[
+				                styles.chip,
+				                connectorType === type && styles.chipActive
+				              ]}
+				              // Si clica el que ja està actiu, el desmarca (el deixa buit)
+				              onPress={() => setConnectorType(connectorType === type ? '' : type)}
+				              activeOpacity={0.7}
+				            >
+				              <Text style={[
+				                styles.chipText,
+				                connectorType === type && styles.chipTextActive
+				              ]}>
+			                  {type}
+			                </Text>
+			              </TouchableOpacity>
+			            ))}
+		          	</View>
+		       	 </View>
+		     	 </View>
+		    	</TouchableWithoutFeedback>
+		    	{/* Guardar vehicle */}
+		    	<View style={styles.footer}>
+		    	  <TouchableOpacity style={styles.applyBtn} onPress={saveCar} activeOpacity={0.8}>
+		    	    <Text style={styles.applyBtnText}>Guardar vehículo</Text>
+		    	  </TouchableOpacity>
+		    	</View>
+		  	</View>
+			</ScrollView> {/*<-- Final de content*/}
 
       {/* --- POP-UP FLOTANT D'ERROR --- */}
       <Modal
@@ -310,7 +303,6 @@ export default function VehiclesScreen() {
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }
@@ -524,7 +516,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 20,
-    boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
+    boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)',
     elevation: 10,
     marginBottom: -16,
   },
