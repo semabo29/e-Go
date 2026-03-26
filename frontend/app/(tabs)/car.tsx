@@ -1,15 +1,3 @@
-/*import { View, Text } from 'react-native';
-
-export default function PantallaProva() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Pantalla para guardar perfiles de coches</Text>
-    </View>
-  );
-}*/
-
-
-
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -30,7 +18,6 @@ import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { API_URL } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
-//import { MaterialIcons } from '@expo/vector-icons';
 
 interface Vehicle {
   usuari: number;
@@ -65,14 +52,18 @@ export default function VehiclesScreen() {
       fetchVehicles();
     }
   }, [user]);
-   
-/*  const vehicles = [
-    {id: 3},
-    {id: 6},
-    {id: 8},
-    {id: 36},
-    {id: 1}
-  ];*/
+  
+  const fetchVehicles = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`); // Ajustado a tu ruta GET
+      const data = await response.json();
+      setVehicles(Array.isArray(data) ? data : []);
+      console.log(data);
+    } catch (error) {
+      console.error("Error cargando vehiculos:", error);
+    }
+  };
 
 
   const saveCar = async () => {
@@ -93,24 +84,28 @@ export default function VehiclesScreen() {
       });
 
       if (res.ok) {
-        router.navigate({ pathname: '/car' });
+        try {
+          const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`); // Ajustado a tu ruta GET
+          const data = await response.json();
+          setVehicles(Array.isArray(data) ? data : []);
+          console.log(data);
+          router.navigate({
+            pathname: '/',
+            params: {//Enviamos los parametros de vuelta al index
+              minKw: potencia - 20,
+              ac_dc: acDc,
+              connectorType: connectorType
+            }
+          })
+        } catch (error) {
+          console.error("Error cargando vehiculos:", error);
+        }
       } else {
         Alert.alert("Error", "No se ha podido guardar el vehículo");
       }
     } catch (e) {
       console.error('Error al guardar vehiculo', e);
       Alert.alert("Error", "Error de conexión");
-    }
-  };
-  
-  const fetchVehicles = async () => {
-    if (!user?.id) return;
-    try {
-      const response = await fetch(`${API_URL}/car?usuari_id=${user.id}`); // Ajustado a tu ruta GET
-      const data = await response.json();
-      setVehicles(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error cargando favoritos:", error);
     }
   };
 
@@ -142,13 +137,44 @@ export default function VehiclesScreen() {
         {vehicles.map((v, i) => {
           return (
             <View style={styles.infoPanel}>
-              <Text style={styles.title}>
-                {v.nom}
-              </Text>
+            
+              <View style={styles.infoContent}>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <MaterialIcons name="electric-car" size={24} color="#10b981" align="center"/> {/*cambiar por skin cuando se implementen*/}
+                  <Text style={styles.title}>
+                    {v.nom}
+                  </Text>
+                </View>
+
+                <View style={styles.infoBadgeRow}>
+                  <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                    <MaterialIcons name="bolt" size={14} color="#10b981" />
+                    <Text style={[styles.badgeText, { color: '#047857' }]}>{v.kw} kW</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                    <MaterialIcons name="ev-station" size={14} color="#10b981" />
+                    <Text style={[styles.badgeText, { color: '#047857' }]}>{v.ac_dc}</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                    <MaterialIcons name="electrical-services" size={14} color="#10b981" />
+                    <Text style={[styles.badgeText, { color: '#047857' }]}>{v.tipus_connexio}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.applyBtn} onPress={() => router.navigate({
+          pathname: '/',
+          params: {//Enviamos los parametros de vuelta al index
+            minKw: v.kw - 20,
+            ac_dc: v.ac_dc,
+            connectorType: v.tipus_connexio
+          }
+        })} activeOpacity={0.8}>
+                  <Text style={styles.applyBtnText}>Buscar estaciones</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           );
         })}
-        <View style={styles.infoPanel}>
+        <View style={styles.lastinfoPanel}>
         {/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
           <View style={{flex: 1}}>
@@ -169,7 +195,7 @@ export default function VehiclesScreen() {
                 cursorColor="#10b981"
                 value={nom}
                 onChangeText={setNom}
-                maxLength={50}
+                maxLength={15} //50
                 onFocus={() => setFocusedInput('nom')}
                 onBlur={() => setFocusedInput(null)}
               />
@@ -177,7 +203,7 @@ export default function VehiclesScreen() {
 
             {/* Input Màxim */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Potencia (kW)</Text>
+              <Text style={styles.label}>Potencia máxima (kW)</Text>
               <TextInput
                 style={[
                   styles.input, focusedInput === 'max' && styles.inputFocused,
@@ -386,6 +412,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10b981', // El verd de la teva App
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 15,
   },
   applyBtnText: {
     color: '#fff',
@@ -491,5 +518,31 @@ const styles = StyleSheet.create({
     boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
     elevation: 10,
     marginBottom: 16,
+    wordbreak: 'break-all',
+  },
+  lastinfoPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
+    elevation: 10,
+    marginBottom: -16,
+  },
+  infoBadgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
