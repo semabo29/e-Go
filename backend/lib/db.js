@@ -10,7 +10,7 @@ const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'postgres',
-  ssl: { rejectUnauthorized: false }, // necesario para RDS desde Lambda
+  ssl: process.env.NODE_ENV === 'test' ? false : { rejectUnauthorized: false },//necesario para RDS desde Lambda, pero si es testing desactivamos el ssl
 });
 
 // Tabla de usuarios y admins (ej. schema ego, tabla Usuari)
