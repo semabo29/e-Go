@@ -7,7 +7,7 @@ CREATE SCHEMA IF NOT EXISTS ego;
 CREATE TABLE IF NOT EXISTS ego.favorits (
   usuari_id   INTEGER NOT NULL,
   estacio_id  INTEGER NOT NULL,
-  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  created_atx TIMESTAMPTZ DEFAULT NOW(),
 
     primary key (usuari_id, estacio_id),
   --Ponemos las foreign keys para referenciar a usuarios y puntos de carga
