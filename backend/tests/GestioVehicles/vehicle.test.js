@@ -81,7 +81,7 @@ describe('Proves dintegració de vehicles', () => {
     expect(Array.isArray(response.body)).toBe(true);
 
     //Agafem el vehicle de prova de la resposta
-    const estaElVehicle = response.body.find(vehicle => vehicle.usuari_id === testUserId);
+    const estaElVehicle = response.body.find(vehicle => (vehicle.usuari_id === testUserId && vehicle.nom === testCarName));
 
     //Si no el troba, imprimim el contingut de la resposta per ajudar a depurar
     if (!estaElVehicle) {
