@@ -15,6 +15,6 @@ CREATE TABLE IF NOT EXISTS ego.vehicles (
   --Si se borra un usuario, se eliminan sus instancias de vehiculos con el CASCADE
   CONSTRAINT fk_usuari
     FOREIGN KEY(usuari_id)
-    REFERENCES ego.usuari(id)
+    REFERENCES ego.conductor(user_id)
     ON DELETE CASCADE
 );

@@ -65,7 +65,7 @@ jobs:
           DB_USER: test_user
           DB_PASSWORD: test_password
           DB_NAME: test_db
-          DB_SCHEMA: public
+          DB_SCHEMA: ego
           DB_TABLE_USUARIOS: usuarios
 
           # Variables que llegeix backend/lib/authHelpers.js
