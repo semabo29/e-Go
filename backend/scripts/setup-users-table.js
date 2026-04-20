@@ -6,7 +6,7 @@
 const { pool } = require('../lib/db');
 
 const schema = process.env.DB_SCHEMA || 'public';
-const table = process.env.DB_TABLE_USUARIOS || 'usuarios';
+const table = process.env.DB_TABLE_USUARIOS || 'usuari';
 // Nombre de tabla escapado para SQL (identificador)
 const tableId = `"${schema}"."${table}"`;
 

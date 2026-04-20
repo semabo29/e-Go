@@ -16,7 +16,7 @@
       }
     },
     "android": {
-      "package": "com.ego.app",
+      "package": "com.ego2.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

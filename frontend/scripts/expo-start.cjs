@@ -51,7 +51,7 @@ async function firstFreePort(from = 8081, to = 8090) {
   if (useLocalhost) {
     console.log(
       `\n[Dev client] Modo --localhost: el móvil usará 127.0.0.1 en el puerto ${port} (túnel USB).\n` +
-        'Asegúrate de tener la app nativa "frontend" (com.ego.app) y USB depuración activada.\n'
+        'Asegúrate de tener la app nativa "frontend" (com.ego2.app) y USB depuración activada.\n'
     );
 
     const adbExe = resolveAdbPath();

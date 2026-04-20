@@ -13,9 +13,9 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'test' ? false : { rejectUnauthorized: false },//necesario para RDS desde Lambda, pero si es testing desactivamos el ssl
 });
 
-// Tabla de usuarios y admins (ej. schema ego, tabla Usuari)
+// Tabla de usuarios y admins (ej. schema ego, tabla usuari)
 const DB_SCHEMA = process.env.DB_SCHEMA || 'public';
-const DB_TABLE_USUARIOS = process.env.DB_TABLE_USUARIOS || 'usuarios';
+const DB_TABLE_USUARIOS = process.env.DB_TABLE_USUARIOS || 'usuari';
 const DB_TABLE_ADMINS = process.env.DB_TABLE_ADMINS || 'admins';
 const USUARIOS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_USUARIOS}"`;
 const ADMINS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_ADMINS}"`;
