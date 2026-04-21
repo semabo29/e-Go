@@ -28,7 +28,7 @@ describe('Proves dintegració de vehicles', () => {
     await pool.query('DELETE FROM ego.vehicles WHERE usuari_id = $1', [testUserId]);
 
     //Usuari de prova
-    await pool.query(`INSERT INTO ego.usuari (id, email, username)
+    await pool.query(`INSERT INTO ego.conductor (id, email, username)
                       VALUES ($1, 'conductor@test.com', 'testVehicle')`, [testUserId]);
 
     //Vehicle de prova
@@ -39,7 +39,7 @@ describe('Proves dintegració de vehicles', () => {
 
   //Esborrar després dels tests
   afterAll(async () => {
-    await pool.query('DELETE FROM ego.usuari WHERE id = $1', [testUserId]);
+    await pool.query('DELETE FROM ego.conductor WHERE id = $1', [testUserId]);
     await pool.query('DELETE FROM ego.vehicles WHERE usuari_id = $1', [testUserId]);
 
     //Tanquem pool de connexions per evitar que el procés es quedi penjat
