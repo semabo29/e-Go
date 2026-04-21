@@ -16,13 +16,13 @@ const ENERGY_CONSTANTS = { // datos estimados de consumo de energia a partir de 
 async function canReach({ start, end, vehicleType, batteryKWh }) {
   try {
     //validar los datos de entrada
-    if (!start || isNaN(start.lat) || isNaN(start.lon)) {
+    if (!start || isNaN(start.lat) || isNaN(start.lon) || start.lat < -90 || start.lat > 90 || start.lon < -180 || start.lon > 180) {
       const err = new Error("Coordenadas de inicio inválidas.");
       err.type = "VALIDATION_ERROR";
       throw err;
     }
 
-    if (!end || isNaN(end.lat) || isNaN(end.lon)) {
+    if (!end || isNaN(end.lat) || isNaN(end.lon) || end.lat < -90 || end.lat > 90 || end.lon < -180 || end.lon > 180) {
       const err = new Error("Coordenadas de final inválidas.");
       err.type = "VALIDATION_ERROR";
       throw err;
