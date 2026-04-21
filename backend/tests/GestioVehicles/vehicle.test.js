@@ -23,24 +23,27 @@ describe('Proves dintegració de vehicles', () => {
 
   //Setup de l'entorn abans dels tests
   beforeAll(async () => {
-    //Esborrem per si un cas
+    //Esborrem l'usuari primer (pel CASCADE s'esborrarà el conductor i els vehicles associats)
     await pool.query('DELETE FROM ego.usuari WHERE id = $1', [testUserId]);
-    await pool.query('DELETE FROM ego.vehicles WHERE usuari_id = $1', [testUserId]);
 
-    //Usuari de prova
-    await pool.query(`INSERT INTO ego.conductor (id, email, username)
+    // 1. Creem l'Usuari
+    await pool.query(`INSERT INTO ego.usuari (id, email, username)
                       VALUES ($1, 'conductor@test.com', 'testVehicle')`, [testUserId]);
 
-    //Vehicle de prova
+    // 2. Creem el Conductor associat a l'usuari
+    await pool.query(`INSERT INTO ego.conductor (user_id)
+                      VALUES ($1)`, [testUserId]);
+
+    // 3. Creem el Vehicle de prova associat al conductor
     await pool.query(`INSERT INTO ego.vehicles (usuari_id, nom, kw, ac_dc, tipus_connexio)
                       VALUES ($1, $2, $3, $4, $5)`,
-                      [testUserId, testCarName, testCarPotencia, testCarCorrent, testCarConector]);
+        [testUserId, testCarName, testCarPotencia, testCarCorrent, testCarConector]);
   });
 
   //Esborrar després dels tests
   afterAll(async () => {
-    await pool.query('DELETE FROM ego.conductor WHERE id = $1', [testUserId]);
-    await pool.query('DELETE FROM ego.vehicles WHERE usuari_id = $1', [testUserId]);
+    // Amb un sol DELETE a usuari, esborrem l'usuari, el conductor i el vehicle en cascada
+    await pool.query('DELETE FROM ego.usuari WHERE id = $1', [testUserId]);
 
     //Tanquem pool de connexions per evitar que el procés es quedi penjat
     await pool.end();
