@@ -23,6 +23,7 @@ export const MapView = (props: any) => {
               longitude: geometry.coordinates[0],
               latitude: geometry.coordinates[1],
             }}
+            tracksViewChanges={false}
             onPress={onPress}
           >
             <View style={styles.clusterContainer}>
@@ -47,10 +48,11 @@ export default function MapWrapper() {
 const styles = StyleSheet.create({
   clusterContainer: {
     backgroundColor: '#10b981', // Verde e-Go
-    borderRadius: 20,
-    padding: 10,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     minWidth: 40,
-    height: 40,
+    minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -64,5 +66,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+    lineHeight: 16,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });

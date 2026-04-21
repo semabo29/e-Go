@@ -572,7 +572,6 @@ useEffect(() => {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          key={`map-${displayedStations.length}`} // <-- TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
           showsUserLocation={true}
@@ -586,6 +585,7 @@ useEffect(() => {
                 latitude: parseFloat(est.latitud),
                 longitude: parseFloat(est.longitud),
               }}
+              tracksViewChanges={false}
               pinColor={favoriteIds.includes(est.id) ? 'red' : 'green'}
               onPress={(e: any) => {
                 e.stopPropagation(); // Evita que el toque pase al mapa y cierre el panel
