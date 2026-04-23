@@ -2,7 +2,6 @@
 CREATE SCHEMA IF NOT EXISTS ego;
 
 CREATE TABLE IF NOT EXISTS ego.subscription (
-  id SERIAL PRIMARY KEY,
   usuari_id INTEGER NOT NULL UNIQUE REFERENCES ego.usuari(id) ON DELETE CASCADE,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT UNIQUE,
