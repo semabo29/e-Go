@@ -173,7 +173,10 @@ describe('Tests de estaciones completos', () => {
       const res = await request(app).get('/stations?minKw=50');
 
       expect(res.status).toBe(200);
-      expect(res.body.length).toBe(3); // Ha de trobar ST-MIG, ST-RAPIDA i ST-ULTRARAPIDA
+      // Pot haver-hi més dades de test en la BD compartida; validem el comportament del filtre.
+      expect(res.body.length).toBeGreaterThanOrEqual(3);
+      const returnedIds = res.body.map(est => est.external_id);
+      expect(returnedIds).toEqual(expect.arrayContaining(['ST-MIG', 'ST-RAPIDA', 'ST-ULTRARAPIDA']));
 
       res.body.forEach(est => {
         expect(parseFloat(est.kw)).toBeGreaterThanOrEqual(50);

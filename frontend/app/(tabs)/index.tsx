@@ -578,6 +578,20 @@ useEffect(() => {
           showsUserLocation={true}
           onPress={() => setSelectedStation(null)}
         >
+          {/* Marcador manual del usuario para la Web */}
+          {userLocation && (
+            <Marker
+              coordinate={{
+                latitude: userLocation.coords.latitude,
+                longitude: userLocation.coords.longitude,
+              }}
+              title="Tu ubicación"
+              pinColor="blue"
+              // @ts-ignore
+              cluster={false} // <-- SÚPER IMPORTANTE: Evita que tu ubicación se agrupe con las estaciones
+            />
+          )}
+
           {/* Puntos de recarga (Estos sí se agruparán automáticamente) */}
           {displayedStations.map((est) => (
             <Marker
@@ -599,6 +613,16 @@ useEffect(() => {
           <View style={styles.mapLoading}>
             <ActivityIndicator size="small" color="#10b981" />
           </View>
+        )}
+
+        {/* Botón para centrar en el usuario */}
+        {userLocation && (
+          <TouchableOpacity
+            style={styles.centerMapButton}
+            onPress={centerMapOnUser}
+            activeOpacity={0.8}>
+            <MaterialIcons name="my-location" size={24} color="#1f2937" />
+          </TouchableOpacity>
         )}
 
         {/* Mini panel de información de la estación */}

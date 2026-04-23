@@ -12,8 +12,19 @@ async function addCar(usuariId, nom, potencia, conector, corrent) {
   return result.rows[0]; //Només torna una fila
 }
 
+//Eliminar un vehicle d'un usuari de la base de dades (taula vehicles)
+async function removeVehicle(usuariId, nom) {
+  const query = `
+    DELETE FROM ego.vehicles
+    WHERE usuari_id = $1 AND nom = $2
+    RETURNING *;
+  `;
+  const result = await pool.query(query, [usuariId, nom]);
+  return result.rows[0];//Només torna una fila
+}
+
+// Torna els vehicles d'un usuari de la base de dades (taula vehicles)
 async function getVehiclesByUser(usuariId) {
-  // Torna els vehicles d'un usuari
   const query = `
     SELECT *
     FROM ego.vehicles
@@ -26,6 +37,6 @@ async function getVehiclesByUser(usuariId) {
 
 module.exports = {
   addCar,
-  //removeVehicle,
+  removeVehicle,
   getVehiclesByUser
 };

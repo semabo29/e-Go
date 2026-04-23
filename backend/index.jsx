@@ -12,6 +12,8 @@ const adminRoutes = require('./routes/admin');
 const stationRoutes = require('./routes/stations');
 const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de favoritos
 const vehicleRoutes = require('./routes/vehicles');//Importamos la ruta de vehiculos
+const subscriptionRoutes = require('./routes/subscription');
+const { handleWebhook } = require('./controllers/stripeWebhookController');
 
 const { pool } = require('./lib/db');
 const { startScheduler } = require('./lib/scheduler'); // Importamos el planificador
@@ -20,6 +22,12 @@ const app = express();
 
 // --- MIDDLEWARES ---
 app.use(cors());
+// Stripe: firma HMAC sobre el cuerpo en bruto (debe ir antes de express.json)
+app.post(
+  '/subscription/webhook',
+  express.raw({ type: 'application/json' }),
+  handleWebhook
+);
 app.use(express.json());
 
 // --- RUTAS ---
@@ -29,6 +37,7 @@ app.use('/stations', stationRoutes);
 // Cualquier petición que empiece con la URL /favorites debe ser gestionada por las reglas de favoriteRoutes
 app.use('/favorites', favoriteRoutes);
 app.use('/car', vehicleRoutes);
+app.use('/subscription', subscriptionRoutes);
 
 // 1. Root / Health Check
 app.get('/', async (req, res) => {

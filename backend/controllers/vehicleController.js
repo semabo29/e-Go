@@ -18,19 +18,35 @@ async function addCar(req, res) {
   }
 }
 
+async function removeVehicle(req, res) {
+  try {
+    const { usuari_id, v_nom } = req.body;
+    
+    await vehicleService.removeVehicle(usuari_id, v_nom);
+
+    res.json({
+      success: true,
+      message: 'Vehicle eliminat'
+    });
+  } catch (err) {
+    console.error('Error al eliminar el vehicle:', err);
+    res.status(500).json({ error: 'Error al processar la solicitud' });
+  }
+}
+
 async function getVehicles(req, res) {
   try {
     const { usuari_id } = req.query; // Se puede pasar por query param
     const vehicles = await vehicleService.getUserVehicles(usuari_id);
     res.json(vehicles);
   } catch (err) {
-    console.error('Error al obtener favoritos:', err);
-    res.status(500).json({ error: 'Error al obtener favoritos' });
+    console.error('Error al obtenir vehicles:', err);
+    res.status(500).json({ error: 'Error al obtenir vehicles' });
   }
 }
 
 module.exports = {
   addCar,
-  //removeVehicle,
+  removeVehicle,
   getVehicles
 };

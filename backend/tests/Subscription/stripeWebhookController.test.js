@@ -1,0 +1,167 @@
+const subscriptionModel = require('../../models/subscriptionModel');
+const stripeLib = require('../../lib/stripe');
+const { handleWebhook } = require('../../controllers/stripeWebhookController');
+
+jest.mock('../../models/subscriptionModel');
+jest.mock('../../lib/stripe');
+
+function mockRes() {
+  const res = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  res.send = jest.fn().mockReturnValue(res);
+  return res;
+}
+
+describe('stripeWebhookController', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+  });
+
+  test('devuelve 400 cuando la firma es inválida', async () => {
+    const stripe = {
+      webhooks: {
+        constructEvent: jest.fn(() => {
+          throw new Error('invalid signature');
+        }),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'bad' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.send).toHaveBeenCalledWith(expect.stringMatching(/Webhook Error/i));
+  });
+
+  test('procesa checkout.session.completed y guarda suscripción', async () => {
+    const event = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          mode: 'subscription',
+          client_reference_id: '9',
+          subscription: 'sub_123',
+        },
+      },
+    };
+    const stripe = {
+      webhooks: {
+        constructEvent: jest.fn().mockReturnValue(event),
+      },
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue({
+          id: 'sub_123',
+          customer: 'cus_123',
+          status: 'active',
+          current_period_end: 1735689600,
+          cancel_at_period_end: false,
+        }),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    subscriptionModel.upsertFromStripe.mockResolvedValue({});
+
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+
+    expect(subscriptionModel.upsertFromStripe).toHaveBeenCalledWith(
+      9,
+      expect.objectContaining({
+        stripe_subscription_id: 'sub_123',
+        status: 'active',
+      })
+    );
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('procesa invoice.paid (renovación) y refresca estado de suscripción', async () => {
+    const event = {
+      type: 'invoice.paid',
+      data: {
+        object: {
+          subscription: 'sub_renew_1',
+        },
+      },
+    };
+
+    const stripe = {
+      webhooks: {
+        constructEvent: jest.fn().mockReturnValue(event),
+      },
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue({
+          id: 'sub_renew_1',
+          customer: 'cus_renew_1',
+          status: 'active',
+          current_period_end: 1767225600,
+          cancel_at_period_end: false,
+          metadata: {},
+        }),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    subscriptionModel.findByStripeSubscriptionId.mockResolvedValue({ usuari_id: 12 });
+    subscriptionModel.upsertFromStripe.mockResolvedValue({});
+
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+
+    expect(stripe.subscriptions.retrieve).toHaveBeenCalledWith('sub_renew_1');
+    expect(subscriptionModel.upsertFromStripe).toHaveBeenCalledWith(
+      12,
+      expect.objectContaining({
+        stripe_subscription_id: 'sub_renew_1',
+        status: 'active',
+      })
+    );
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('procesa customer.subscription.updated usando metadata usuari_id', async () => {
+    const event = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_upd_1',
+        },
+      },
+    };
+
+    const stripe = {
+      webhooks: {
+        constructEvent: jest.fn().mockReturnValue(event),
+      },
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue({
+          id: 'sub_upd_1',
+          customer: 'cus_upd_1',
+          status: 'trialing',
+          current_period_end: 1768003200,
+          cancel_at_period_end: false,
+          metadata: { usuari_id: '44' },
+        }),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    subscriptionModel.upsertFromStripe.mockResolvedValue({});
+
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+
+    expect(subscriptionModel.upsertFromStripe).toHaveBeenCalledWith(
+      44,
+      expect.objectContaining({
+        stripe_subscription_id: 'sub_upd_1',
+        status: 'trialing',
+      })
+    );
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+});

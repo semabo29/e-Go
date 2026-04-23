@@ -100,6 +100,10 @@ export default function VehiclesScreen() {
               connectorType: connectorType
             }
           })
+          setNom('');
+          setPotencia('');
+          setConnectorType('');
+          setAcDc('');
         } catch (error) {
           console.error("Error cargando vehiculos:", error);
         }
@@ -112,13 +116,45 @@ export default function VehiclesScreen() {
     }
   };
 
+  // Eliminar vehicle
+  const deleteCar = async ( nomV : string ) => {
+    // Netegem l'error
+    setErrorMessage('');
+	  
+    try {
+      const method = 'DELETE';
+      const res = await fetch(`${getApiUrl()}/car`, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuari_id: user!.id, v_nom: nomV }),
+      });
+
+      if (res.ok) {
+        try {
+          // És fetchvehicles()
+          const response = await fetch(`${getApiUrl()}/car?usuari_id=${user!.id}`);
+          const data = await response.json();
+          setVehicles(Array.isArray(data) ? data : []);
+          console.log(data);
+        } catch (error) {
+          console.error("Error cargando vehiculos:", error);
+        }
+      } else {
+        Alert.alert("Error", "No se ha podido eliminar el vehículo");
+      }
+    } catch (e) {
+      console.error('Error al eliminar vehiculo', e);
+      Alert.alert("Error", "Error de conexión");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       {/* Capçalera */}
       <View style={styles.header}>
 				<Text></Text>
-        <Text style={styles.title}>Garaje</Text>
+        <Text style={styles.titleHeader}>Garaje</Text>
         <Text></Text>
       </View>
 
@@ -129,38 +165,41 @@ export default function VehiclesScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {vehicles.map((v, i) => { // Llistat de vehicles
+        {vehicles.map((v) => { // Llistat de vehicles
           return (
             <View key={v.nom} style={styles.infoPanel}>
-				<Text style={styles.title}>
-				  {v.nom}
-				</Text>
-			{/* Informació del vahicle */}
-			<View style={styles.infoBadgeRow}>
-			  <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-				<MaterialIcons name="bolt" size={14} color="#10b981" />
-				<Text style={[styles.badgeText, { color: '#047857' }]}>{v.kw} kW</Text>
-			  </View>
-			  <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-				<MaterialIcons name="ev-station" size={14} color="#10b981" />
-				<Text style={[styles.badgeText, { color: '#047857' }]}>{v.ac_dc}</Text>
-			  </View>
-			  <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-				<MaterialIcons name="electrical-services" size={14} color="#10b981" />
-				<Text style={[styles.badgeText, { color: '#047857' }]}>{v.tipus_connexio}</Text>
-			  </View>
-			</View>
+				      <Text style={styles.title}>
+				        {v.nom}
+				      </Text>
+              {/* Informació del vahicle */}
+              <View style={styles.infoBadgeRow}>
+                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                  <MaterialIcons name="bolt" size={14} color="#10b981" />
+                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.kw} kW</Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                  <MaterialIcons name="ev-station" size={14} color="#10b981" />
+                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.ac_dc}</Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
+                  <MaterialIcons name="electrical-services" size={14} color="#10b981" />
+                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.tipus_connexio}</Text>
+                </View>
+              </View>
 			
-			<TouchableOpacity style={styles.applyBtn} onPress={() => router.navigate({
-							  pathname: '/',
-							  params: { // Filtre en el mapa
-									  minKw: Number(v.kw) - 20,
-									  ac_dc: v.ac_dc,
-									  connectorType: v.tipus_connexio
-								}
-					})} activeOpacity={0.8}>
-			  <Text style={styles.applyBtnText}>Buscar estaciones</Text>
-			</TouchableOpacity>
+              <TouchableOpacity style={styles.applyBtn} onPress={() => router.navigate({
+                        pathname: '/',
+                        params: { // Filtre en el mapa
+                            minKw: Number(v.kw) - 20,
+                            ac_dc: v.ac_dc,
+                            connectorType: v.tipus_connexio
+                        }
+                  })} activeOpacity={0.8}>
+                <Text style={styles.applyBtnText}>Buscar estaciones</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteCar(v.nom)} activeOpacity={0.8}>
+                <Text style={styles.deleteBtnText}>Eliminar vehículo</Text>
+              </TouchableOpacity>
             </View>
           );
         })}
@@ -329,11 +368,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1f2937',
   },
+  titleHeader: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginTop: 20,
+  },
   titleNew: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 16
+    marginBottom: 16,
   },
   content: {
     padding: 24,
@@ -403,6 +448,20 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   applyBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  deleteBtn: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+  },
+  deleteBtnText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
