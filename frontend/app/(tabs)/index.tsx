@@ -51,7 +51,7 @@ export default function InicioScreen() {
   const connectorType = params.connectorType as string | undefined;
   const ac_dc = params.ac_dc as string | undefined;
 
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, setUser, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
@@ -255,6 +255,17 @@ useEffect(() => {
 
   const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc || !!showFavoritesFilter;
 
+  const continueWithoutGoogleTemporarily = () => {
+    const now = new Date().toISOString();
+    setUser({
+      id: -1,
+      email: 'guest@ego.local',
+      username: 'Invitado',
+      created_at: now,
+      updated_at: now,
+    });
+  };
+
   if (authLoading) {
     return (
       <View style={[styles.screen, styles.centered]}>
@@ -298,6 +309,13 @@ useEffect(() => {
                 resizeMode="contain"
               />
               <Text style={styles.loginButtonText}>Continuar con Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skipGoogleButton}
+              onPress={continueWithoutGoogleTemporarily}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.skipGoogleButtonText}>Continuar sin Google (temporal)</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -661,6 +679,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1f2937',
+  },
+  skipGoogleButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  skipGoogleButtonText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '600',
   },
   adminLink: {
     marginBottom: 16,
