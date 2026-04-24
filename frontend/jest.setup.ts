@@ -1,5 +1,4 @@
 import '@testing-library/jest-native/extend-expect';
-import { jest } from '@jest/globals';
 
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 jest.mock('@react-native-google-signin/google-signin', () => ({
