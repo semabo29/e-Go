@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const stationRoutes = require('./routes/stations');
 const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de favoritos
+const { canReach } = require('./services/rangeCalculationService');
 
 const { pool } = require('./lib/db');
 const { startScheduler } = require('./lib/scheduler'); // Importamos el planificador
@@ -27,6 +28,25 @@ app.use('/admin', adminRoutes);
 app.use('/stations', stationRoutes);
 // Cualquier petición que empiece con la URL /favorites debe ser gestionada por las reglas de favoriteRoutes
 app.use('/favorites', favoriteRoutes);
+
+// Can Reach endpoint (range calculation)
+app.get('/can-reach', async (req, res) => {
+  try {
+    const { startLat, startLon, endLat, endLon, vehicleType, batteryKWh } = req.query;
+    const result = await canReach({
+      start: { lat: Number(startLat), lon: Number(startLon) },
+      end: { lat: Number(endLat), lon: Number(endLon) },
+      vehicleType: String(vehicleType || '').toLowerCase(),
+      batteryKWh: Number(batteryKWh),
+    });
+    res.json(result);
+  } catch (error) {
+    if (error?.type === 'VALIDATION_ERROR') return res.status(400).json({ error: error.message });
+    if (error?.type === 'ROUTE_NOT_FOUND') return res.status(404).json({ error: error.message });
+    if (error?.type === 'OVER_QUERY_LIMIT') return res.status(429).json({ error: error.message });
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
 
 // 1. Root / Health Check
 app.get('/', async (req, res) => {
