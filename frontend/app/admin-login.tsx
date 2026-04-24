@@ -139,7 +139,7 @@ export default function AdminLoginScreen() {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.data?.idToken;
+      const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
 
       if (!idToken) {
         setError('No se pudo obtener el token de Google');

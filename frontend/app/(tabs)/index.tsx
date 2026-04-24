@@ -59,7 +59,6 @@ export default function InicioScreen() {
   const ac_dc = params.ac_dc as string | undefined;
 
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
@@ -284,14 +283,13 @@ useEffect(() => {
   }
 
   const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc || !!showFavoritesFilter;
-
   async function handleNativeLoginFromWelcome() {
     setAuthLoadingGoogle(true);
     setAuthError('');
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.data?.idToken;
+      const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
 
       if (!idToken) {
         setAuthError('No se pudo obtener el token de Google');
@@ -823,7 +821,13 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   skipGoogleButton: {
-    marginTop: 10,
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  skipGoogleButtonText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '600',
   },
   adminLink: {
     marginBottom: 16,

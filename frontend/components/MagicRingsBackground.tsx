@@ -30,6 +30,7 @@ type RingStrokeProps = {
   globalOpacity: number;
   color: string;
   speed: number;
+  skia: NonNullable<typeof skiaModule>;
 };
 
 const STROKE_LAYERS = [
@@ -89,9 +90,9 @@ function RingStroke({
   globalOpacity,
   color,
   speed,
+  skia,
 }: RingStrokeProps) {
-  if (!skiaModule) return null;
-  const { Group, Circle, useComputedValue } = skiaModule;
+  const { Group, Circle, useComputedValue } = skia;
   const cycle = 3.45;
   const radius = useComputedValue(() => {
     const t = (clock.current / 1000) * speed;
@@ -238,6 +239,7 @@ export default function MagicRingsBackground({
             ringColors={ringColors}
             opacity={opacity}
             speed={speed}
+            skia={skiaModule}
           />
         ) : (
           <View style={styles.fallbackContainer}>
@@ -268,6 +270,7 @@ type SkiaCanvasLayerProps = {
   ringColors: string[];
   opacity: number;
   speed: number;
+  skia: NonNullable<typeof skiaModule>;
 };
 
 function SkiaCanvasLayer({
@@ -279,9 +282,9 @@ function SkiaCanvasLayer({
   ringColors,
   opacity,
   speed,
+  skia,
 }: SkiaCanvasLayerProps) {
-  if (!skiaModule) return null;
-  const { Canvas, useClockValue } = skiaModule;
+  const { Canvas, useClockValue } = skia;
   const clock = useClockValue();
 
   return (
@@ -299,6 +302,7 @@ function SkiaCanvasLayer({
           globalOpacity={opacity}
           color={ringColor}
           speed={speed}
+          skia={skia}
         />
       ))}
     </Canvas>
