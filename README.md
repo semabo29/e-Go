@@ -95,11 +95,14 @@ En "Variables del sistema" buscar "Path", darle a Editar y añadir estas 3 rutas
 ## Actualizar .env
 ## backend:
 npm install
-npx nodemon index.jsx
+
+npx nodemon index.jsx (o npm start)
 
 ## frontend:
 npm install
+
 npx expo prebuild --platform android --clean     //Borra la caché y genera el código nativo
+
 npx expo run:android                                              //npx expo run:android (tarda)
 
 ## El Login de Google (Importante para nuevos PCs)
