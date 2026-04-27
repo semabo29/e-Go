@@ -202,4 +202,37 @@ describe('subscriptionController', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
   });
+
+  describe('confirmCheckoutSession', () => {
+    test('sin stripe configurado devuelve 503', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(false);
+      const req = { body: { userId: 1, sessionId: 'cs_test_123' } };
+      const res = mockRes();
+
+      await controller.confirmCheckoutSession(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(503);
+    });
+
+    test('sin pago confirmado devuelve pending', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      const retrieve = jest.fn().mockResolvedValue({
+        id: 'cs_test_1',
+        payment_status: 'unpaid',
+        client_reference_id: '1',
+      });
+      stripeLib.getStripe.mockReturnValue({ checkout: { sessions: { retrieve } } });
+      const req = { body: { userId: 1, sessionId: 'cs_test_1' } };
+      const res = mockRes();
+
+      await controller.confirmCheckoutSession(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          confirmed: false,
+          pending: true,
+        })
+      );
+    });
+  });
 });
