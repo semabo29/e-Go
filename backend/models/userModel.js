@@ -9,6 +9,14 @@ async function findByEmail(email) {
   return result.rows[0] || null;
 }
 
+async function findById(id) {
+  const result = await pool.query(
+    `SELECT id, email, username, created_at, updated_at FROM ${USUARIOS_TABLE} WHERE id = $1`,
+    [id]
+  );
+  return result.rows[0] || null;
+}
+
 async function createUser(email, username) {
   const result = await pool.query(
     `INSERT INTO ${USUARIOS_TABLE} (email, username) VALUES ($1, $2)
@@ -20,5 +28,6 @@ async function createUser(email, username) {
 
 module.exports = {
   findByEmail,
+  findById,
   createUser,
 };
