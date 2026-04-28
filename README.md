@@ -101,8 +101,6 @@ npx nodemon index.jsx (o npm start)
 ## frontend:
 npm install
 
-npx expo prebuild --platform android --clean     //Borra la caché y genera el código nativo
-
 npx expo run:android                                              //npx expo run:android (tarda)
 
 ## El Login de Google (Importante para nuevos PCs)
