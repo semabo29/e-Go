@@ -5,6 +5,7 @@
   "main": "index.jsx",
   "scripts": {
     "test": "jest --runInBand",
+    "test:integration": "jest --config jest.integration.config.js --runInBand",
     "package:lambda": "node scripts/build-lambda-zip.js"
   },
   "keywords": [],
