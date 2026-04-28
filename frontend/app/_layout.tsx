@@ -23,6 +23,7 @@ export default function RootLayout() {
       <ThemeProvider value={DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="my-favorite-stations" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="admin-login" options={{ headerShown: false }} />
           <Stack.Screen name="admin-home" options={{ headerShown: false }} />

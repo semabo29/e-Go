@@ -729,6 +729,19 @@ useEffect(() => {
               <Text style={styles.menuItemText}>Añadir Filtros</Text>
             </TouchableOpacity>
 
+            {/* Botón para ver estaciones favoritas */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false); // Tanquem el menú
+                router.push('../my-favorite-stations');
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="favorite" size={22} color="#ef4444" />
+              <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
