@@ -90,9 +90,9 @@ export default function InicioScreen() {
   function continueWithoutGoogleTemporarily() {
     const now = new Date().toISOString();
     setUser({
-      id: -1,
-      email: 'emulator@local.dev',
-      username: 'Emulator User',
+      id: 2,
+      email: 'guest@ego.app',
+      username: 'Guest User',
       created_at: now,
       updated_at: now,
     });
