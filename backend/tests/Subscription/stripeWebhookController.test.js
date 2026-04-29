@@ -37,6 +37,18 @@ describe('stripeWebhookController', () => {
     expect(res.send).toHaveBeenCalledWith(expect.stringMatching(/Webhook Error/i));
   });
 
+  test('devuelve 500 cuando falta configuración de webhook', async () => {
+    stripeLib.getStripe.mockReturnValue(null);
+    process.env.STRIPE_WEBHOOK_SECRET = '';
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+
+    await handleWebhook(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Webhook no configurado' }));
+  });
+
   test('procesa checkout.session.completed y guarda suscripción', async () => {
     const event = {
       type: 'checkout.session.completed',
@@ -76,6 +88,26 @@ describe('stripeWebhookController', () => {
         status: 'active',
       })
     );
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('ignora checkout.session.completed cuando no es modo subscription', async () => {
+    const event = {
+      type: 'checkout.session.completed',
+      data: { object: { mode: 'payment' } },
+    };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: { retrieve: jest.fn() },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+
+    await handleWebhook(req, res);
+
+    expect(subscriptionModel.upsertFromStripe).not.toHaveBeenCalled();
+    expect(stripe.subscriptions.retrieve).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({ received: true });
   });
 
@@ -163,5 +195,28 @@ describe('stripeWebhookController', () => {
       })
     );
     expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('retorna 500 si falla procesamiento interno del evento', async () => {
+    const event = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: { id: 'sub_broken' },
+      },
+    };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: {
+        retrieve: jest.fn().mockRejectedValue(new Error('stripe internal fail')),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+
+    await handleWebhook(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Error interno' }));
   });
 });

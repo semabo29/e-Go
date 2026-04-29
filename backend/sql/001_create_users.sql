@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS ego.usuari (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL UNIQUE,
   username   VARCHAR(100) NOT NULL UNIQUE,
+  password_hash VARCHAR(255),
   created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
@@ -29,5 +30,6 @@ CREATE TRIGGER usuarios_updated_at
 -- Comentarios:
 -- email:      lo devuelve Google al iniciar sesión; no lo introduce el usuario.
 -- username:  lo elige el usuario al registrarse; es como aparece en la app (único).
+-- password_hash: hash bcrypt para login local (NULL en usuarios solo Google).
 -- created_at: fecha de creación del usuario.
 -- updated_at: fecha de última modificación (se actualiza solo con el trigger).
