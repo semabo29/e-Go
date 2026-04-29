@@ -22,6 +22,7 @@ describe('Stations sync integration (axios mocked)', () => {
   });
 
   test('GET /stations/sync sincroniza y devuelve totalProcesados', async () => {
+    // Simula la llamada externa a axios con los datos mockeados.
     axios.get.mockResolvedValue({
       data: [
         {

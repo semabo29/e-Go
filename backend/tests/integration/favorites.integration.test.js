@@ -42,7 +42,7 @@ describe('Favorites integration (real DB)', () => {
   });
 
   test('POST /favorites crea un favorito (201)', async () => {
-    // Añade un favorito a partir de usuari_id + estacio_id
+    // Añade un favorito a partir de usuari_id + estacio_id y valida el payload.
     const res = await request(app).post('/favorites').send({
       usuari_id: testUserId,
       estacio_id: testStationId,
@@ -54,7 +54,7 @@ describe('Favorites integration (real DB)', () => {
   });
 
   test('GET /favorites retorna [] si el usuario no té preferits', async () => {
-    // Asegura que no existe cap favorito previo para este usuari
+    // Verifica la respuesta vacía cuando el usuario no tiene preferits.
     await pool.query('DELETE FROM ego.favorits WHERE usuari_id = $1', [emptyUserId]);
 
     const res = await request(app).get('/favorites').query({ usuari_id: emptyUserId });
@@ -64,7 +64,7 @@ describe('Favorites integration (real DB)', () => {
   });
 
   test('GET /favorites devuelve el favorito del usuario (200)', async () => {
-    // Lista los favoritos guardados para el usuario
+    // Verifica que el GET devuelve el favorito creado para el usuario.
     const res = await request(app).get('/favorites').query({ usuari_id: testUserId });
 
     expect(res.status).toBe(200);
@@ -76,7 +76,7 @@ describe('Favorites integration (real DB)', () => {
   });
 
   test('POST /favorites falla si faltan datos (500)', async () => {
-    // Asegura que el servicio valida la presencia de IDs
+    // Valida que un body vacío se traduzca a error 500 en el controlador.
     const res = await request(app).post('/favorites').send({});
 
     expect(res.status).toBe(500);
@@ -84,7 +84,7 @@ describe('Favorites integration (real DB)', () => {
   });
 
   test('DELETE /favorites elimina el favorito y lo borra de la DB (200)', async () => {
-    // Elimina el favorito y valida que no queda ninguna fila en la tabla
+    // Elimina el favorito y comprueba que la fila en la DB desaparece.
     const res = await request(app).delete('/favorites').send({
       usuari_id: testUserId,
       estacio_id: testStationId,

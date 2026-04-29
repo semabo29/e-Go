@@ -12,6 +12,7 @@ describeDb('canReach integration', () => {
   });
 
   testWithGoogleApi('GET /can-reach returns 200 for valid input', async () => {
+    // Datos válidos devuelven 200 y un payload con tipos esperados.
     const res = await request(app).get('/can-reach').query({
       startLat: 41.3851,
       startLon: 2.1734,
@@ -27,6 +28,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 400 for invalid vehicle type', async () => {
+    // vehicleType incorrecto devuelve 400 y mensaje exacto.
     const res = await request(app).get('/can-reach').query({
       startLat: 41.3851,
       startLon: 2.1734,
@@ -41,6 +43,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 400 for invalid start coordinates', async () => {
+    // coordenadas de inicio con formato inválido devuelve 400.
     const res = await request(app).get('/can-reach').query({
       startLat: 'invalid',
       startLon: 2.1734,
@@ -55,6 +58,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 400 for invalid battery', async () => {
+    // batería negativa devuelve 400.
     const res = await request(app).get('/can-reach').query({
       startLat: 41.3851,
       startLon: 2.1734,
@@ -69,6 +73,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 404 when no route is available', async () => {
+    // Simula ZERO_RESULTS de Google y devuelve 404.
     global.fetch = jest.fn(async () => ({
       json: async () => ({ status: 'ZERO_RESULTS' }),
     }));
@@ -87,6 +92,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 429 when Google quota limit is reached', async () => {
+    // Simula OVER_QUERY_LIMIT de Google y devuelve 429.
     global.fetch = jest.fn(async () => ({
       json: async () => ({ status: 'OVER_QUERY_LIMIT' }),
     }));
@@ -105,6 +111,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 500 for unexpected provider errors', async () => {
+    // Simula REQUEST_DENIED de Google y devuelve 500.
     global.fetch = jest.fn(async () => ({
       json: async () => ({ status: 'REQUEST_DENIED' }),
     }));
@@ -123,6 +130,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 400 when batteryKWh is missing', async () => {
+    // si falta batteryKWh devuelve 400.
     const res = await request(app).get('/can-reach').query({
       startLat: 41.3851,
       startLon: 2.1734,
@@ -136,6 +144,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 400 when startLon is missing', async () => {
+    // si falta startLon devuelve 400.
     const res = await request(app).get('/can-reach').query({
       startLat: 41.3851,
       endLat: 41.3871,
@@ -149,6 +158,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 400 when vehicleType is missing', async () => {
+    // si falta vehicleType devuelve 400.
     const res = await request(app).get('/can-reach').query({
       startLat: 41.3851,
       startLon: 2.1734,
@@ -162,6 +172,7 @@ describeDb('canReach integration', () => {
   });
 
   test('GET /can-reach returns 500 when provider fetch throws', async () => {
+    // Simula fallo de red y devuelve 500.
     global.fetch = jest.fn(async () => {
       throw new Error('network down');
     });

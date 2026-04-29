@@ -26,6 +26,7 @@ describe('Stations search integration (real DB)', () => {
   });
 
   test('GET /stations/search devuelve [] si falta q', async () => {
+    // Comprueba el contrato: sin parámetro `q` se devuelve lista vacía.
     const res = await request(app).get('/stations/search');
 
     expect(res.status).toBe(200);
@@ -33,6 +34,7 @@ describe('Stations search integration (real DB)', () => {
   });
 
   test('GET /stations/search encuentra la estación por nom (200)', async () => {
+    // Verifica que la búsqueda por `q` encuentra la estación insertada.
     const res = await request(app).get('/stations/search').query({ q: '77777' });
 
     expect(res.status).toBe(200);
@@ -41,6 +43,7 @@ describe('Stations search integration (real DB)', () => {
   });
 
   test('GET /stations/search respeta minKw (kw >= minKw)', async () => {
+    // Asegura que el filtro `minKw` aplica sobre la columna `kw`.
     const resLow = await request(app)
       .get('/stations/search')
       .query({ q: '77777', minKw: 40 });
@@ -57,6 +60,7 @@ describe('Stations search integration (real DB)', () => {
   });
 
   test('GET /stations/search retorna 400 quan minKw > maxKw', async () => {
+    // Valida la validación del controller para rango de potencia inválido.
     const res = await request(app)
       .get('/stations/search')
       .query({ q: '77777', minKw: 60, maxKw: 40 });
@@ -66,6 +70,7 @@ describe('Stations search integration (real DB)', () => {
   });
 
   test('GET /stations/search respeta connectorType (tipus_connexio)', async () => {
+    // Verifica el filtro de connector sobre `tipus_connexio`.
     const resOk = await request(app)
       .get('/stations/search')
       .query({ q: '77777', connectorType: testStationConnectorType });
@@ -82,6 +87,7 @@ describe('Stations search integration (real DB)', () => {
   });
 
   test('GET /stations/search respeta ac_dc (AC/DC)', async () => {
+    // Verifica el filtro de corriente sobre `ac_dc`.
     const resOk = await request(app)
       .get('/stations/search')
       .query({ q: '77777', ac_dc: testStationAcDc });
