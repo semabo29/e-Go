@@ -121,4 +121,61 @@ describeDb('canReach integration', () => {
     expect(res.status).toBe(500);
     expect(res.body.error).toBe('Error en el servidor');
   });
+
+  test('GET /can-reach returns 400 when batteryKWh is missing', async () => {
+    const res = await request(app).get('/can-reach').query({
+      startLat: 41.3851,
+      startLon: 2.1734,
+      endLat: 41.3871,
+      endLon: 2.1774,
+      vehicleType: 'car',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Batería inválida.');
+  });
+
+  test('GET /can-reach returns 400 when startLon is missing', async () => {
+    const res = await request(app).get('/can-reach').query({
+      startLat: 41.3851,
+      endLat: 41.3871,
+      endLon: 2.1774,
+      vehicleType: 'bike',
+      batteryKWh: 1,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Coordenadas de inicio inválidas.');
+  });
+
+  test('GET /can-reach returns 400 when vehicleType is missing', async () => {
+    const res = await request(app).get('/can-reach').query({
+      startLat: 41.3851,
+      startLon: 2.1734,
+      endLat: 41.3871,
+      endLon: 2.1774,
+      batteryKWh: 1,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Tipo de vehículo inválido.');
+  });
+
+  test('GET /can-reach returns 500 when provider fetch throws', async () => {
+    global.fetch = jest.fn(async () => {
+      throw new Error('network down');
+    });
+
+    const res = await request(app).get('/can-reach').query({
+      startLat: 41.3851,
+      startLon: 2.1734,
+      endLat: 41.3871,
+      endLon: 2.1774,
+      vehicleType: 'car',
+      batteryKWh: 20,
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Error en el servidor');
+  });
 });
