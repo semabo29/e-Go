@@ -8,6 +8,8 @@ const { getGooglePayload } = require('../lib/authHelpers');
 const router = express.Router();
 
 router.post('/google', authController.googleLogin);
+router.post('/local/login', authController.localLogin);
+router.post('/local/register', authController.localRegister);
 router.post('/register', authController.register);
 
 // Admin login: solo permite emails con fila en admins. Devuelve JWT para backoffice.

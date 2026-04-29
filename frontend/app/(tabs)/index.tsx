@@ -5,7 +5,9 @@ import TopBar from '../../components/TopBar';
 
 import {
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,17 +16,24 @@ import {
   View,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+
 
 import { useAuth } from '@/contexts/AuthContext';
-import { getApiUrl } from '@/constants/api';
+import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 
 const LOGO = require('../_assets/favicon.png');
 //Importamos el boton de favoritos
 import { FavoriteButton } from '../../components/FavoriteButton';
+
+GoogleSignin.configure({
+  webClientId: GOOGLE_WEB_CLIENT_ID,
+});
 
 interface Estacion {
   id: number;
@@ -51,7 +60,7 @@ export default function InicioScreen() {
   const connectorType = params.connectorType as string | undefined;
   const ac_dc = params.ac_dc as string | undefined;
 
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, setUser, logout, isLoading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
@@ -77,23 +86,10 @@ export default function InicioScreen() {
   const [authStep, setAuthStep] = useState<'google' | 'username'>('google');
   const [pendingAuth, setPendingAuth] = useState<{ pending_token: string } | null>(null);
   const [welcomeUsername, setWelcomeUsername] = useState('');
+  const [welcomeEmail, setWelcomeEmail] = useState('');
+  const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
-
-  function continueWithoutGoogleTemporarily() {
-    const now = new Date().toISOString();
-    setUser({
-      id: 2,
-      email: 'guest@ego.app',
-      username: 'Guest User',
-      created_at: now,
-      updated_at: now,
-    });
-    setAuthStep('google');
-    setPendingAuth(null);
-    setWelcomeUsername('');
-    setAuthError('');
-  }
 
   // Cargar estaciones de la base de datos
   useEffect(() => {
@@ -276,6 +272,146 @@ useEffect(() => {
   }
 
   const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc || !!showFavoritesFilter;
+  async function handleNativeLoginFromWelcome() {
+    setAuthLoadingGoogle(true);
+    setAuthError('');
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
+
+      if (!idToken) {
+        setAuthError('No se pudo obtener el token de Google');
+        return;
+      }
+
+      let res: Response;
+      try {
+        res = await fetch(`${getApiUrl()}/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+      } catch (fetchErr: unknown) {
+        const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        const base = getApiUrl();
+        console.error('[Inicio] fetch /auth/google:', fetchErr, '→ URL:', `${base}/auth/google`);
+        if (msg.includes('Network request failed')) {
+          setAuthError(
+            __DEV__
+              ? `No llega al backend. URL usada: ${base}. Con USB usa npm run start:usb (cierra Metro y vuelve a abrir), adb reverse y backend en marcha en el PC.`
+              : 'No llega al backend. Comprueba conexión y que el servidor esté en marcha.'
+          );
+        } else {
+          setAuthError('No se pudo conectar con el servidor.');
+        }
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAuthError(data.error || 'Error al iniciar sesión');
+        return;
+      }
+
+      if (data.user) {
+        setUser(data.user);
+        setAuthStep('google');
+        setPendingAuth(null);
+        setWelcomeUsername('');
+        return;
+      }
+
+      if (data.needsUsername && data.pending_token) {
+        setPendingAuth({ pending_token: data.pending_token });
+        setAuthStep('username');
+      }
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+      if (code === statusCodes.SIGN_IN_CANCELLED) {
+        setAuthStep('google');
+        setPendingAuth(null);
+        setWelcomeUsername('');
+        setAuthError('');
+      } else if (code === statusCodes.IN_PROGRESS) {
+        setAuthError('Ya hay un inicio de sesión en curso');
+      } else {
+        setAuthError('Error al conectar con Google');
+        console.error('[Google Native Error]', err);
+      }
+    } finally {
+      setAuthLoadingGoogle(false);
+    }
+  }
+
+  async function registerWithUsernameFromWelcome() {
+    if (!pendingAuth || !welcomeUsername.trim()) return;
+    setAuthLoadingGoogle(true);
+    setAuthError('');
+    try {
+      const res = await fetch(`${getApiUrl()}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pending_token: pendingAuth.pending_token,
+          username: welcomeUsername.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        setUser(data.user);
+        setAuthStep('google');
+        setPendingAuth(null);
+        setWelcomeUsername('');
+      } else {
+        setAuthError(data.error || 'Error al registrarse');
+      }
+    } catch {
+      setAuthError('No se pudo conectar con el servidor.');
+    } finally {
+      setAuthLoadingGoogle(false);
+    }
+  }
+
+  async function submitLocalWelcomeAuth() {
+    if (!welcomeEmail.trim() || !welcomePassword.trim()) {
+      setAuthError('Email y contraseña son obligatorios');
+      return;
+    }
+
+    setAuthLoadingGoogle(true);
+    setAuthError('');
+    try {
+      const res = await fetch(`${getApiUrl()}/auth/local/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: welcomeEmail.trim(),
+          password: welcomePassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || 'No se pudo iniciar sesión');
+        return;
+      }
+      if (data.user) {
+        setUser(data.user);
+      }
+    } catch {
+      setAuthError('No se pudo conectar con el servidor.');
+    } finally {
+      setAuthLoadingGoogle(false);
+    }
+  }
+
+  function resetWelcomeAuthToGoogle() {
+    setAuthStep('google');
+    setPendingAuth(null);
+    setWelcomeUsername('');
+    setAuthError('');
+  }
 
   if (authLoading) {
     return (
@@ -292,16 +428,14 @@ useEffect(() => {
   if (!user) {
     return (
       <View style={styles.screen}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={styles.authContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
         >
-          <View style={styles.card}>
+          <View style={styles.cardCompact}>
             <Image source={LOGO} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>Bienvenido a e-Go</Text>
-            <Text style={styles.subtitle}>
-              Tu navegador de estaciones de carga en Catalunya
-            </Text>
             <TouchableOpacity
               style={styles.adminLink}
               onPress={() => router.push('/admin-login')}
@@ -309,20 +443,100 @@ useEffect(() => {
             >
               <Text style={styles.adminLinkText}>Acceso Admin</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => router.push({ pathname: '/login', params: { openGoogle: '1' } })}
-              activeOpacity={0.8}
-            >
-              <Image
-                source={{ uri: 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png' }}
-                style={styles.googleIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.loginButtonText}>Continuar con Google</Text>
-            </TouchableOpacity>
+
+            {authStep === 'username' ? (
+              <>
+                <Text style={styles.welcomeUsernameTitle}>Elige tu nombre de usuario</Text>
+                <Text style={styles.welcomeUsernameSubtitle}>
+                  Así aparecerás en la aplicación
+                </Text>
+                <TextInput
+                  style={styles.welcomeUsernameInput}
+                  placeholder="Nombre de usuario"
+                  placeholderTextColor="#9ca3af"
+                  value={welcomeUsername}
+                  onChangeText={setWelcomeUsername}
+                  autoCapitalize="none"
+                />
+                {authError ? <Text style={styles.welcomeErrorText}>{authError}</Text> : null}
+                <TouchableOpacity
+                  style={styles.welcomePrimaryButton}
+                  onPress={registerWithUsernameFromWelcome}
+                  disabled={authLoadingGoogle}
+                  activeOpacity={0.8}
+                >
+                  {authLoadingGoogle ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.welcomePrimaryButtonText}>Continuar</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={resetWelcomeAuthToGoogle} style={styles.welcomeBackLink}>
+                  <Text style={styles.welcomeBackLinkText}>Volver a Google</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {authError ? <Text style={styles.welcomeErrorText}>{authError}</Text> : null}
+                <TouchableOpacity
+                  style={styles.loginButton}
+                  onPress={handleNativeLoginFromWelcome}
+                  disabled={authLoadingGoogle}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={{ uri: 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png' }}
+                    style={styles.googleIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.loginButtonText}>Continuar con Google</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.authSeparatorText}>o</Text>
+
+                <Text style={styles.localAuthHeading}>Inicia sesión</Text>
+                <TextInput
+                  style={styles.welcomeUsernameInput}
+                  placeholder="Mail"
+                  placeholderTextColor="#9ca3af"
+                  value={welcomeEmail}
+                  onChangeText={setWelcomeEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <TextInput
+                  style={styles.welcomeUsernameInput}
+                  placeholder="Contraseña"
+                  placeholderTextColor="#9ca3af"
+                  value={welcomePassword}
+                  onChangeText={setWelcomePassword}
+                />
+
+                <TouchableOpacity
+                  style={[styles.welcomePrimaryButton, styles.mailAuthButton]}
+                  onPress={submitLocalWelcomeAuth}
+                  activeOpacity={0.85}
+                  disabled={authLoadingGoogle}
+                >
+                  {authLoadingGoogle ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.welcomePrimaryButtonText}>Iniciar sesión</Text>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={styles.authSeparatorText}>o</Text>
+                <TouchableOpacity
+                  style={styles.welcomeBackLink}
+                  onPress={() => router.push({ pathname: '/login', params: { mode: 'register' } })}
+                  disabled={authLoadingGoogle}
+                >
+                  <Text style={styles.welcomeBackLinkText}>Regístrate</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     );
   }
@@ -571,8 +785,13 @@ useEffect(() => {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => {
+              onPress={async () => {
                 setMenuOpen(false);
+                try {
+                  await GoogleSignin.signOut();
+                } catch {
+                  // Si no hay sesión Google activa, igualmente cerramos sesión local.
+                }
                 logout();
               }}
               activeOpacity={0.7}
@@ -618,25 +837,35 @@ const styles = StyleSheet.create({
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)', // width, height, blur, color amb opacitat
     elevation: 4,
   },
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  cardCompact: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    alignItems: 'center',
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+    elevation: 4,
+  },
   logo: {
-    width: 160,
-    height: 160,
-    marginBottom: 24,
+    width: 120,
+    height: 120,
+    marginBottom: 12,
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: '#1a1a1a',
     textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 28,
-    paddingHorizontal: 8,
+    marginBottom: 12,
   },
   loginButton: {
     flexDirection: 'row',
@@ -660,6 +889,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1f2937',
   },
+  authSeparatorText: {
+    marginTop: 12,
+    marginBottom: 8,
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  localAuthHeading: {
+    width: '100%',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
   adminLink: {
     marginBottom: 16,
   },
@@ -667,6 +911,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#111827',
     fontWeight: '600',
+  },
+  welcomeUsernameTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1f2937',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  welcomeUsernameSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  welcomeUsernameInput: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  welcomeErrorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+    width: '100%',
+  },
+  welcomePrimaryButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: '#10b981',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  welcomePrimaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  mailAuthButton: {
+    marginBottom: 2,
+  },
+  welcomeBackLink: {
+    paddingVertical: 8,
+  },
+  welcomeBackLinkText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
   },
   centerMapButton: {
     position: 'absolute',

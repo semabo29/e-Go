@@ -20,6 +20,23 @@ async function googleLogin(req, res) {
   }
 }
 
+// POST /auth/local/login
+async function localLogin(req, res) {
+  try {
+    const data = await authService.loginWithEmail(req.body);
+    res.json(data);
+  } catch (err) {
+    if (err.code === 'BAD_REQUEST') {
+      return res.status(400).json({ error: err.message });
+    }
+    if (err.code === 'INVALID_CREDENTIALS') {
+      return res.status(401).json({ error: err.message });
+    }
+    console.error('Error en /auth/local/login:', err);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+}
+
 // POST /auth/register: completar registro con username (pending_token o code)
 async function register(req, res) {
   try {
@@ -41,7 +58,32 @@ async function register(req, res) {
   }
 }
 
+// POST /auth/local/register
+async function localRegister(req, res) {
+  try {
+    const { user } = await authService.registerWithEmail(req.body);
+    res.status(201).json({ user });
+  } catch (err) {
+    if (err.code === 'BAD_REQUEST') {
+      return res.status(400).json({ error: err.message });
+    }
+    if (err.code === '23505') {
+      const msg = err.constraint?.includes('email')
+        ? 'Este email ya está registrado'
+        : 'Ese nombre de usuario ya existe';
+      return res.status(409).json({ error: msg });
+    }
+    if (err.code === 'EMAIL_ALREADY_REGISTERED') {
+      return res.status(409).json({ error: err.message });
+    }
+    console.error('Error en /auth/local/register:', err);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+}
+
 module.exports = {
   googleLogin,
+  localLogin,
   register,
+  localRegister,
 };
