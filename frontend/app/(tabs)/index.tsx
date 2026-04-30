@@ -879,6 +879,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
+  subtitle: {
+    fontSize: 15,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
   loginButton: {
     flexDirection: 'row',
     alignItems: 'center',
