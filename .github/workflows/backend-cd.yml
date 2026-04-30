@@ -3,7 +3,7 @@ name: Deploy Backend to AWS Lambda
 on:
   push:
     branches:
-      - main
+      - development
     paths:
       - "backend/**"
       - ".github/workflows/backend-cd.yml"
