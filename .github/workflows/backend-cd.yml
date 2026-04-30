@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - main
-      - develop
-      - development
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-cd.yml"
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -29,8 +31,9 @@ jobs:
       - name: Create Zip Bundle
         working-directory: backend
         run: |
-          cp index.jsx index.js
-          zip -r deploy.zip index.js package.json node_modules routes lib controllers models services middleware
+          set -euo pipefail
+          node scripts/build-lambda-zip.js
+          cp lambda_deploy.zip deploy.zip
 
       - name: Deploy to AWS Lambda
         uses: appleboy/lambda-action@v0.2.0
