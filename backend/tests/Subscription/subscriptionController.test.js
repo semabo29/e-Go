@@ -97,5 +97,142 @@ describe('subscriptionController', () => {
         sessionId: 'cs_test_1',
       });
     });
+
+    test('devuelve 400 con userId inválido', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      const req = { body: { userId: 'abc', successUrl: 'https://ok', cancelUrl: 'https://cancel' } };
+      const res = mockRes();
+
+      await controller.createCheckoutSession(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'userId inválido' }));
+    });
+
+    test('devuelve 400 si faltan successUrl/cancelUrl', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      const req = { body: { userId: 1 } };
+      const res = mockRes();
+
+      await controller.createCheckoutSession(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringMatching(/Faltan successUrl/i) })
+      );
+    });
+
+    test('devuelve 404 cuando no existe el usuario', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      userModel.findById.mockResolvedValue(null);
+      const req = { body: { userId: 99, successUrl: 'https://ok', cancelUrl: 'https://cancel' } };
+      const res = mockRes();
+
+      await controller.createCheckoutSession(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Usuario no encontrado' }));
+    });
+
+    test('devuelve 500 cuando stripe lanza error al crear checkout', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      userModel.findById.mockResolvedValue({ id: 1, email: 'user@test.com' });
+      stripeLib.getStripe.mockReturnValue({
+        checkout: {
+          sessions: {
+            create: jest.fn().mockRejectedValue(new Error('stripe down')),
+          },
+        },
+      });
+      const req = { body: { userId: 1, successUrl: 'https://ok', cancelUrl: 'https://cancel' } };
+      const res = mockRes();
+
+      await controller.createCheckoutSession(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringMatching(/No se pudo crear la sesión/i) })
+      );
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    test('devuelve 503 si stripe no está configurado', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(false);
+      const req = { body: { userId: 1 } };
+      const res = mockRes();
+
+      await controller.cancelSubscription(req, res);
+      expect(res.status).toHaveBeenCalledWith(503);
+    });
+
+    test('devuelve 404 si no existe suscripción activa', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      subscriptionModel.findByUserId.mockResolvedValue(null);
+      const req = { body: { userId: 1 } };
+      const res = mockRes();
+
+      await controller.cancelSubscription(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe('reactivateSubscription', () => {
+    test('devuelve 400 con userId inválido', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      const req = { body: { userId: 'foo' } };
+      const res = mockRes();
+
+      await controller.reactivateSubscription(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    test('devuelve 500 cuando stripe falla al reactivar', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      subscriptionModel.findByUserId.mockResolvedValue({ stripe_subscription_id: 'sub_123' });
+      stripeLib.getStripe.mockReturnValue({
+        subscriptions: {
+          update: jest.fn().mockRejectedValue(new Error('cannot update')),
+        },
+      });
+      const req = { body: { userId: 7 } };
+      const res = mockRes();
+
+      await controller.reactivateSubscription(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('confirmCheckoutSession', () => {
+    test('sin stripe configurado devuelve 503', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(false);
+      const req = { body: { userId: 1, sessionId: 'cs_test_123' } };
+      const res = mockRes();
+
+      await controller.confirmCheckoutSession(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(503);
+    });
+
+    test('sin pago confirmado devuelve pending', async () => {
+      stripeLib.isStripeConfigured.mockReturnValue(true);
+      const retrieve = jest.fn().mockResolvedValue({
+        id: 'cs_test_1',
+        payment_status: 'unpaid',
+        client_reference_id: '1',
+      });
+      stripeLib.getStripe.mockReturnValue({ checkout: { sessions: { retrieve } } });
+      const req = { body: { userId: 1, sessionId: 'cs_test_1' } };
+      const res = mockRes();
+
+      await controller.confirmCheckoutSession(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          confirmed: false,
+          pending: true,
+        })
+      );
+    });
   });
 });

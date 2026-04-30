@@ -12,6 +12,18 @@ export type User = {
   updated_at: string;
 };
 
+function normalizeGuestUser(user: User): User {
+  const isLegacyGuest = user.id === -1 || user.email === 'emulator@local.dev';
+  if (!isLegacyGuest) return user;
+
+  return {
+    ...user,
+    id: 2,
+    email: 'guest@ego.app',
+    username: user.username || 'Guest User',
+  };
+}
+
 type AuthContextType = {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -32,7 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const json = await AsyncStorage.getItem(USER_STORAGE_KEY);
         if (json) {
           const saved = JSON.parse(json) as User;
-          setUserState(saved);
+          const normalized = normalizeGuestUser(saved);
+          setUserState(normalized);
+          if (normalized.id !== saved.id || normalized.email !== saved.email || normalized.username !== saved.username) {
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
+          }
         }
       } catch (e) {
         // fallo de lectura: seguimos sin usuario
@@ -43,9 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setUser = useCallback((u: User | null) => {
-    setUserState(u);
-    if (u) {
-      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(u));
+    const normalized = u ? normalizeGuestUser(u) : null;
+    setUserState(normalized);
+    if (normalized) {
+      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
     } else {
       AsyncStorage.removeItem(USER_STORAGE_KEY);
     }

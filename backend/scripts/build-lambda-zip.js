@@ -11,7 +11,7 @@ const backendRoot = path.join(__dirname, '..');
 const stagingDir = path.join(backendRoot, '.lambda-build');
 const zipPath = path.join(backendRoot, 'lambda_deploy.zip');
 
-const DIRS_TO_COPY = ['lib', 'routes', 'controllers', 'models', 'services'];
+const DIRS_TO_COPY = ['lib', 'routes', 'controllers', 'models', 'services', 'middleware'];
 const FILES = ['package.json'];
 
 function rmDirRecursive(dir) {

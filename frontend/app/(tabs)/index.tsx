@@ -5,7 +5,9 @@ import TopBar from '../../components/TopBar';
 
 import {
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -84,23 +86,10 @@ export default function InicioScreen() {
   const [authStep, setAuthStep] = useState<'google' | 'username'>('google');
   const [pendingAuth, setPendingAuth] = useState<{ pending_token: string } | null>(null);
   const [welcomeUsername, setWelcomeUsername] = useState('');
+  const [welcomeEmail, setWelcomeEmail] = useState('');
+  const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
-
-  function continueWithoutGoogleTemporarily() {
-    const now = new Date().toISOString();
-    setUser({
-      id: -1,
-      email: 'emulator@local.dev',
-      username: 'Emulator User',
-      created_at: now,
-      updated_at: now,
-    });
-    setAuthStep('google');
-    setPendingAuth(null);
-    setWelcomeUsername('');
-    setAuthError('');
-  }
 
   // Cargar estaciones de la base de datos
   useEffect(() => {
@@ -385,6 +374,38 @@ useEffect(() => {
     }
   }
 
+  async function submitLocalWelcomeAuth() {
+    if (!welcomeEmail.trim() || !welcomePassword.trim()) {
+      setAuthError('Email y contraseña son obligatorios');
+      return;
+    }
+
+    setAuthLoadingGoogle(true);
+    setAuthError('');
+    try {
+      const res = await fetch(`${getApiUrl()}/auth/local/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: welcomeEmail.trim(),
+          password: welcomePassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || 'No se pudo iniciar sesión');
+        return;
+      }
+      if (data.user) {
+        setUser(data.user);
+      }
+    } catch {
+      setAuthError('No se pudo conectar con el servidor.');
+    } finally {
+      setAuthLoadingGoogle(false);
+    }
+  }
+
   function resetWelcomeAuthToGoogle() {
     setAuthStep('google');
     setPendingAuth(null);
@@ -407,16 +428,14 @@ useEffect(() => {
   if (!user) {
     return (
       <View style={styles.screen}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={styles.authContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
         >
-          <View style={styles.card}>
+          <View style={styles.cardCompact}>
             <Image source={LOGO} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>Bienvenido a e-Go</Text>
-            <Text style={styles.subtitle}>
-              Tu navegador de estaciones de carga en Catalunya
-            </Text>
             <TouchableOpacity
               style={styles.adminLink}
               onPress={() => router.push('/admin-login')}
@@ -460,29 +479,64 @@ useEffect(() => {
               <>
                 {authError ? <Text style={styles.welcomeErrorText}>{authError}</Text> : null}
                 <TouchableOpacity
-                  style={[styles.loginButton, styles.skipGoogleButton]}
-                  onPress={continueWithoutGoogleTemporarily}
+                  style={styles.loginButton}
+                  onPress={handleNativeLoginFromWelcome}
                   disabled={authLoadingGoogle}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.loginButtonText}>Continuar sin Google (temporal)</Text>
+                  <Image
+                    source={{ uri: 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png' }}
+                    style={styles.googleIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.loginButtonText}>Continuar con Google</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.authSeparatorText}>o</Text>
+
+                <Text style={styles.localAuthHeading}>Inicia sesión</Text>
+                <TextInput
+                  style={styles.welcomeUsernameInput}
+                  placeholder="Mail"
+                  placeholderTextColor="#9ca3af"
+                  value={welcomeEmail}
+                  onChangeText={setWelcomeEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <TextInput
+                  style={styles.welcomeUsernameInput}
+                  placeholder="Contraseña"
+                  placeholderTextColor="#9ca3af"
+                  value={welcomePassword}
+                  onChangeText={setWelcomePassword}
+                />
+
+                <TouchableOpacity
+                  style={[styles.welcomePrimaryButton, styles.mailAuthButton]}
+                  onPress={submitLocalWelcomeAuth}
+                  activeOpacity={0.85}
+                  disabled={authLoadingGoogle}
+                >
+                  {authLoadingGoogle ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.welcomePrimaryButtonText}>Iniciar sesión</Text>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={styles.authSeparatorText}>o</Text>
+                <TouchableOpacity
+                  style={styles.welcomeBackLink}
+                  onPress={() => router.push({ pathname: '/login', params: { mode: 'register' } })}
+                  disabled={authLoadingGoogle}
+                >
+                  <Text style={styles.welcomeBackLinkText}>Regístrate</Text>
                 </TouchableOpacity>
               </>
             )}
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => router.push({ pathname: '/login', params: { openGoogle: '1' } })}
-              activeOpacity={0.8}
-            >
-              <Image
-                source={{ uri: 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png' }}
-                style={styles.googleIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.loginButtonText}>Continuar con Google</Text>
-            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     );
   }
@@ -731,8 +785,13 @@ useEffect(() => {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => {
+              onPress={async () => {
                 setMenuOpen(false);
+                try {
+                  await GoogleSignin.signOut();
+                } catch {
+                  // Si no hay sesión Google activa, igualmente cerramos sesión local.
+                }
                 logout();
               }}
               activeOpacity={0.7}
@@ -778,25 +837,35 @@ const styles = StyleSheet.create({
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)', // width, height, blur, color amb opacitat
     elevation: 4,
   },
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  cardCompact: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    alignItems: 'center',
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+    elevation: 4,
+  },
   logo: {
-    width: 160,
-    height: 160,
-    marginBottom: 24,
+    width: 120,
+    height: 120,
+    marginBottom: 12,
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: '#1a1a1a',
     textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 28,
-    paddingHorizontal: 8,
+    marginBottom: 12,
   },
   loginButton: {
     flexDirection: 'row',
@@ -820,14 +889,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1f2937',
   },
-  skipGoogleButton: {
+  authSeparatorText: {
     marginTop: 12,
-    paddingVertical: 8,
-  },
-  skipGoogleButtonText: {
+    marginBottom: 8,
+    color: '#6b7280',
     fontSize: 14,
-    color: '#475569',
     fontWeight: '600',
+  },
+  localAuthHeading: {
+    width: '100%',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   adminLink: {
     marginBottom: 16,
@@ -879,6 +954,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  mailAuthButton: {
+    marginBottom: 2,
   },
   welcomeBackLink: {
     paddingVertical: 8,

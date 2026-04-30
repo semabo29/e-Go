@@ -104,15 +104,15 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 10, // Manté la barra sobre l'ombra
   },
-  logoContainer: { justifyContent: 'center', alignItems: 'center' },
-  logo: { width: 100, height: 60 },
+  logoContainer: { justifyContent: 'center', alignItems: 'center', width: 68 },
+  logo: { width: 68, height: 40, transform: [{ scale: 1.22 }] },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F0F0F0',
     borderRadius: 25,
-    marginHorizontal: 15,
+    marginHorizontal: 8,
     paddingHorizontal: 12,
     height: 40,
   },
