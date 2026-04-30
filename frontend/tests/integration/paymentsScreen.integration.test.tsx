@@ -46,7 +46,15 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ url: 'https://checkout.test/123' }),
+          json: async () => ({ url: 'https://checkout.test/123', sessionId: 'cs_test_123' }),
+        } as any;
+      }
+
+      if (url.includes('/subscription/confirm-checkout-session')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ confirmed: true, pending: false }),
         } as any;
       }
 
