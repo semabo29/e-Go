@@ -4,6 +4,7 @@ const {
   createPendingToken,
   verifyPendingToken,
 } = require('../lib/authHelpers');
+const bcrypt = require('bcryptjs');
 const userModel = require('../models/userModel');
 
 // Errores que el controller puede mapear a status
@@ -63,7 +64,77 @@ async function register(body) {
   return { user };
 }
 
+function validateLocalCredentials({ email, password, username }, requireUsername) {
+  if (!email || typeof email !== 'string') {
+    throw AuthError('BAD_REQUEST', 'Falta email');
+  }
+  if (!password || typeof password !== 'string') {
+    throw AuthError('BAD_REQUEST', 'Falta password');
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(normalizedEmail)) {
+    throw AuthError('BAD_REQUEST', 'Email inválido');
+  }
+  if (password.length < 6) {
+    throw AuthError('BAD_REQUEST', 'La contraseña debe tener al menos 6 caracteres');
+  }
+  let normalizedUsername = null;
+  if (requireUsername) {
+    if (!username || typeof username !== 'string') {
+      throw AuthError('BAD_REQUEST', 'Falta username');
+    }
+    normalizedUsername = username.trim();
+    if (normalizedUsername.length < 2 || normalizedUsername.length > 100) {
+      throw AuthError('BAD_REQUEST', 'El nombre de usuario debe tener entre 2 y 100 caracteres');
+    }
+  }
+  return { normalizedEmail, normalizedUsername };
+}
+
+async function registerWithEmail(body) {
+  const { normalizedEmail, normalizedUsername } = validateLocalCredentials(body, true);
+  const passwordHash = await bcrypt.hash(body.password, 12);
+  const existingUser = await userModel.findByEmailWithPassword(normalizedEmail);
+
+  if (existingUser && existingUser.password_hash) {
+    throw AuthError('EMAIL_ALREADY_REGISTERED', 'Este email ya está registrado');
+  }
+
+  if (existingUser && !existingUser.password_hash) {
+    const updatedUser = await userModel.setPasswordHashByUserId(existingUser.id, passwordHash);
+    return { user: updatedUser };
+  }
+
+  const user = await userModel.createLocalUser(normalizedEmail, normalizedUsername, passwordHash);
+  return { user };
+}
+
+async function loginWithEmail(body) {
+  const { normalizedEmail } = validateLocalCredentials(body, false);
+  const user = await userModel.findByEmailWithPassword(normalizedEmail);
+  if (!user || !user.password_hash) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  const ok = await bcrypt.compare(body.password, user.password_hash);
+  if (!ok) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    },
+    needsUsername: false,
+  };
+}
+
 module.exports = {
   loginWithGoogle,
+  loginWithEmail,
   register,
+  registerWithEmail,
 };

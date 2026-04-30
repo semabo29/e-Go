@@ -1,8 +1,18 @@
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { getApiUrl } from '@/constants/api';
+import { WelcomePremiumModal } from '@/components/WelcomePremiumModal';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   buildFallbackStatus,
@@ -25,7 +35,17 @@ export default function PaymentsScreen() {
   const [startingCheckout, setStartingCheckout] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [showWelcomePremium, setShowWelcomePremium] = useState(false);
+  const [welcomeMode, setWelcomeMode] = useState<'new' | 'reactivated'>('reactivated');
   const isPremium = Boolean(subStatus?.isPremium);
+  const premiumPulse = React.useRef(new Animated.Value(0)).current;
+  const premiumScale = React.useRef(new Animated.Value(1)).current;
+  const premiumChipScale = React.useRef(new Animated.Value(1)).current;
+  const premiumAura = React.useRef(new Animated.Value(0)).current;
+  const prevIsPremium = React.useRef(false);
+  const checkoutFlowRef = React.useRef(false);
+
+  const sleep = useCallback((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)), []);
 
   const loadSubscriptionStatus = useCallback(async () => {
     if (!user?.id) {
@@ -51,9 +71,136 @@ export default function PaymentsScreen() {
     loadSubscriptionStatus();
   }, [loadSubscriptionStatus]);
 
+  useEffect(() => {
+    if (!isPremium) {
+      premiumPulse.stopAnimation();
+      premiumScale.stopAnimation();
+      premiumChipScale.stopAnimation();
+      premiumAura.stopAnimation();
+      premiumPulse.setValue(0);
+      premiumScale.setValue(1);
+      premiumChipScale.setValue(1);
+      premiumAura.setValue(0);
+      return;
+    }
+
+    Animated.parallel([
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(premiumPulse, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: false,
+          }),
+          Animated.timing(premiumPulse, {
+            toValue: 0,
+            duration: 1200,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: false,
+          }),
+        ])
+      ),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(premiumScale, {
+            toValue: 1.03,
+            duration: 1500,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: false,
+          }),
+          Animated.timing(premiumScale, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: false,
+          }),
+        ])
+      ),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(premiumChipScale, {
+            toValue: 1.08,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: false,
+          }),
+          Animated.timing(premiumChipScale, {
+            toValue: 1,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: false,
+          }),
+        ])
+      ),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(premiumAura, {
+            toValue: 1,
+            duration: 1600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: false,
+          }),
+          Animated.timing(premiumAura, {
+            toValue: 0,
+            duration: 1600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: false,
+          }),
+        ])
+      ),
+    ]).start();
+  }, [isPremium, premiumAura, premiumChipScale, premiumPulse, premiumScale]);
+
+  const playWelcomePremium = useCallback((mode: 'new' | 'reactivated') => {
+    setWelcomeMode(mode);
+    setShowWelcomePremium(true);
+  }, []);
+
+  useEffect(() => {
+    const becamePremium = !prevIsPremium.current && isPremium;
+    const fromCheckout = checkoutFlowRef.current;
+    prevIsPremium.current = isPremium;
+    if (!becamePremium || !fromCheckout) return;
+
+    checkoutFlowRef.current = false;
+    playWelcomePremium('new');
+  }, [isPremium, playWelcomePremium]);
+
   const periodEndLabel = useMemo(() => {
     return formatPeriodEnd(subStatus?.current_period_end ?? null);
   }, [subStatus?.current_period_end]);
+
+  const refreshStatusAfterCheckout = useCallback(
+    async (sessionId: string) => {
+      if (!user?.id) return;
+      const api = getApiUrl();
+      // El webhook puede tardar unos segundos; confirmamos por sesión y reintentamos.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const confirmRes = await fetch(`${api}/subscription/confirm-checkout-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, sessionId }),
+          });
+          if (confirmRes.ok) {
+            const confirmData = (await confirmRes.json()) as {
+              confirmed?: boolean;
+              pending?: boolean;
+            };
+            await loadSubscriptionStatus();
+            if (confirmData.confirmed) return;
+            if (!confirmData.pending) break;
+          }
+        } catch (err) {
+          console.warn('[payments] Error confirmando checkout:', err);
+        }
+        await sleep(1200 + attempt * 500);
+      }
+      await loadSubscriptionStatus();
+    },
+    [loadSubscriptionStatus, sleep, user?.id]
+  );
 
   const onStartPremium = useCallback(async () => {
     if (!user?.id || startingCheckout) return;
@@ -74,17 +221,19 @@ export default function PaymentsScreen() {
         throw new Error(`checkout ${res.status} ${errText}`);
       }
 
-      const data = (await res.json()) as { url?: string };
+      const data = (await res.json()) as { url?: string; sessionId?: string };
       if (!data.url) throw new Error('No se recibió URL de checkout');
+      if (!data.sessionId) throw new Error('No se recibió sessionId de checkout');
 
+      checkoutFlowRef.current = true;
       await WebBrowser.openBrowserAsync(data.url);
-      await loadSubscriptionStatus();
+      await refreshStatusAfterCheckout(data.sessionId);
     } catch (err) {
       console.warn('[payments] Error iniciando checkout:', err);
     } finally {
       setStartingCheckout(false);
     }
-  }, [loadSubscriptionStatus, startingCheckout, user?.id]);
+  }, [refreshStatusAfterCheckout, startingCheckout, user?.id]);
 
   const onCancelPremium = useCallback(async () => {
     if (!user?.id || canceling) return;
@@ -123,12 +272,13 @@ export default function PaymentsScreen() {
         throw new Error(`reactivate ${res.status} ${errText}`);
       }
       await loadSubscriptionStatus();
+      playWelcomePremium('reactivated');
     } catch (err) {
       console.warn('[payments] Error reactivando suscripción:', err);
     } finally {
       setReactivating(false);
     }
-  }, [loadSubscriptionStatus, reactivating, user?.id]);
+  }, [loadSubscriptionStatus, playWelcomePremium, reactivating, user?.id]);
 
   return (
     <ScrollView contentContainerStyle={styles.screen}>
@@ -153,13 +303,56 @@ export default function PaymentsScreen() {
             <Text style={styles.planDesc}>Mapa, favoritos y funcionalidades base.</Text>
           </View>
 
-          <View style={[styles.planCard, styles.premiumCard, isPremium && styles.activePremiumCard]}>
+          <Animated.View
+            style={[
+              styles.planCard,
+              styles.premiumCard,
+              isPremium && styles.activePremiumCard,
+              isPremium && {
+                transform: [{ scale: premiumScale }],
+                borderColor: premiumPulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['#22c55e', '#16a34a'],
+                }),
+                shadowOpacity: premiumPulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.08, 0.22],
+                }),
+              },
+            ]}
+          >
+            {isPremium && (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.premiumAura,
+                  {
+                    opacity: premiumAura.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.08, 0.24],
+                    }),
+                    transform: [
+                      {
+                        scale: premiumAura.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.96, 1.04],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            )}
             <View style={styles.headerRow}>
               <View>
                 <Text style={styles.premiumEyebrow}>e-Go Premium</Text>
                 <Text style={styles.premiumName}>Premium</Text>
               </View>
-              {isPremium && <Text style={styles.activePremiumChip}>Activo</Text>}
+              {isPremium && (
+                <Animated.View style={{ transform: [{ scale: premiumChipScale }] }}>
+                  <Text style={styles.activePremiumChip}>Activo</Text>
+                </Animated.View>
+              )}
             </View>
             <Text style={styles.premiumPrice}>4,99€/mes</Text>
             <Text style={styles.premiumDesc}>La experiencia completa de e-Go, sin límites.</Text>
@@ -215,9 +408,14 @@ export default function PaymentsScreen() {
                 </Pressable>
               )
             )}
-          </View>
+          </Animated.View>
         </View>
       )}
+      <WelcomePremiumModal
+        visible={showWelcomePremium}
+        mode={welcomeMode}
+        onDismiss={() => setShowWelcomePremium(false)}
+      />
     </ScrollView>
   );
 }
@@ -277,6 +475,16 @@ const styles = StyleSheet.create({
   premiumCard: {
     backgroundColor: '#ffffff',
     borderColor: '#dbe5ee',
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  premiumAura: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#22c55e',
+    borderRadius: 18,
   },
   activePremiumCard: {
     borderColor: '#22c55e',

@@ -100,3 +100,35 @@ npm install
 ```bash
 npx expo run:android 
 ```
+
+---
+
+## 🧪 Integration Testing (Backend)
+
+El backend ya incluye pruebas con `jest` y `supertest`. Para separar claramente las de integración (API + PostgreSQL real), se ha añadido un comando dedicado:
+
+```bash
+cd backend
+npm run test:integration
+```
+
+### Recomendaciones importantes
+
+- Estas pruebas están protegidas por `RUN_DB_INTEGRATION=true` para evitar ejecuciones accidentales contra una BD no preparada.
+- Puedes crear `backend/.env.integration`; si existe, se prioriza sobre `backend/.env`.
+- Si no quieres ejecutar integración, no pongas `RUN_DB_INTEGRATION=true` y se marcarán como `skipped`.
+
+### Ejecución típica
+
+PowerShell:
+
+```powershell
+cd backend
+$env:RUN_DB_INTEGRATION="true"
+npm run test:integration
+```
+
+### Qué cubren ahora
+
+- `GET /` (health check completo con conexión a DB).
+- Flujo real de `POST /car`, `GET /car`, `DELETE /car` usando datos de prueba aislados.

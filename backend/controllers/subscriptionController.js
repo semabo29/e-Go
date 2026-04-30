@@ -192,9 +192,81 @@ async function reactivateSubscription(req, res) {
   }
 }
 
+/**
+ * POST /subscription/confirm-checkout-session
+ * Body: { userId, sessionId }
+ * Confirma una checkout session y sincroniza estado premium sin depender del webhook.
+ */
+async function confirmCheckoutSession(req, res) {
+  try {
+    if (!isStripeConfigured()) {
+      return res.status(503).json({
+        error:
+          'Stripe no configurado. Añade STRIPE_SECRET_KEY y STRIPE_PRICE_ID_MONTHLY en .env.',
+      });
+    }
+
+    const uid = Number(req.body?.userId);
+    const sessionId = String(req.body?.sessionId || '');
+    if (!uid || Number.isNaN(uid)) {
+      return res.status(400).json({ error: 'userId inválido' });
+    }
+    if (!sessionId || !sessionId.startsWith('cs_')) {
+      return res.status(400).json({ error: 'sessionId inválido' });
+    }
+
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
+
+    if (session.client_reference_id && Number(session.client_reference_id) !== uid) {
+      return res.status(403).json({ error: 'La sesión no pertenece al usuario indicado' });
+    }
+
+    const paymentDone = session.payment_status === 'paid';
+    const subscriptionObj =
+      session.subscription && typeof session.subscription === 'object'
+        ? session.subscription
+        : null;
+
+    if (paymentDone && subscriptionObj?.id) {
+      const updated = await subscriptionModel.upsertFromStripe(uid, {
+        stripe_customer_id: subscriptionObj.customer,
+        stripe_subscription_id: subscriptionObj.id,
+        status: subscriptionObj.status,
+        current_period_end: subscriptionObj.current_period_end
+          ? new Date(subscriptionObj.current_period_end * 1000)
+          : null,
+        cancel_at_period_end: Boolean(subscriptionObj.cancel_at_period_end),
+      });
+
+      return res.json({
+        confirmed: true,
+        pending: false,
+        subscription: updated,
+        isPremium: ['active', 'trialing'].includes(updated.status),
+      });
+    }
+
+    return res.json({
+      confirmed: false,
+      pending: true,
+      payment_status: session.payment_status || null,
+    });
+  } catch (err) {
+    console.error('[subscription] confirmCheckoutSession:', err);
+    return res.status(500).json({
+      error: 'No se pudo confirmar la sesión de pago',
+      details: err.message,
+    });
+  }
+}
+
 module.exports = {
   createCheckoutSession,
   getStatus,
   cancelSubscription,
   reactivateSubscription,
+  confirmCheckoutSession,
 };

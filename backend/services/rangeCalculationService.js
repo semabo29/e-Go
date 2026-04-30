@@ -117,6 +117,10 @@ async function getRoute(start, end, vehicleType) {
 
     return { distanceMeters, durationSeconds, polyline: sampledPolyline };
   } catch (error) {
+    // Preserve typed domain errors so the controller can map them to HTTP status codes.
+    if (error && typeof error === 'object' && error.type) {
+      throw error;
+    }
     const message =
       error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get route: ${message}`, { cause: error });
