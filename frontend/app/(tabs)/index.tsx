@@ -33,6 +33,7 @@ import { FavoriteButton } from '../../components/FavoriteButton';
 
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
+import { Polyline } from 'react-native-maps'; //Para pintar el trazado de la ruta
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -101,9 +102,13 @@ export default function InicioScreen() {
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
   //Estado para saber el punto  marcado por el usuario (lo uso para cunado un conductor quiere ir a un sitio que no es un punto de carga y lo selecciona en el mapa)
   const [selectedLocation, setSelectedLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  //Estado para saber las coordenadas que ocupan la ruta
+  const [routeCoords, setRouteCoords] = useState<{latitude: number, longitude: number}[]>([]);
 
   //Funcion para empezar la navegacion
   const handleStartNavigation = (coordenadas: {latitude: number, longitude: number}) => {
+      setRouteCoords([]);
+      setRouteInfo(null);
       setRouteDestination(coordenadas);
       //Preguntamos al usuario el origen
       Alert.alert(
@@ -682,7 +687,7 @@ useEffect(() => {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          key={`map-${displayedStations.length}`} //TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos
+          key={`map-${displayedStations.length}-${isNavigating}`}  //TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos o cuando se acaba la navegación (para borrar el recorrido de esta)
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
           showsUserLocation={true}
@@ -697,6 +702,11 @@ useEffect(() => {
                 latitude: e.nativeEvent.coordinate.latitude,
                 longitude: e.nativeEvent.coordinate.longitude,
               });
+              //Limpiamos la ruta
+              setIsNavigating(false);
+              setRouteCoords([]);
+              setRouteDestination(null);
+              setRouteInfo(null);
             }
           }}
         >
@@ -713,6 +723,9 @@ useEffect(() => {
                 e.stopPropagation(); //Evita que el toque pase al mapa y cierre el panel
                 setSelectedStation(est);
                 setSelectedLocation(null); //Limpiamos el punto manual si seleccionan una estación
+                setRouteCoords([]);
+                setIsNavigating(false);
+                setRouteInfo(null);
               }}
             />
           ))}
@@ -720,6 +733,7 @@ useEffect(() => {
             {/*Marcador de la ubicacion clicada por el usuario con un clic manualmente */}
               {!isNavigating && selectedLocation && !selectedStation && (
                 <Marker
+                  key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
                   coordinate={selectedLocation}
                   pinColor="#f59e0b" //Un color naranja para diferenciarlo de las estaciones
                   title="Ubicación seleccionada"
@@ -741,7 +755,7 @@ useEffect(() => {
                 origin={routeOrigin}
                 destination={routeDestination}
                 apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''} //Usa la del .env
-                strokeWidth={4}
+                strokeWidth={0} //oculta la linea nativa que da problem
                 strokeColor="#3b82f6" //Un azul eléctrico estilo Google Maps
                 mode="DRIVING"
                 onReady={(result) => {
@@ -750,6 +764,8 @@ useEffect(() => {
                     distance: result.distance,
                     duration: result.duration
                   });
+                    //Guardamos las coordenadas para pintarlas nosotros con el polyline
+                    setRouteCoords(result.coordinates);
 
                   //Auto-Zoom: Centra el mapa para que se vean tanto el origen como el destino
                   mapRef.current?.fitToCoordinates(result.coordinates, {
@@ -758,10 +774,20 @@ useEffect(() => {
                   });
                 }}
                 onError={(errorMessage) => {
-                  Alert.alert("Error de ruta", "No se ha podido calcular la ruta. Revisa que 'Directions API' esté activa en Google Cloud.");
+                  Alert.alert("Error de ruta", "No se ha podido calcular la ruta");
                   console.log(errorMessage);
                 }}
               />
+            )}
+            {/*Nuestro propio trazado de la ruta (100% controlable) */}
+              {isNavigating && routeCoords.length > 0 && (
+                <Polyline
+                  key={`polyline-${routeCoords.length}`}
+                  coordinates={routeCoords}
+                  strokeWidth={4}
+                  strokeColor="#3b82f6"
+                  lineJoin="round"
+                />
             )}
         </MapView>
           {/* ========================================================== */}
@@ -786,6 +812,9 @@ useEffect(() => {
                     setRouteOrigin(null);
                     setRouteDestination(null);
                     setRouteInfo(null);
+                    setRouteCoords([]);
+                    setSelectedLocation(null);
+                    setSelectedStation(null);
                   }}
                 >
                   <MaterialIcons name="close" size={24} color="#fff" />
