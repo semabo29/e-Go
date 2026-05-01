@@ -941,7 +941,7 @@ useEffect(() => {
                                longitude: parseFloat(selectedStation.longitud)
                              })}
             >
-              <Text style={styles.buttonText}>Cómo llegar</Text>
+              <Text style={styles.routeButtonText}>Cómo llegar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -976,7 +976,7 @@ useEffect(() => {
                     activeOpacity={0.8}
                     onPress={() => handleStartNavigation(selectedLocation)}
                   >
-                    <Text style={styles.buttonText}>Cómo llegar</Text>
+                    <Text style={styles.routeButtonText}>Cómo llegar</Text>
                   </TouchableOpacity>
                 </View>
               )}
