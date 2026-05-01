@@ -65,7 +65,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
       </TouchableOpacity>
     ),
     Marker: (props: any) => (
-      <TouchableOpacity testID="station-marker" onPress={(e) => {
+      <TouchableOpacity testID="station-marker" onPress={(e: any) => {
         if(props.onPress) props.onPress({ stopPropagation: () => {} });
       }} />
     ),
