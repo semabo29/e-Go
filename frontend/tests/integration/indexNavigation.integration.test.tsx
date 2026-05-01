@@ -19,7 +19,7 @@ console.warn = (...args: any[]) => {
   originalConsoleWarn(...args);
 };
 
-// 2. MOCK CORRECTO DE LOS ICONOS PARA QUE RENDERICE EL TEXTO Y NO EL SÍMBOLO
+//MOCK CORRECTO DE LOS ICONOS PARA QUE RENDERICE EL TEXTO Y NO EL SÍMBOLO
 jest.mock('@expo/vector-icons/MaterialIcons', () => {
   const { Text } = require('react-native');
   return ({ name }: any) => <Text>{name}</Text>;
