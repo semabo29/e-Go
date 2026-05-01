@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
+import { Image, View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { getApiUrl } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,8 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 
 const LOGO = require('./_assets/favicon.png'); // Ruta a tu imagen de perfil (el logo de momento)
-const RAINBOW_BASE_COLORS = ['#3b82f6', '#a855f7', '#ec4899', '#f97316', '#facc15', '#3fad17', '#14b8b0'];
-const GRADIENT_STEPS = 42; //
+const RAINBOW_BASE_COLORS = ['#3b82f6', '#a855f7', '#ec4899', '#f97316', '#facc15', '#3fad17', '#14b8b0', '#3b82f6'];
+const GRADIENT_STEPS = 48; //
 
 const hexToRgb = (hex: string) => {
   const normalized = hex.replace('#', '');
@@ -56,17 +56,21 @@ interface PerfilUser {
   username: string;
   email: string;
   punts: number;
-  data_creacio: string;
+  created_at: string;
   premium: boolean;
   admin: boolean;
   empresa: boolean;
 }
 
 export default function PerfilScreen() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
 
   const [perfil, setPerfil] = useState<PerfilUser>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedUsername, setEditedUsername] = useState('');
+  const [editedEmail, setEditedEmail] = useState('');
   const [rainbowShift, setRainbowShift] = useState(0);
   const queryParams = useLocalSearchParams();
   const userIdParam = queryParams.userId || queryParams.usuari_id;
@@ -78,20 +82,13 @@ export default function PerfilScreen() {
   useEffect(() => {
     const interval = setInterval(() => {
       setRainbowShift((shift) => (shift + 1) % RAINBOW_COLORS.length);
-    }, 200);
+    }, 150);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     fetchPerfil();
   }, [idUser]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRainbowShift((shift) => (shift + 1) % RAINBOW_COLORS.length);
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchPerfil = async () => {
     if (!user?.id) return;
@@ -100,10 +97,35 @@ export default function PerfilScreen() {
       const response = await fetch(`${getApiUrl()}/user?usuari_id=${idUser}`); // dades de l'usuari
       const data = await response.json();
       setPerfil(data);
+      setEditedUsername(data.username ?? '');
+      setEditedEmail(data.email ?? '');
     } catch (error) {
       console.error("Error cargando perfil:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const savePerfil = async () => {
+    if (!perfil || perfil.id !== user?.id) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/user?usuari_id=${idUser}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: editedUsername, email: editedEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Error saving profile');
+      }
+      setPerfil(data);
+      setUser({ ...user, username: data.username, email: data.email });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error guardando perfil:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -149,9 +171,44 @@ export default function PerfilScreen() {
           <View style={styles.profileContent}>
             {renderProfileName()}
             {perfil?.id === user?.id && (
-              <Text style={styles.profileEmail}>{perfil?.email ?? 'email@ejemplo.com'}</Text>
+              <>
+                {!isEditing ? (
+                  <>
+                    <Text style={styles.profileEmail}>{perfil?.email ?? 'email@ejemplo.com'}</Text>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => {
+                        setEditedUsername(perfil?.username ?? '');
+                        setEditedEmail(perfil?.email ?? '');
+                        setIsEditing(true);
+                      }}
+                    >
+                      <Text style={styles.editButtonText}>Modificar perfil</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      value={editedUsername}
+                      onChangeText={setEditedUsername}
+                      placeholder="Nombre de usuario"
+                      placeholderTextColor="#94a3b8"
+                    />
+                    <TextInput
+                      style={styles.input}
+                      value={editedEmail}
+                      onChangeText={setEditedEmail}
+                      placeholder="Email"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </>
+                )}
+              </>
             )}
-            <Text style={styles.profileSubtitle}>Foto de perfil pendiente</Text>
+            <Text style={styles.profileSubtitle}>Se unió el {perfil?.created_at ? new Date(perfil.created_at).toLocaleDateString() : 'fecha no disponible'}</Text>
             {(perfil?.empresa || perfil?.admin) && (
               <View style={styles.badgeRow}>
                 {perfil?.empresa && (
@@ -166,9 +223,29 @@ export default function PerfilScreen() {
                     <Text style={styles.badgeLabel}>Admin</Text>
                   </View>
                 )}
-                
               </View>
-              
+            )}
+            {perfil?.id === user?.id && isEditing && (
+              <>
+                <TouchableOpacity
+                  style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+                  onPress={savePerfil}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setEditedUsername(perfil?.username ?? '');
+                    setEditedEmail(perfil?.email ?? '');
+                    setIsEditing(false);
+                  }}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>
@@ -290,6 +367,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#475569',
     fontWeight: '600',
+  },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 12,
+    color: '#111827',
+  },
+  editButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  editButtonText: {
+    color: '#0f172a',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  saveButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#10b981',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#0f172a',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#86efac',
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   statsCard: {
     backgroundColor: '#e0f2fe',

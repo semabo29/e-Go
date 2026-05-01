@@ -7,4 +7,9 @@ async function getUser(userId) {
   return info;
 }
 
-module.exports = { getUser };
+async function updateUser(userId, username, email) {
+  const updated = await userModel.updateUser(userId, username, email);
+  return updated;
+}
+
+module.exports = { getUser, updateUser };

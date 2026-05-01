@@ -61,6 +61,31 @@ async function getInfoUser(userId) {
   return user.rows[0];
 }
 
+async function updateUser(userId, username, email) {
+  const updates = [];
+  const values = [userId];
+
+  if (username) {
+    values.push(username);
+    updates.push(`username = $${values.length}`);
+  }
+  if (email) {
+    values.push(email);
+    updates.push(`email = $${values.length}`);
+  }
+
+  if (updates.length === 0) {
+    throw new Error('No fields to update');
+  }
+
+  const query = `UPDATE ${USUARIOS_TABLE}
+       SET ${updates.join(', ')}, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, email, username, created_at, updated_at`;
+  const result = await pool.query(query, values);
+  return result.rows[0] || null;
+}
+
 async function createUser(email, username) {
   const result = await pool.query(
     `INSERT INTO ${USUARIOS_TABLE} (email, username) VALUES ($1, $2)
@@ -100,6 +125,7 @@ module.exports = {
   findByEmailWithPassword,
   findById,
   getInfoUser,
+  updateUser,
   createUser,
   createLocalUser,
   setPasswordHashByUserId,
