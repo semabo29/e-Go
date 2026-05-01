@@ -851,7 +851,7 @@ useEffect(() => {
         )}
 
         {/* Mini panel de información de la estación */}
-        {!isNavigating && selectedStation && (
+        {!isNavigating && selectedStation && !isSelectingOrigin &&(
           <View style={styles.infoPanel}>
             <View style={styles.infoHandle} />
 
