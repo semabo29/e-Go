@@ -119,7 +119,7 @@ export default function PerfilScreen() {
       if (!response.ok) {
         throw new Error(data.error || 'Error saving profile');
       }
-      setPerfil(data);
+      setPerfil({ ...perfil, username: data.username, email: data.email });
       setUser({ ...user, username: data.username, email: data.email });
       setIsEditing(false);
     } catch (error) {
