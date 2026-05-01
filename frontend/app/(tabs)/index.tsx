@@ -708,115 +708,6 @@ useEffect(() => {
     setAuthError('');
   }
 
-  async function handleNativeLoginFromWelcome() {
-    setAuthLoadingGoogle(true);
-    setAuthError('');
-    try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.data?.idToken;
-
-      if (!idToken) {
-        setAuthError('No se pudo obtener el token de Google');
-        return;
-      }
-
-      let res: Response;
-      try {
-        res = await fetch(`${getApiUrl()}/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-        });
-      } catch (fetchErr: unknown) {
-        const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-        const base = getApiUrl();
-        console.error('[Inicio] fetch /auth/google:', fetchErr, '→ URL:', `${base}/auth/google`);
-        if (msg.includes('Network request failed')) {
-          setAuthError(
-            __DEV__
-              ? `No llega al backend. URL usada: ${base}. Con USB usa npm run start:usb (cierra Metro y vuelve a abrir), adb reverse y backend en marcha en el PC.`
-              : 'No llega al backend. Comprueba conexión y que el servidor esté en marcha.'
-          );
-        } else {
-          setAuthError('No se pudo conectar con el servidor.');
-        }
-        return;
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setAuthError(data.error || 'Error al iniciar sesión');
-        return;
-      }
-
-      if (data.user) {
-        setUser(data.user);
-        setAuthStep('google');
-        setPendingAuth(null);
-        setWelcomeUsername('');
-        return;
-      }
-
-      if (data.needsUsername && data.pending_token) {
-        setPendingAuth({ pending_token: data.pending_token });
-        setAuthStep('username');
-      }
-    } catch (err: unknown) {
-      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
-      if (code === statusCodes.SIGN_IN_CANCELLED) {
-        setAuthStep('google');
-        setPendingAuth(null);
-        setWelcomeUsername('');
-        setAuthError('');
-      } else if (code === statusCodes.IN_PROGRESS) {
-        setAuthError('Ya hay un inicio de sesión en curso');
-      } else {
-        setAuthError('Error al conectar con Google');
-        console.error('[Google Native Error]', err);
-      }
-    } finally {
-      setAuthLoadingGoogle(false);
-    }
-  }
-
-  async function registerWithUsernameFromWelcome() {
-    if (!pendingAuth || !welcomeUsername.trim()) return;
-    setAuthLoadingGoogle(true);
-    setAuthError('');
-    try {
-      const res = await fetch(`${getApiUrl()}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pending_token: pendingAuth.pending_token,
-          username: welcomeUsername.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.user) {
-        setUser(data.user);
-        setAuthStep('google');
-        setPendingAuth(null);
-        setWelcomeUsername('');
-      } else {
-        setAuthError(data.error || 'Error al registrarse');
-      }
-    } catch {
-      setAuthError('No se pudo conectar con el servidor.');
-    } finally {
-      setAuthLoadingGoogle(false);
-    }
-  }
-
-  function resetWelcomeAuthToGoogle() {
-    setAuthStep('google');
-    setPendingAuth(null);
-    setWelcomeUsername('');
-    setAuthError('');
-  }
-
   if (authLoading) {
     return (
       <View style={[styles.screen, styles.centered]}>
@@ -1438,7 +1329,7 @@ useEffect(() => {
               onPress={() => {
                 setMenuOpen(false); // Tanquem el menú
                 router.push({
-                  pathname: '/user',
+                  pathname: '../user',
                   params: { userId: user.id }
                 });
               }}
