@@ -25,7 +25,22 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
+import { ChargingActionCard } from '../../components/ChargingActionCard';
+import { ChargingResultModal } from '../../components/ChargingResultModal';
+import { StartChargingButton } from '../../components/StartChargingButton';
+import {
+  requestLocationPermissions,
+  isLocationServiceEnabled,
+  getCurrentLocation,
+  calculateDistanceInMeters
+} from '@/services/chargingLocationService';
+import {
+  startChargingSession as apiStartCharging,
+  endChargingSession as apiEndCharging
+} from '@/services/chargingApiService';
 
 const LOGO = require('../_assets/favicon.png');
 //Importamos el boton de favoritos
@@ -59,8 +74,37 @@ export default function InicioScreen() {
   const showFavoritesFilter = params.showFavorites === 'true'; //Leemos si el filtro de favoritos esta activo
   const connectorType = params.connectorType as string | undefined;
   const ac_dc = params.ac_dc as string | undefined;
+  const autoSelectStationId = params.autoSelectStationId as string | undefined;
+  const [pendingAutoStart, setPendingAutoStart] = useState(false);
 
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
+  const {
+    isCharging,
+    session,
+    distanceToStation,
+    elapsedSeconds,
+    startChargingSession,
+    updateSessionId,
+    stopChargingSession,
+    cancelChargingSession,
+    autoStopResult,
+    clearAutoStopResult
+  } = useCharging();
+
+  // Estados para resultado de carga
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [chargingResult, setChargingResult] = useState<{
+    durationMinutes: number;
+    basePoints: number;
+    totalPoints: number;
+    multiplier: number;
+    isPremium: boolean;
+    sessionId: number;
+    reason: string;
+  } | null>(null);
+  const [resultLoading, setResultLoading] = useState(false);
+  const [chargingError, setChargingError] = useState('');
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
@@ -90,6 +134,165 @@ export default function InicioScreen() {
   const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
+
+  // Función para manejar el inicio de una sesión de carga
+  const handleStartCharging = async (): Promise<boolean> => {
+    if (!user || !selectedStation || !userLocation) {
+      setChargingError('Faltan datos necesarios para iniciar la carga');
+      return false;
+    }
+
+    try {
+      // Verificar permisos de ubicación
+      const hasPermission = await requestLocationPermissions();
+      if (!hasPermission) {
+        setChargingError('Necesitas otorgar permisos de ubicación');
+        return false;
+      }
+
+      // Verificar que los servicios de ubicación estén habilitados
+      const isEnabled = await isLocationServiceEnabled();
+      if (!isEnabled) {
+        setChargingError('Por favor, activa los servicios de ubicación en tu dispositivo');
+        return false;
+      }
+
+      // Obtener ubicación actual
+      const currentLocation = await getCurrentLocation();
+      if (!currentLocation) {
+        setChargingError('No se pudo obtener tu ubicación actual');
+        return false;
+      }
+
+      // VERIFICACIÓ DE DISTÀNCIA AMB POP-UP
+      const distance = calculateDistanceInMeters(
+        currentLocation.coords.latitude,
+        currentLocation.coords.longitude,
+        parseFloat(selectedStation.latitud),
+        parseFloat(selectedStation.longitud)
+      );
+
+      if (distance > 30) {
+        Alert.alert(
+          'Demasiado lejos',
+          `Te encuentras a ${distance} metros del punto de carga.\n\nDebes acercarte a menos de 30 metros para poder iniciar la carga.`,
+          [{ text: 'Entendido', style: 'default' }]
+        );
+        return false; // Aturem l'execució aquí mateix
+      }
+
+      // Iniciar sesión en el contexto
+      const success = await startChargingSession(
+        selectedStation.id,
+        parseFloat(selectedStation.latitud),
+        parseFloat(selectedStation.longitud),
+        currentLocation.coords.latitude,
+        currentLocation.coords.longitude
+      );
+
+      if (success) {
+        // Crear sesión en el backend
+        const apiResponse = await apiStartCharging(
+          user.id,
+          selectedStation.id,
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude
+        );
+
+        // Guardar el ID de la sesión en el contexto
+        if (apiResponse.session?.id) {
+          // Actualizar sesión con ID del backend
+          updateSessionId(apiResponse.session.id);
+          console.log('Sesión creada en backend:', apiResponse.session.id);
+        }
+      }
+
+      return success;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al iniciar carga';
+      setChargingError(message);
+      console.error('Error iniciando carga:', error);
+      return false;
+    }
+  };
+
+  // Escoltar si el context tanca la sessió automàticament (ex: distància superada)
+    useEffect(() => {
+      if (autoStopResult) {
+        const points = autoStopResult.apiResponse?.pointsGained || { basePoints: 0, totalPoints: 0, multiplier: 1 };
+
+        setChargingResult({
+          durationMinutes: autoStopResult.durationMinutes,
+          basePoints: points.basePoints,
+          totalPoints: points.totalPoints,
+          multiplier: points.multiplier,
+          isPremium: autoStopResult.apiResponse?.isPremium || false,
+          sessionId: autoStopResult.session?.id || 0,
+          reason: autoStopResult.reason,
+        });
+
+        setShowResultModal(true);
+        clearAutoStopResult(); // Ho netegem perquè no es torni a obrir sol
+      }
+    }, [autoStopResult]);
+
+  // Función para finalizar la carga
+    const handleFinishCharging = async () => {
+      if (!user || !session) return;
+
+      setResultLoading(true);
+      try {
+        // Cridem al context i ell ja s'encarrega de parlar amb el backend
+        const result = await stopChargingSession('manual');
+
+        if (result && result.apiResponse) {
+          // Agafem els punts reals que ens retorna el backend
+          const points = result.apiResponse.pointsGained;
+
+          setChargingResult({
+            durationMinutes: result.durationMinutes,
+            basePoints: points.basePoints,
+            totalPoints: points.totalPoints,
+            multiplier: points.multiplier,
+            isPremium: result.apiResponse.isPremium,
+            sessionId: result.session?.id || 0,
+            reason: result.reason,
+          });
+
+          setShowResultModal(true);
+        }
+      } catch (error) {
+        console.error('Error al finalizar:', error);
+        Alert.alert('Error', 'No se ha podido finalizar la sesión correctamente.');
+      } finally {
+        setResultLoading(false);
+      }
+    };
+
+  // Función para cancelar la carga
+  const handleCancelCharging = () => {
+    Alert.alert(
+      'Cancelar carga',
+      '¿Estás seguro de que deseas cancelar la sesión de carga?',
+      [
+        { text: 'Continuar', style: 'cancel' },
+        {
+          text: 'Cancelar sesión',
+          style: 'destructive',
+          onPress: () => {
+            cancelChargingSession();
+            setChargingError('');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResultModalConfirm = () => {
+    setShowResultModal(false);
+    setChargingResult(null);
+    setSelectedStation(null);
+  };
 
   // Cargar estaciones de la base de datos
   useEffect(() => {
@@ -127,6 +330,47 @@ export default function InicioScreen() {
       }
     })();
   }, [user]);
+
+// --- AUTO-SELECCIONAR ESTACIÓ I PREPARAR CÀRREGA ---
+  useEffect(() => {
+    if (autoSelectStationId && estaciones.length > 0) {
+      const stationToSelect = estaciones.find(est => est.id.toString() === autoSelectStationId);
+
+      if (stationToSelect) {
+        // Obrim el panell inferior assignant-la
+        setSelectedStation(stationToSelect);
+
+        // Centrem la càmera del mapa a sobre de l'estació
+        if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
+          mapRef.current.animateToRegion({
+            latitude: parseFloat(stationToSelect.latitud),
+            longitude: parseFloat(stationToSelect.longitud),
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }, 1000);
+        }
+
+        // Activem l'avís d'inici automàtic
+        setPendingAutoStart(true);
+
+        // Esborrem el paràmetre de la URL
+        router.setParams({ autoSelectStationId: '' });
+      }
+    }
+  }, [autoSelectStationId, estaciones]);
+
+  // --- INICIAR LA CÀRREGA AUTOMÀTICAMENT QUAN TOT ESTIGUI LLEST ---
+  useEffect(() => {
+    // Si tenim la instrucció d'iniciar, el panell està obert, i tenim GPS...
+    if (pendingAutoStart && selectedStation && userLocation && !isCharging) {
+
+      // Apaguem l'avís immediatament perquè només s'executi un cop
+      setPendingAutoStart(false);
+
+      // Executem la funció d'iniciar càrrega (la mateixa que fa anar el botó)
+      handleStartCharging();
+    }
+  }, [pendingAutoStart, selectedStation, userLocation, isCharging]);
 
   const fetchEstaciones = async () => {
     setLoadingEstaciones(true);
@@ -743,15 +987,83 @@ useEffect(() => {
               )}
             </View>
 
-            <TouchableOpacity
-              style={styles.routeButton}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="directions" size={20} color="#fff" />
-              <Text style={styles.routeButtonText}>Cómo llegar</Text>
-            </TouchableOpacity>
+            {/* Mostrar timer si está cargando */}
+            {isCharging && (
+              <View>
+                <ChargingTimerDisplay
+                  elapsedSeconds={elapsedSeconds}
+                  distanceToStation={distanceToStation}
+                />
+              </View>
+            )}
+
+            {/* Mostrar tarjeta de acciones si está cargando */}
+            {isCharging && (
+              <ChargingActionCard
+                isCharging={isCharging}
+                elapsedSeconds={elapsedSeconds}
+                distanceToStation={distanceToStation}
+                onFinishCharging={handleFinishCharging}
+                onCancelCharging={handleCancelCharging}
+              />
+            )}
+
+            {/* Mostrar botón para iniciar carga si no está cargando */}
+            {!isCharging && userLocation && (
+              <View style={styles.chargingButtonContainer}>
+                <StartChargingButton
+                  stationId={selectedStation.id}
+                  stationLat={parseFloat(selectedStation.latitud)}
+                  stationLon={parseFloat(selectedStation.longitud)}
+                  userLat={userLocation.coords.latitude}
+                  userLon={userLocation.coords.longitude}
+                  isCharging={isCharging}
+                  onStartCharging={handleStartCharging}
+                  onError={(message) => {
+                    setChargingError(message);
+                    Alert.alert('Error', message);
+                  }}
+                />
+              </View>
+            )}
+
+            {/* Mostrar error de carga si existe */}
+            {chargingError && (
+              <View style={styles.errorMessage}>
+                <MaterialIcons name="error-outline" size={16} color="#ef4444" />
+                <Text style={styles.errorText}>{chargingError}</Text>
+              </View>
+            )}
+
+            {/* Botón de cómo llegar */}
+            {!isCharging && (
+              <TouchableOpacity
+                style={styles.routeButton}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="directions" size={20} color="#fff" />
+                <Text style={styles.routeButtonText}>Cómo llegar</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
+
+        {/* Modal de resultado de carga */}
+        <ChargingResultModal
+          visible={showResultModal}
+          durationMinutes={chargingResult?.durationMinutes || 0}
+          basePoints={chargingResult?.basePoints || 0}
+          totalPoints={chargingResult?.totalPoints || 0}
+          multiplier={chargingResult?.multiplier || 1}
+          isPremium={chargingResult?.isPremium || false}
+          isLoading={resultLoading}
+          reason={chargingResult?.reason}
+          onClose={() => {
+            setShowResultModal(false);
+            setChargingResult(null);
+          }}
+          onConfirm={handleResultModalConfirm}
+        />
       </View>
 
       <Modal
@@ -793,6 +1105,19 @@ useEffect(() => {
             >
               <MaterialIcons name="filter-list" size={22} color="#1f2937" />
               <Text style={styles.menuItemText}>Añadir Filtros</Text>
+            </TouchableOpacity>
+
+            {/* Botón para ver estaciones favoritas */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false); // Tanquem el menú
+                router.push('../my-favorite-stations');
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="favorite" size={22} color="#ef4444" />
+              <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1185,5 +1510,22 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
     borderLeftColor: '#e2e8f0',
+  },
+  chargingButtonContainer: {
+    marginTop: 16,
+  },
+  errorMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fee2e2', // Un fons vermell claret
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  errorText: {
+    color: '#ef4444', // Vermell més fosc pel text
+    fontSize: 14,
+    flex: 1,
   },
 });
