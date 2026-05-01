@@ -7,7 +7,49 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 
 const LOGO = require('./_assets/favicon.png'); // Ruta a tu imagen de perfil (el logo de momento)
-const RAINBOW_COLORS = ['#f97316', '#facc15', '#22c55e', '#14b8a6', '#3b82f6', '#a855f7', '#ec4899'];
+const RAINBOW_BASE_COLORS = ['#3b82f6', '#a855f7', '#ec4899', '#f97316', '#facc15', '#3fad17', '#14b8b0'];
+const GRADIENT_STEPS = 42; //
+
+const hexToRgb = (hex: string) => {
+  const normalized = hex.replace('#', '');
+  const bigint = parseInt(normalized, 16);
+  return {
+    r: (bigint >> 16) & 255,
+    g: (bigint >> 8) & 255,
+    b: bigint & 255,
+  };
+};
+
+const rgbToHex = ({ r, g, b }: { r: number; g: number; b: number }) =>
+  `#${((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b))
+    .toString(16)
+    .slice(1)}`;
+
+const interpolateColor = (start: string, end: string, t: number) => {
+  const c1 = hexToRgb(start);
+  const c2 = hexToRgb(end);
+  return rgbToHex({
+    r: c1.r + (c2.r - c1.r) * t,
+    g: c1.g + (c2.g - c1.g) * t,
+    b: c1.b + (c2.b - c1.b) * t,
+  });
+};
+
+const generateGradientColors = (baseColors: string[], steps: number) => {
+  const gradient: string[] = [];
+  const segmentCount = baseColors.length - 1;
+  for (let i = 0; i < steps; i += 1) {
+    const position = (i / (steps - 1)) * segmentCount;
+    const index = Math.floor(position);
+    const t = position - index;
+    const start = baseColors[index];
+    const end = baseColors[index + 1] ?? baseColors[baseColors.length - 1];
+    gradient.push(interpolateColor(start, end, t));
+  }
+  return gradient;
+};
+
+const RAINBOW_COLORS = generateGradientColors(RAINBOW_BASE_COLORS, GRADIENT_STEPS);
 
 interface PerfilUser {
   id: number;
@@ -20,22 +62,37 @@ interface PerfilUser {
   empresa: boolean;
 }
 
-export default function RankingScreen() {
+export default function PerfilScreen() {
   const { user } = useAuth();
 
   const [perfil, setPerfil] = useState<PerfilUser>();
   const [isLoading, setIsLoading] = useState(true);
-  const userIdParam = useLocalSearchParams().userId;
-  const idUser = userIdParam ? Number(userIdParam) : user?.id ?? 1;
+  const [rainbowShift, setRainbowShift] = useState(0);
+  const queryParams = useLocalSearchParams();
+  const userIdParam = queryParams.userId || queryParams.usuari_id;
+  const parsedUserId = Number(userIdParam);
+  const idUser = Number.isInteger(parsedUserId) && parsedUserId > 0 ? parsedUserId : user?.id ?? 1;
 
   const router = useRouter();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRainbowShift((shift) => (shift + 1) % RAINBOW_COLORS.length);
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetchPerfil();
   }, [idUser]);
 
-  
-  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRainbowShift((shift) => (shift + 1) % RAINBOW_COLORS.length);
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchPerfil = async () => {
     if (!user?.id) return;
     setIsLoading(true);
@@ -58,11 +115,14 @@ export default function RankingScreen() {
 
     return (
       <Text style={styles.profileName}>
-        {name.split('').map((char, index) => (
-          <Text key={`${char}-${index}`} style={{ color: RAINBOW_COLORS[index % RAINBOW_COLORS.length] }}>
-            {char}
-          </Text>
-        ))}
+        {name.split('').map((char, index) => {
+          const colorIndex = (index + rainbowShift) % RAINBOW_COLORS.length;
+          return (
+            <Text key={`${char}-${index}`} style={{ color: RAINBOW_COLORS[colorIndex] }}>
+              {char}
+            </Text>
+          );
+        })}
         {' '}👑
       </Text>
     );
@@ -88,8 +148,7 @@ export default function RankingScreen() {
           </View>
           <View style={styles.profileContent}>
             {renderProfileName()}
-            <Text>userIdParam (debug): {userIdParam}</Text>
-            { perfil?.id === user?.id && (
+            {perfil?.id === user?.id && (
               <Text style={styles.profileEmail}>{perfil?.email ?? 'email@ejemplo.com'}</Text>
             )}
             <Text style={styles.profileSubtitle}>Foto de perfil pendiente</Text>
@@ -160,11 +219,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1f2937',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 4,
   },
   profileContainer: {
     padding: 20,
@@ -246,56 +300,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
   },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
   backButton: {
     padding: 4,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  topCard: {
-    backgroundColor: '#ecfdf5', // Fondo verdecito para el Top 3
-    borderColor: '#a7f3d0',
-  },
-  rankCol: {
-    width: 40,
-    alignItems: 'center',
-  },
-  rankNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#94a3b8',
-  },
-  nameCol: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  topUsername: {
-    color: '#065f46',
-    fontWeight: '700',
-  },
-  pointsCol: {
-    alignItems: 'flex-end',
   },
   points: {
     fontSize: 20,
