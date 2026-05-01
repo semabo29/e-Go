@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { calculateDistanceInMeters } from '@/services/chargingLocationService';
+import { calculateDistanceInMeters, getCurrentLocation } from '@/services/chargingLocationService';
 
 interface StartChargingButtonProps {
   stationId: number;
@@ -33,41 +33,49 @@ export function StartChargingButton({
   const [isLoading, setIsLoading] = useState(false);
 
   const handleStartPress = async () => {
-    setIsLoading(true);
+      setIsLoading(true);
 
-    try {
-      // Calcular distancia
-      const distance = calculateDistanceInMeters(userLat, userLon, stationLat, stationLon);
+      try {
+        // 1. OBTENIR UBICACIÓ FRESCA JUST AL FER CLIC
+        const freshLocation = await getCurrentLocation();
+        if (!freshLocation) {
+          onError('No se ha podido obtener tu ubicación actual.');
+          setIsLoading(false);
+          return;
+        }
 
-      // Verificar si está demasiado lejos
-      if (distance > 30) {
-        Alert.alert(
-          'Demasiado lejos',
-          `Te encuentras a ${distance} metros del punto de carga.\n\nDebes acercarte a menos de 30 metros para poder iniciar la carga.`,
-          [
-            {
-              text: 'Entendido',
-              style: 'default',
-            },
-          ]
-        );
+        const freshLat = freshLocation.coords.latitude;
+        const freshLon = freshLocation.coords.longitude;
+
+        // 2. Calcular distància amb la ubicació real i actual
+        const distance = calculateDistanceInMeters(freshLat, freshLon, stationLat, stationLon);
+
+        // Verificar si está demasiado lejos
+        if (distance > 30) {
+          Alert.alert(
+            'Demasiado lejos',
+            `Te encuentras a ${distance} metros del punto de carga.\n\nDebes acercarte a menos de 30 metros para poder iniciar la carga.`,
+            [
+              { text: 'Entendido', style: 'default' },
+            ]
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        // Iniciar carga
+        const success = await onStartCharging();
+
+        if (!success) {
+          onError('No se pudo iniciar la sesión de carga');
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al iniciar carga';
+        onError(message);
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      // Iniciar carga
-      const success = await onStartCharging();
-
-      if (!success) {
-        onError('No se pudo iniciar la sesión de carga');
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al iniciar carga';
-      onError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
   return (
     <TouchableOpacity

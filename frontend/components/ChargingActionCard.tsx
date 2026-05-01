@@ -21,7 +21,7 @@ export function ChargingActionCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Convertir segundos a minutos
-  const minutes = Math.ceil(elapsedSeconds / 60);
+  const minutes = Math.floor(elapsedSeconds / 60);
 
   const handleFinishPress = () => {
     if (minutes < 1) {
@@ -103,7 +103,7 @@ export function ChargingActionCard({
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>¿Finalizar carga?</Text>
             <Text style={styles.modalMessage}>
-              Habrás completado {minutes} minutos de carga y recibirás {minutes} puntos{'\n'}
+              Habrás completado {minutes} minutos de carga y recibirás {minutes*10} puntos{'\n'}
               {minutes > 0 ? '(puede ser más con bonificación Premium)' : ''}
             </Text>
 

@@ -2,7 +2,7 @@ const chargingSessionModel = require('../models/chargingSessionModel');
 const userPointsModel = require('../models/userPointsModel');
 const subscriptionModel = require('../models/subscriptionModel');
 
-const POINTS_PER_MINUTE = 1; // 1 punto por minuto
+const POINTS_PER_MINUTE = 10; // 1 punto por minuto
 const PREMIUM_MULTIPLIER = 2.0; // 2x puntos para usuarios Premium
 const MIN_SESSION_DURATION = 1; // Mínimo 1 minuto para registrar una sesión
 
@@ -41,36 +41,51 @@ function calculateChargingPoints(durationMinutes, isPremium = false) {
  */
 async function endChargingSession(sessionId, usuariId, durationMinutes, endReason = 'manual') {
   try {
-    // Verificar si el usuario tiene suscripción Premium
+    // 1. Cercar la sessió per ID o la sessió activa de l'usuari
+    let sessionToUpdateId = sessionId;
+    if (!sessionToUpdateId || sessionToUpdateId === 0) {
+      const activeSession = await chargingSessionModel.getUserActiveSession(usuariId);
+      if (activeSession) {
+        sessionToUpdateId = activeSession.id;
+      } else {
+        throw new Error('No se encontró ninguna sesión activa');
+      }
+    }
+
+    // 2. VERIFICACIÓ CRUCIAL: Comprovar si la sessió ja ha estat finalitzada
+    const currentSession = await chargingSessionModel.getSessionById(sessionToUpdateId);
+    if (currentSession && currentSession.status === 'completed') {
+      console.log('Sessió ja finalitzada anteriorment, evitant duplicats.');
+      return {
+        session: currentSession,
+        points: { totalPoints: currentSession.puntos_totales, basePoints: currentSession.puntos_totales / (currentSession.multiplicador_premium || 1), multiplier: currentSession.multiplicador_premium },
+        isPremium: currentSession.multiplicador_premium > 1
+      };
+    }
+
+    // 3. Si no està finalitzada, calculem i guardem
     const subscription = await subscriptionModel.findByUserId(usuariId);
     const isPremium = subscription && subscription.status === 'active';
-
-    // Calcular puntos ganados
     const pointsData = calculateChargingPoints(durationMinutes, isPremium);
 
-    // Actualizar la sesión en la BD
     const updatedSession = await chargingSessionModel.endSession(
-      sessionId,
+      sessionToUpdateId,
       pointsData.durationMinutes,
       pointsData.totalPoints,
       endReason,
       pointsData.multiplier
     );
 
-    // Añadir puntos al usuario
+    // Només sumem punts a l'usuari si la sessió s'ha actualitzat ara
     await userPointsModel.addPoints(usuariId, pointsData.totalPoints);
 
-
-    return {
-      session: updatedSession,
-      points: pointsData,
-      isPremium
-    };
+    return { session: updatedSession, points: pointsData, isPremium };
   } catch (error) {
     console.error('Error al finalizar sesión de carga:', error);
     throw error;
   }
 }
+
 
 /**
  * Obtiene estadísticas de carga del usuario

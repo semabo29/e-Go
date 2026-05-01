@@ -71,6 +71,7 @@ export default function InicioScreen() {
   const showFavoritesFilter = params.showFavorites === 'true'; //Leemos si el filtro de favoritos esta activo
   const connectorType = params.connectorType as string | undefined;
   const ac_dc = params.ac_dc as string | undefined;
+  const autoSelectStationId = params.autoSelectStationId as string | undefined;
 
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
   const {
@@ -79,8 +80,11 @@ export default function InicioScreen() {
     distanceToStation,
     elapsedSeconds,
     startChargingSession,
+    updateSessionId,
     stopChargingSession,
-    cancelChargingSession
+    cancelChargingSession,
+    autoStopResult,
+    clearAutoStopResult
   } = useCharging();
 
   // Estados para resultado de carga
@@ -190,6 +194,7 @@ export default function InicioScreen() {
         // Guardar el ID de la sesión en el contexto
         if (apiResponse.session?.id) {
           // Actualizar sesión con ID del backend
+          updateSessionId(apiResponse.session.id);
           console.log('Sesión creada en backend:', apiResponse.session.id);
         }
       }
@@ -203,53 +208,58 @@ export default function InicioScreen() {
     }
   };
 
-  // Función para finalizar la carga
-  const handleFinishCharging = async () => {
-    if (!user || !session) {
-      setChargingError('No hay sesión de carga activa');
-      return;
-    }
+  // Escoltar si el context tanca la sessió automàticament (ex: distància superada)
+    useEffect(() => {
+      if (autoStopResult) {
+        const points = autoStopResult.apiResponse?.pointsGained || { basePoints: 0, totalPoints: 0, multiplier: 1 };
 
-    setResultLoading(true);
-    try {
-      const endSessionData = await stopChargingSession('manual');
+        setChargingResult({
+          durationMinutes: autoStopResult.durationMinutes,
+          basePoints: points.basePoints,
+          totalPoints: points.totalPoints,
+          multiplier: points.multiplier,
+          isPremium: autoStopResult.apiResponse?.isPremium || false,
+          sessionId: autoStopResult.session?.id || 0,
+          reason: autoStopResult.reason,
+        });
 
-      if (!endSessionData) {
-        setChargingError('Error al finalizar la sesión');
-        return;
+        setShowResultModal(true);
+        clearAutoStopResult(); // Ho netegem perquè no es torni a obrir sol
       }
+    }, [autoStopResult]);
 
-      // Enviar a backend
-      const apiResponse = await apiEndCharging(
-        session.id || 0,
-        user.id,
-        endSessionData.durationMinutes,
-        session.userLat,
-        session.userLon,
-        endSessionData.reason
-      );
+  // Función para finalizar la carga
+    const handleFinishCharging = async () => {
+      if (!user || !session) return;
 
-      // Mostrar resultado
-      setChargingResult({
-        durationMinutes: endSessionData.durationMinutes,
-        basePoints: apiResponse.pointsGained.basePoints,
-        totalPoints: apiResponse.pointsGained.totalPoints,
-        multiplier: apiResponse.pointsGained.multiplier,
-        isPremium: apiResponse.isPremium,
-        sessionId: apiResponse.session.id,
-        reason: endSessionData.reason,
-      });
+      setResultLoading(true);
+      try {
+        // Cridem al context i ell ja s'encarrega de parlar amb el backend
+        const result = await stopChargingSession('manual');
 
-      setShowResultModal(true);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al finalizar carga';
-      setChargingError(message);
-      console.error('Error finalizando carga:', error);
-      Alert.alert('Error', message);
-    } finally {
-      setResultLoading(false);
-    }
-  };
+        if (result && result.apiResponse) {
+          // Agafem els punts reals que ens retorna el backend
+          const points = result.apiResponse.pointsGained;
+
+          setChargingResult({
+            durationMinutes: result.durationMinutes,
+            basePoints: points.basePoints,
+            totalPoints: points.totalPoints,
+            multiplier: points.multiplier,
+            isPremium: result.apiResponse.isPremium,
+            sessionId: result.session?.id || 0,
+            reason: result.reason,
+          });
+
+          setShowResultModal(true);
+        }
+      } catch (error) {
+        console.error('Error al finalizar:', error);
+        Alert.alert('Error', 'No se ha podido finalizar la sesión correctamente.');
+      } finally {
+        setResultLoading(false);
+      }
+    };
 
   // Función para cancelar la carga
   const handleCancelCharging = () => {
@@ -921,6 +931,7 @@ useEffect(() => {
           multiplier={chargingResult?.multiplier || 1}
           isPremium={chargingResult?.isPremium || false}
           isLoading={resultLoading}
+          reason={chargingResult?.reason}
           onClose={() => {
             setShowResultModal(false);
             setChargingResult(null);

@@ -6,6 +6,7 @@ import { LogBox } from 'react-native';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ChargingProvider } from '@/contexts/ChargingContext';
 
 // expo-keep-awake (usado por herramientas de desarrollo) puede rechazar la promesa si la
 // pantalla estuvo apagada o el activity no estaba listo; no afecta a producción.
@@ -20,17 +21,19 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <ThemeProvider value={DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="my-favorite-stations" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="admin-login" options={{ headerShown: false }} />
-          <Stack.Screen name="admin-home" options={{ headerShown: false }} />
-          <Stack.Screen name="admin-station-new" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="dark" />
-      </ThemeProvider>
+      <ChargingProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="my-favorite-stations" options={{ presentation: 'modal', headerShown: false }} />
+              <Stack.Screen name="login" options={{ headerShown: false }} />
+              <Stack.Screen name="admin-login" options={{ headerShown: false }} />
+              <Stack.Screen name="admin-home" options={{ headerShown: false }} />
+              <Stack.Screen name="admin-station-new" options={{ headerShown: false }} />
+            </Stack>
+            <StatusBar style="dark" />
+          </ThemeProvider>
+      </ChargingProvider>
     </AuthProvider>
   );
 }

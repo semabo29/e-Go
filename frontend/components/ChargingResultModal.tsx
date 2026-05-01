@@ -10,6 +10,7 @@ interface ChargingResultModalProps {
   multiplier: number;
   isPremium: boolean;
   isLoading: boolean;
+  reason?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -22,6 +23,7 @@ export function ChargingResultModal({
   multiplier,
   isPremium,
   isLoading,
+  reason,
   onClose,
   onConfirm,
 }: ChargingResultModalProps) {
@@ -36,8 +38,19 @@ export function ChargingResultModal({
             </View>
           </View>
 
+          {reason === 'distance_exceeded' && (
+            <View style={styles.warningBox}>
+              <MaterialIcons name="info-outline" size={20} color="#ea580c" />
+              <View style={styles.warningTextWrapper}>
+                <Text style={styles.warningText}>
+                  Has salido del radio de carga (30m)
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Título */}
-          <Text style={styles.title}>¡Sesión Completada!</Text>
+          <Text style={styles.title}>¡Carga Completada!</Text>
 
           {/* Detalles de puntos */}
           <View style={styles.detailsSection}>
@@ -70,9 +83,6 @@ export function ChargingResultModal({
               </View>
             )}
 
-            {/* Línea separadora */}
-            <View style={styles.divider} />
-
             {/* Total de puntos */}
             <View style={[styles.detailRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Puntos Ganados</Text>
@@ -80,28 +90,14 @@ export function ChargingResultModal({
             </View>
           </View>
 
-          {/* Botones */}
+          {/* Botón único de confirmación */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.button, styles.secondaryButton]}
-              onPress={onClose}
-              disabled={isLoading}
-            >
-              <Text style={styles.secondaryButtonText}>Volver</Text>
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.primaryButton]}
               onPress={onConfirm}
               disabled={isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <MaterialIcons name="cloud-upload" size={18} color="#fff" />
-                  <Text style={styles.primaryButtonText}>Guardar Puntos</Text>
-                </>
-              )}
+              <Text style={styles.primaryButtonText}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -224,6 +220,29 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     fontWeight: '700',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#fff7ed',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffedd5',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  warningTextWrapper: {
+    flex: 1,
+  },
+  warningText: {
+    flex: 1,
+    color: '#ea580c',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    flexWrap: 'wrap',
   },
 });
 

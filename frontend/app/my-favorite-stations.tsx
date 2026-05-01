@@ -9,8 +9,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   RefreshControl,
-  Modal,
-  Pressable,
+  // Hem tret Linking i Platform ja que no els utilitzarem ara mateix
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
@@ -23,6 +22,8 @@ interface Station {
   municipi?: string;
   adreca?: string;
   kw?: string;
+  latitud: string;
+  longitud: string;
 }
 
 export default function MyFavoriteStationsScreen() {
@@ -135,44 +136,89 @@ export default function MyFavoriteStationsScreen() {
     );
   };
 
+  // --- BOTONS D'ACCIÓ ---
+
+  const handleComoLlegar = () => {
+    // Aquest botó està temporalment desactivat
+    // L'altre desenvolupador implementarà aquesta funció
+    console.log('Botón "Cómo llegar" en desarrollo');
+  };
+
+  const handleCargarVehiculo = (station: Station) => {
+    // Redirigim al mapa principal passant la cerca exacta
+    // Això farà que el mapa s'obri, centri l'estació i obri el panell directament.
+    router.push({
+      pathname: '/',
+      params: {
+        autoSelectStationId: station.id.toString()
+      }
+    });
+  };
+
   const renderStationItem = ({ item }: { item: Station }) => {
     const isSelected = selectedIds.has(item.id);
 
     return (
-      <TouchableOpacity
-        style={[styles.stationItem, isSelected && styles.stationItemSelected]}
-        onPress={() => toggleSelect(item.id)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.checkboxContainer}>
-          <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-            {isSelected && (
-              <MaterialIcons name="check" size={16} color="#fff" />
+      <View style={[styles.stationItemWrapper, isSelected && styles.stationItemSelected]}>
+        <TouchableOpacity
+          style={styles.stationItemTop}
+          onPress={() => toggleSelect(item.id)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.checkboxContainer}>
+            <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+              {isSelected && (
+                <MaterialIcons name="check" size={16} color="#fff" />
+              )}
+            </View>
+          </View>
+
+          <View style={styles.stationInfo}>
+            <Text style={styles.stationName} numberOfLines={1}>
+              {item.nom || 'Estación sin nombre'}
+            </Text>
+            {item.municipi && (
+              <Text style={styles.stationDetail} numberOfLines={1}>
+                <MaterialIcons name="location-on" size={14} color="#64748b" /> {item.municipi}
+              </Text>
+            )}
+            {item.adreca && (
+              <Text style={styles.stationDetail} numberOfLines={1}>
+                {item.adreca}
+              </Text>
+            )}
+            {item.kw && (
+              <Text style={styles.stationDetail}>
+                <MaterialIcons name="bolt" size={14} color="#10b981" /> {item.kw} kW
+              </Text>
             )}
           </View>
+        </TouchableOpacity>
+
+        {/* --- FILA DE BOTONS D'ACCIÓ --- */}
+        <View style={styles.actionButtonsRow}>
+          {/* Botó Cómo Llegar (Actualment inactiu) */}
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.routeBtn]}
+            onPress={handleComoLlegar}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="directions" size={16} color="#10b981" />
+            <Text style={styles.routeBtnText}>Cómo llegar</Text>
+          </TouchableOpacity>
+
+          {/* Botó Cargar Vehículo */}
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.chargeBtn]}
+            onPress={() => handleCargarVehiculo(item)}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="bolt" size={16} color="#fff" />
+            <Text style={styles.chargeBtnText}>Cargar</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.stationInfo}>
-          <Text style={styles.stationName} numberOfLines={1}>
-            {item.nom || 'Estación sin nombre'}
-          </Text>
-          {item.municipi && (
-            <Text style={styles.stationDetail} numberOfLines={1}>
-              <MaterialIcons name="location-on" size={14} color="#64748b" /> {item.municipi}
-            </Text>
-          )}
-          {item.adreca && (
-            <Text style={styles.stationDetail} numberOfLines={1}>
-              {item.adreca}
-            </Text>
-          )}
-          {item.kw && (
-            <Text style={styles.stationDetail}>
-              <MaterialIcons name="bolt" size={14} color="#10b981" /> {item.kw} kW
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -336,16 +382,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  stationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  // --- NOU CONTENIDOR PRINCIPAL DE LA TARGETA ---
+  stationItemWrapper: {
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     marginVertical: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  stationItemTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   stationItemSelected: {
     backgroundColor: '#f0fdf4',
@@ -381,6 +432,41 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginBottom: 4,
   },
+
+  // --- ESTILS DELS NOUS BOTONS ---
+  actionButtonsRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 6,
+  },
+  routeBtn: {
+    borderRightWidth: 1,
+    borderRightColor: '#e2e8f0',
+  },
+  routeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  chargeBtn: {
+    backgroundColor: '#10b981',
+  },
+  chargeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  // --- RESTA D'ESTILS ---
   selectionBar: {
     backgroundColor: '#fff',
     borderTopWidth: 1,
@@ -424,4 +510,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

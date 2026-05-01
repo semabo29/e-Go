@@ -57,8 +57,6 @@ async function endCharging(req, res) {
       session_id,
       usuari_id,
       duration_minutes,
-      ubicacion_final_lat || null,
-      ubicacion_final_lon || null,
       end_reason || 'manual'
     );
 
