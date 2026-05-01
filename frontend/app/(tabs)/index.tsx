@@ -718,6 +718,9 @@ useEffect(() => {
                   setIsNavigating(true); //Iniciamos la navegación
                   return; //Cortamos la ejecución aquí
             }
+            if (isNavigating) {//Esto permite que si clicamos a un punto del mapa cuando estamos navegando en una ruta esto sea ignorado (para salir de la navegación hay un boton especifico)
+                return
+            }
 
             //Verificamos que el toque provenga del mapa y tenga coordenadas
             if (e.nativeEvent.coordinate) {
