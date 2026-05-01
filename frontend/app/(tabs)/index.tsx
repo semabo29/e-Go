@@ -99,13 +99,12 @@ export default function InicioScreen() {
   const [routeOrigin, setRouteOrigin] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeDestination, setRouteDestination] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
+  //Estado para saber el punto  marcado por el usuario (lo uso para cunado un conductor quiere ir a un sitio que no es un punto de carga y lo selecciona en el mapa)
+  const [selectedLocation, setSelectedLocation] = useState<{latitude: number, longitude: number} | null>(null);
 
-  const handleStartNavigation = (estacion: Estacion) => {
-      setRouteDestination({
-        latitude: parseFloat(estacion.latitud),
-        longitude: parseFloat(estacion.longitud)
-      });
-
+  //Funcion para empezar la navegacion
+  const handleStartNavigation = (coordenadas: {latitude: number, longitude: number}) => {
+      setRouteDestination(coordenadas);
       //Preguntamos al usuario el origen
       Alert.alert(
         "Iniciar ruta",
@@ -114,7 +113,7 @@ export default function InicioScreen() {
           {
             text: "Mi ubicación actual",
             onPress: () => {
-              if (userLocation && userLocation.coords) {//Si tenemos la ubicación del usuario la ponemos como origen
+              if (userLocation && userLocation.coords) {
                 setRouteOrigin({
                   latitude: userLocation.coords.latitude,
                   longitude: userLocation.coords.longitude
@@ -128,10 +127,7 @@ export default function InicioScreen() {
           {
             text: "Buscar otro origen",
             onPress: () => {
-              // Aquí puedes habilitar un modo de búsqueda en tu TopBar
-              // Por ahora mostramos una alerta informativa
               Alert.alert("Modo búsqueda", "Busca un lugar en la barra superior para usarlo como origen.");
-              // Opcional: setIsSearchingOrigin(true);
             }
           },
           { text: "Cancelar", style: "cancel" }
@@ -686,11 +682,23 @@ useEffect(() => {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          key={`map-${displayedStations.length}`} // <-- TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos
+          key={`map-${displayedStations.length}`} //TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
           showsUserLocation={true}
-          onPress={() => setSelectedStation(null)}
+          //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
+          onPress={(e: any) => {
+            //Verificamos que el toque provenga del mapa y tenga coordenadas
+            if (e.nativeEvent.coordinate) {
+              //Limpiamos cualquier estación seleccionada previamente
+              setSelectedStation(null);
+              //Guardamos la nueva ubicación libre
+              setSelectedLocation({
+                latitude: e.nativeEvent.coordinate.latitude,
+                longitude: e.nativeEvent.coordinate.longitude,
+              });
+            }
+          }}
         >
           {/* Puntos de recarga (Los ocultamos si estamos navegando) */}
           {!isNavigating && displayedStations.map((est) => (
@@ -702,11 +710,21 @@ useEffect(() => {
               }}
               pinColor={favoriteIds.includes(est.id) ? 'red' : 'green'}
               onPress={(e: any) => {
-                e.stopPropagation(); // Evita que el toque pase al mapa y cierre el panel
+                e.stopPropagation(); //Evita que el toque pase al mapa y cierre el panel
                 setSelectedStation(est);
+                setSelectedLocation(null); //Limpiamos el punto manual si seleccionan una estación
               }}
             />
           ))}
+
+            {/*Marcador de la ubicacion clicada por el usuario con un clic manualmente */}
+              {!isNavigating && selectedLocation && !selectedStation && (
+                <Marker
+                  coordinate={selectedLocation}
+                  pinColor="#f59e0b" //Un color naranja para diferenciarlo de las estaciones
+                  title="Ubicación seleccionada"
+                />
+            )}
 
             {/* EL DESTINO de la ruta: Para que se vea a dónde vamos cuando se ocultan los demás */}
                 {isNavigating && routeDestination && selectedStation && (
@@ -747,13 +765,16 @@ useEffect(() => {
             )}
         </MapView>
           {/* ========================================================== */}
-          {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) */}
+          {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) para cuando hay ruta */}
           {/* ========================================================== */}
             {/* Panel de Información de Ruta Activa */}
             {isNavigating && routeInfo && (
               <View style={styles.navPanel}>
                 <View>
-                  <Text style={styles.navTextBold}>Ruta hacia {selectedStation?.nom}</Text>
+                    {/* ponemos el nombre de la estacion si existe, si no, uno por default */}
+                  <Text style={styles.navTextBold}>
+                    Ruta hacia {selectedStation ? selectedStation.nom : 'Ubicación seleccionada'}
+                  </Text>
                   <Text style={styles.navText}>
                     {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
                   </Text>
@@ -844,12 +865,51 @@ useEffect(() => {
             <TouchableOpacity
               style={styles.routeButton}
               activeOpacity={0.8}
-              onPress={() => handleStartNavigation(selectedStation)}
+              //LLamamos a la función de navegación con la estación seleccionada
+              onPress={() => handleStartNavigation({
+                               latitude: parseFloat(selectedStation.latitud),
+                               longitude: parseFloat(selectedStation.longitud)
+                             })}
             >
               <Text style={styles.buttonText}>Cómo llegar</Text>
             </TouchableOpacity>
           </View>
         )}
+
+        {/*Mini panel para cuando se clica a una ubicacion cualquiera del mapa */}
+              {!isNavigating && selectedLocation && !selectedStation && (
+                <View style={styles.infoPanel}>
+                  <View style={styles.infoHandle} />
+
+                  <View style={styles.infoTitleRow}>
+                    <MaterialIcons name="place" size={24} color="#f59e0b" />
+                    <Text style={styles.infoTitle} numberOfLines={1}>
+                      Ubicación seleccionada
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => setSelectedLocation(null)}
+                      style={styles.infoCloseBtn}
+                    >
+                      <MaterialIcons name="close" size={20} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoText}>
+                      Lat: {selectedLocation.latitude.toFixed(5)}, Lon: {selectedLocation.longitude.toFixed(5)}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.routeButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleStartNavigation(selectedLocation)}
+                  >
+                    <Text style={styles.buttonText}>Cómo llegar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
       </View>
 
       <Modal
