@@ -9,7 +9,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -42,13 +41,14 @@ import {
   endChargingSession as apiEndCharging
 } from '@/services/chargingApiService';
 
-const LOGO = require('../_assets/favicon.png');
 //Importamos el boton de favoritos
 import { FavoriteButton } from '../../components/FavoriteButton';
 
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
 import { Polyline } from 'react-native-maps'; //Para pintar el trazado de la ruta
+
+const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -1168,7 +1168,7 @@ useEffect(() => {
               <View style={styles.infoBadgeRow}>
                 <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
                   <MaterialIcons name="bolt" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{(parseFloat(selectedStation.kw) != 0)? selectedStation.kw : 'n/a'} kW</Text>
+                  <Text style={[styles.badgeText, { color: '#047857' }]}>{(parseFloat(selectedStation.kw) !== 0)? selectedStation.kw : 'n/a'} kW</Text>
                 </View>
               <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
                 <MaterialIcons name="ev-station" size={14} color="#10b981" />
@@ -1753,17 +1753,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6, // Espai horitzontal entre la icona i el text
-  },
-  activeFiltersText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1f2937',
-  },
-  clearFilterButton: {
-    marginLeft: 12,
-    paddingLeft: 12,
-    borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
-    borderLeftColor: '#e2e8f0',
   },
 activeFiltersText: {
     fontSize: 14,
