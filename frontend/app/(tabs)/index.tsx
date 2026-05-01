@@ -1085,6 +1085,21 @@ useEffect(() => {
               </TouchableOpacity>
             </View>
 
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false); // Tanquem el menú
+                router.push({
+                  pathname: '/user',
+                  params: { userId: user.id }
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="person" size={22} color="#1f2937" />
+              <Text style={styles.menuItemText}>Mi perfil</Text>
+            </TouchableOpacity>
+
             {/*Boton para añadir filtros*/}
             <TouchableOpacity
               style={styles.menuItem}

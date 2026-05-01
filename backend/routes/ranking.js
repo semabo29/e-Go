@@ -6,7 +6,7 @@ const { pool } = require('../lib/db');
 router.get('/', async (req, res) => {
   try {
     const query = `
-      SELECT u.username, c.punts 
+      SELECT u.id, u.username, c.punts 
       FROM ego.conductor c
       JOIN ego.usuari u ON c.user_id = u.id
       ORDER BY c.punts DESC

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 import { getApiUrl } from '@/constants/api';
 
 interface RankingUser {
+  id: number;
   username: string;
   punts: number;
 }
 
 export default function RankingScreen() {
+  const router = useRouter();
   const [ranking, setRanking] = useState<RankingUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,9 +67,14 @@ export default function RankingScreen() {
             </View>
             
             <View style={styles.nameCol}>
-              <Text style={[styles.username, index < 3 && styles.topUsername]}>
-                {item.username || 'Usuario Anónimo'}
-              </Text>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/user', params: { userId: item.id } })}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.username, index < 3 && styles.topUsername]}>
+                  {item.username || 'Usuario Anónimo'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.pointsCol}>
