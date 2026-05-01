@@ -604,6 +604,22 @@ useEffect(() => {
         isSearching={isSearching}
       />
 
+      {/* Aviso de selección de origen para cuando estamos seleccionando el punto de origen de una ruta */}
+      {isSelectingOrigin && (
+        <View style={styles.originSelectionNotice}>
+          <View style={styles.originSelectionContent}>
+            <MaterialIcons name="location-on" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.originSelectionText}>Selecciona el punto de origen en el mapa</Text>
+          </View>
+          <TouchableOpacity //Botón de cerrar por si no queremos hacer una ruta.
+            onPress={() => setIsSelectingOrigin(false)}
+            style={styles.originSelectionClose}
+          >
+            <MaterialIcons name="close" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* --- CAIXETA DE FILTRES ACTIUS APILATS --- */}
       {(hasFilters && selectedStation === null ) ? (
         <View style={styles.activeFiltersBadge}>
@@ -1445,5 +1461,40 @@ selectingOriginPanel: {
     backgroundColor: 'rgba(0,0,0,0.2)',
     padding: 8,
     borderRadius: 20,
+  },
+originSelectionNotice: {
+    position: 'absolute',
+    top: 100, // Ajusta este valor para que quede justo debajo de tu buscador/TopBar
+    left: 20,
+    right: 20,
+    backgroundColor: '#3b82f6', // Azul eléctrico
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 999, // Para que esté por encima de todo
+    elevation: 5, // Sombra en Android
+    shadowColor: '#000', // Sombra en iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  originSelectionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  originSelectionText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  originSelectionClose: {
+    marginLeft: 20,
+    padding: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', //Fondo traslúcido para el botón
+    borderRadius: 15,
   },
 });
