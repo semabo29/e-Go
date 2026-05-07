@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const companyRoutes = require('./routes/company');
 const stationRoutes = require('./routes/stations');
+const geoRoutes = require('./routes/geo');
 const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de favoritos
 const vehicleRoutes = require('./routes/vehicles');//Importamos la ruta de vehiculos
 const subscriptionRoutes = require('./routes/subscription');
@@ -40,6 +41,7 @@ app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/company', companyRoutes);
 app.use('/stations', stationRoutes);
+app.use('/geo', geoRoutes);
 // Cualquier petición que empiece con la URL /favorites debe ser gestionada por las reglas de favoriteRoutes
 app.use('/favorites', favoriteRoutes);
 app.use('/car', vehicleRoutes);
