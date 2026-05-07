@@ -23,7 +23,9 @@ async function withPasswordColumnRetry(queryFn) {
 
 async function findByEmail(email) {
   const result = await pool.query(
-    `SELECT id, email, username, created_at, updated_at FROM ${USUARIOS_TABLE} WHERE email = $1`,
+    `SELECT id, email, username, is_banned, banned_at, banned_reason, created_at, updated_at
+     FROM ${USUARIOS_TABLE}
+     WHERE email = $1`,
     [email]
   );
   return result.rows[0] || null;
@@ -33,6 +35,7 @@ async function findByEmailWithPassword(email) {
   const result = await withPasswordColumnRetry(() =>
     pool.query(
       `SELECT id, email, username, password_hash, created_at, updated_at
+       , is_banned, banned_at, banned_reason
        FROM ${USUARIOS_TABLE}
        WHERE email = $1`,
       [email]
@@ -43,8 +46,43 @@ async function findByEmailWithPassword(email) {
 
 async function findById(id) {
   const result = await pool.query(
-    `SELECT id, email, username, created_at, updated_at FROM ${USUARIOS_TABLE} WHERE id = $1`,
+    `SELECT id, email, username, is_banned, banned_at, banned_reason, created_at, updated_at
+     FROM ${USUARIOS_TABLE}
+     WHERE id = $1`,
     [id]
+  );
+  return result.rows[0] || null;
+}
+
+async function findByIdWithBanStatus(id) {
+  const result = await pool.query(
+    `SELECT id, is_banned, banned_at, banned_reason
+     FROM ${USUARIOS_TABLE}
+     WHERE id = $1`,
+    [id]
+  );
+  return result.rows[0] || null;
+}
+
+async function listAllUsersForAdmin() {
+  const result = await pool.query(
+    `SELECT id, email, username, is_banned, banned_at, banned_reason, created_at, updated_at
+     FROM ${USUARIOS_TABLE}
+     ORDER BY created_at DESC`
+  );
+  return result.rows;
+}
+
+async function setUserBanStatus(userId, { isBanned, reason }) {
+  const result = await pool.query(
+    `UPDATE ${USUARIOS_TABLE}
+     SET is_banned = $2,
+         banned_at = CASE WHEN $2 THEN NOW() ELSE NULL END,
+         banned_reason = CASE WHEN $2 THEN NULLIF($3, '') ELSE NULL END,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, email, username, is_banned, banned_at, banned_reason, created_at, updated_at`,
+    [userId, isBanned, reason || null]
   );
   return result.rows[0] || null;
 }
@@ -113,7 +151,7 @@ async function setPasswordHashByUserId(userId, passwordHash) {
       `UPDATE ${USUARIOS_TABLE}
        SET password_hash = $2, updated_at = NOW()
        WHERE id = $1
-       RETURNING id, email, username, created_at, updated_at`,
+       RETURNING id, email, username, is_banned, banned_at, banned_reason, created_at, updated_at`,
       [userId, passwordHash]
     )
   );
@@ -124,6 +162,9 @@ module.exports = {
   findByEmail,
   findByEmailWithPassword,
   findById,
+  findByIdWithBanStatus,
+  listAllUsersForAdmin,
+  setUserBanStatus,
   getInfoUser,
   updateUser,
   createUser,

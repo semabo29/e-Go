@@ -20,10 +20,17 @@ async function loginPrivilegedUser(req, res, { role, relationTable, selectFields
   }
 
   const payload = await getGooglePayload(req.body);
-  if (!payload || !payload.email) {
+  if (!payload?.email) {
     return res.status(401).json({ error: 'Token de Google no valido. Envia idToken o code + redirectUri.' });
   }
   const email = payload.email;
+  const banCheck = await pool.query(
+    `SELECT is_banned FROM ${USUARIOS_TABLE} WHERE email = $1`,
+    [email]
+  );
+  if (banCheck.rows[0]?.is_banned) {
+    return res.status(403).json({ error: 'Esta cuenta esta baneada' });
+  }
 
   const result = await pool.query(
     `SELECT ${selectFields}

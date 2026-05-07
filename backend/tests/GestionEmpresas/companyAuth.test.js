@@ -30,11 +30,14 @@ describe('Company auth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    pool.query.mockResolvedValue({ rows: [{ id: 5, is_banned: false }] });
   });
 
   test('POST /auth/company/google -> 403 si no es empresa', async () => {
     getGooglePayload.mockResolvedValue({ email: 'user@example.com' });
-    pool.query.mockResolvedValue({ rows: [] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app)
       .post('/auth/company/google')
@@ -45,18 +48,20 @@ describe('Company auth', () => {
 
   test('POST /auth/company/google -> 200 si es empresa', async () => {
     getGooglePayload.mockResolvedValue({ email: 'empresa@example.com' });
-    pool.query.mockResolvedValue({
-      rows: [
-        {
-          id: 5,
-          user_id: 8,
-          nombre: 'ChargeCo',
-          company_since: '2026-04-19T10:00:00.000Z',
-          email: 'empresa@example.com',
-          username: 'empresa',
-        },
-      ],
-    });
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 5,
+            user_id: 8,
+            nombre: 'ChargeCo',
+            company_since: '2026-04-19T10:00:00.000Z',
+            email: 'empresa@example.com',
+            username: 'empresa',
+          },
+        ],
+      });
 
     const res = await request(app)
       .post('/auth/company/google')

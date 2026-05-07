@@ -30,6 +30,7 @@ describe('Admin auth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    pool.query.mockResolvedValue({ rows: [{ id: 1, is_banned: false }] });
   });
 
   test('POST /auth/admin/google -> 400 si faltan credenciales', async () => {
@@ -47,7 +48,18 @@ describe('Admin auth', () => {
 
   test('POST /auth/admin/google -> 403 si no es admin', async () => {
     getGooglePayload.mockResolvedValue({ email: 'user@example.com' });
-    pool.query.mockResolvedValue({ rows: [] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .post('/auth/admin/google')
+      .send({ idToken: 'ok' });
+    expect(res.status).toBe(403);
+  });
+
+  test('POST /auth/admin/google -> 403 si usuario baneado', async () => {
+    getGooglePayload.mockResolvedValue({ email: 'banned@example.com' });
+    pool.query.mockResolvedValueOnce({ rows: [{ is_banned: true }] });
     const res = await request(app)
       .post('/auth/admin/google')
       .send({ idToken: 'ok' });
@@ -56,11 +68,13 @@ describe('Admin auth', () => {
 
   test('POST /auth/admin/google -> 200 si es admin', async () => {
     getGooglePayload.mockResolvedValue({ email: 'admin@example.com' });
-    pool.query.mockResolvedValue({
-      rows: [
-        { id: 1, email: 'admin@example.com', username: 'admin', admin_since: '2026-03-17T00:00:00.000Z' },
-      ],
-    });
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          { id: 1, email: 'admin@example.com', username: 'admin', admin_since: '2026-03-17T00:00:00.000Z' },
+        ],
+      });
     const res = await request(app)
       .post('/auth/admin/google')
       .send({ idToken: 'ok' });

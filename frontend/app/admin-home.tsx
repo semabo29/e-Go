@@ -15,6 +15,7 @@ import { ManualStationCard } from '@/components/stations/ManualStationCard';
 import { ManualStation } from '@/components/stations/types';
 import { clearPrivilegedSession, getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
 import { deleteAdminStation, listAdminStations } from '@/services/stationModeration';
+import { AdminUser, listAdminUsers, setUserBanStatus } from '@/services/adminUserModeration';
 
 type AdminPayload = {
   sub: number;
@@ -33,6 +34,9 @@ export default function AdminHomeScreen() {
   const [stations, setStations] = useState<ManualStation[]>([]);
   const [loadingStations, setLoadingStations] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [confirmBanUser, setConfirmBanUser] = useState<AdminUser | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -52,6 +56,7 @@ export default function AdminHomeScreen() {
         }
         setAdmin(data.admin);
         await loadMyStations();
+        await loadUsers();
       } catch (err) {
         setError('No se pudo conectar con el servidor');
       } finally {
@@ -95,6 +100,29 @@ export default function AdminHomeScreen() {
       setError('No se pudo conectar con el servidor');
     } finally {
       setLoadingStations(false);
+    }
+  }
+
+  async function loadUsers() {
+    setLoadingUsers(true);
+    try {
+      setUsers(await listAdminUsers());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cargar usuarios');
+    } finally {
+      setLoadingUsers(false);
+    }
+  }
+
+  async function handleSetUserBan(user: AdminUser, isBanned: boolean) {
+    setLoadingUsers(true);
+    try {
+      const updated = await setUserBanStatus(user.id, isBanned, isBanned ? 'Baneo manual por admin' : '');
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el usuario');
+    } finally {
+      setLoadingUsers(false);
     }
   }
 
@@ -211,6 +239,39 @@ export default function AdminHomeScreen() {
                 ))
               )}
             </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Usuarios</Text>
+                <TouchableOpacity onPress={loadUsers} disabled={loadingUsers}>
+                  <Text style={styles.sectionLink}>{loadingUsers ? 'Actualizando…' : 'Actualizar'}</Text>
+                </TouchableOpacity>
+              </View>
+              {loadingUsers ? (
+                <Text style={styles.muted}>Cargando usuarios…</Text>
+              ) : users.length === 0 ? (
+                <Text style={styles.muted}>No hay usuarios para mostrar.</Text>
+              ) : (
+                users.map((u) => (
+                  <View key={u.id} style={styles.userRow}>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.userName}>{u.username}</Text>
+                      <Text style={styles.userEmail}>{u.email}</Text>
+                      <Text style={u.is_banned ? styles.userStatusBanned : styles.userStatusActive}>
+                        {u.is_banned ? 'Baneado' : 'Activo'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={u.is_banned ? styles.unbanButton : styles.banButton}
+                      onPress={() => setConfirmBanUser(u)}
+                      disabled={loadingUsers}
+                    >
+                      <Text style={styles.banButtonText}>{u.is_banned ? 'Desbanear' : 'Banear'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
           </>
         )}
       </View>
@@ -242,6 +303,44 @@ export default function AdminHomeScreen() {
                 }}
               >
                 <Text style={styles.confirmDeleteText}>Borrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!confirmBanUser}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmBanUser(null)}
+      >
+        <View style={styles.confirmBackdrop}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>
+              {confirmBanUser?.is_banned ? 'Desbanear usuario' : 'Banear usuario'}
+            </Text>
+            <Text style={styles.confirmText}>
+              {confirmBanUser?.is_banned
+                ? 'El usuario recuperara acceso a su cuenta.'
+                : 'El usuario perdera acceso inmediato a su cuenta.'}
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setConfirmBanUser(null)}>
+                <Text style={styles.confirmCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={confirmBanUser?.is_banned ? styles.confirmUnban : styles.confirmDelete}
+                onPress={async () => {
+                  if (confirmBanUser) {
+                    await handleSetUserBan(confirmBanUser, !confirmBanUser.is_banned);
+                  }
+                  setConfirmBanUser(null);
+                }}
+              >
+                <Text style={styles.confirmDeleteText}>
+                  {confirmBanUser?.is_banned ? 'Desbanear' : 'Banear'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -357,6 +456,59 @@ const styles = StyleSheet.create({
     borderTopColor: '#e5e7eb',
     paddingTop: 16,
   },
+  userRow: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  userEmail: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  userStatusActive: {
+    fontSize: 12,
+    color: '#16a34a',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  userStatusBanned: {
+    fontSize: 12,
+    color: '#dc2626',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  banButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  unbanButton: {
+    backgroundColor: '#16a34a',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  banButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -425,5 +577,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  confirmUnban: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
   },
 });

@@ -14,6 +14,12 @@ const AuthError = (code, message) => {
   return err;
 };
 
+function ensureNotBanned(user) {
+  if (user?.is_banned) {
+    throw AuthError('USER_BANNED', 'Esta cuenta esta baneada');
+  }
+}
+
 async function loginWithGoogle(body) {
   const hasIdToken = !!body.idToken;
   const hasCode = !!(body.code && body.redirectUri);
@@ -29,6 +35,7 @@ async function loginWithGoogle(body) {
 
   const user = await userModel.findByEmail(email);
   if (user) {
+    ensureNotBanned(user);
     return { user, needsUsername: false };
   }
   const pending_token = createPendingToken(email);
@@ -102,6 +109,7 @@ async function registerWithEmail(body) {
   }
 
   if (existingUser && !existingUser.password_hash) {
+    ensureNotBanned(existingUser);
     const updatedUser = await userModel.setPasswordHashByUserId(existingUser.id, passwordHash);
     return { user: updatedUser };
   }
@@ -116,6 +124,7 @@ async function loginWithEmail(body) {
   if (!user || !user.password_hash) {
     throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
   }
+  ensureNotBanned(user);
   const ok = await bcrypt.compare(body.password, user.password_hash);
   if (!ok) {
     throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');

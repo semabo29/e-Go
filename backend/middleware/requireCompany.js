@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { ensureUserNotBanned } = require('./requireNotBanned');
 
-function requireCompany(req, res, next) {
+async function requireCompany(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const [scheme, token] = authHeader.split(' ');
   if (scheme !== 'Bearer' || !token) {
@@ -16,6 +17,10 @@ function requireCompany(req, res, next) {
     const payload = jwt.verify(token, secret);
     if (payload.role !== 'company') {
       return res.status(403).json({ error: 'No autorizado' });
+    }
+    const banStatus = await ensureUserNotBanned(payload.sub);
+    if (!banStatus.ok) {
+      return res.status(banStatus.status).json({ error: banStatus.error });
     }
     req.company = payload;
     return next();

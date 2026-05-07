@@ -2,9 +2,14 @@ const request = require('supertest');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
+jest.mock('../../models/userModel', () => ({
+  findByIdWithBanStatus: jest.fn(),
+}));
+
 const { requireAdmin } = require('../../middleware/requireAdmin');
 const adminStationController = require('../../controllers/adminStationController');
 const stationModel = require('../../models/stationModel');
+const userModel = require('../../models/userModel');
 
 jest.mock('../../models/stationModel', () => ({
   createManualStation: jest.fn(),
@@ -23,6 +28,7 @@ describe('Admin stations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    userModel.findByIdWithBanStatus.mockResolvedValue({ id: 1, is_banned: false });
   });
 
   function authHeader() {

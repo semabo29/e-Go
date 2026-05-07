@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const adminStationController = require('../controllers/adminStationController');
 const adminCompanyRequestController = require('../controllers/adminCompanyRequestController');
+const adminUserController = require('../controllers/adminUserController');
 const { pool, USUARIOS_TABLE } = require('../lib/db');
 
 const router = express.Router();
@@ -35,5 +36,7 @@ router.get('/stations/mine', requireAdmin, adminStationController.listMyManualSt
 router.get('/station-requests/pending', requireAdmin, adminCompanyRequestController.listPendingRequests);
 router.post('/station-requests/:id/approve', requireAdmin, adminCompanyRequestController.approveRequest);
 router.post('/station-requests/:id/reject', requireAdmin, adminCompanyRequestController.rejectRequest);
+router.get('/users', requireAdmin, adminUserController.listUsers);
+router.patch('/users/:id/ban', requireAdmin, adminUserController.setUserBan);
 
 module.exports = router;
