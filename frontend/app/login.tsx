@@ -106,7 +106,7 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-        setError('');
+        // Cancelado por el usuario
       } else if (err.code === statusCodes.IN_PROGRESS) {
         setError('Ya hay un inicio de sesión en curso');
       } else {
