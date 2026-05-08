@@ -5,10 +5,15 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 import InicioScreen from '@/app/(tabs)/index';
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
 }));
 
 const mockPush = jest.fn();
@@ -83,6 +88,18 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
       logout: jest.fn(),
       isLoading: false,
       setUser: jest.fn(),
+    });
+    (useCharging as jest.Mock).mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
     });
 
     globalThis.fetch = jest.fn(async () => ({ ok: true })) as unknown as typeof fetch;
