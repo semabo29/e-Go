@@ -145,5 +145,67 @@ describe('incidenciaService', () => {
         })
       );
     });
+
+    describe('flujo incidencia solucionada', () => {
+      const solvedData = {
+        comentari: 'La Incidencia está solucionada',
+        tipus: 'Operatiu',
+        conductor: 18,
+        estacio: 2440207,
+      };
+
+      test('crea incidencia solucionada sin archivo adjunto', async () => {
+        incidenciaModel.getIncidenciaTypes.mockResolvedValue(['Operatiu', 'Altres']);
+        incidenciaModel.conductorExists.mockResolvedValue(true);
+        incidenciaModel.stationExists.mockResolvedValue(true);
+        incidenciaModel.createIncidencia.mockResolvedValue({ id: 99, ...solvedData, arxiu: null });
+
+        const result = await incidenciaService.createIncidencia(solvedData);
+
+        expect(uploadFile).not.toHaveBeenCalled();
+        expect(getPublicUrl).not.toHaveBeenCalled();
+        expect(incidenciaModel.createIncidencia).toHaveBeenCalledWith(
+          expect.objectContaining({
+            comentari: 'La Incidencia está solucionada',
+            tipus: 'Operatiu',
+            conductor: 18,
+            estacio: 2440207,
+            arxiu: null,
+          })
+        );
+        expect(result).toEqual(expect.objectContaining({ id: 99 }));
+      });
+
+      test('falla en incidencia solucionada si Operatiu no existe en enum', async () => {
+        incidenciaModel.getIncidenciaTypes.mockResolvedValue(['Avariat', 'Altres']);
+
+        await expect(incidenciaService.createIncidencia(solvedData)).rejects.toMatchObject({
+          code: 'VALIDATION_ERROR',
+          message: 'El tipo seleccionado no es válido',
+        });
+
+        expect(incidenciaModel.createIncidencia).not.toHaveBeenCalled();
+      });
+
+      test('no intenta subir archivo si incidencia solucionada no trae adjunto', async () => {
+        // No se intenta subir archivo si incidencia solucionada no trae adjunto.
+        incidenciaModel.getIncidenciaTypes.mockResolvedValue(['Operatiu', 'Altres']);
+        incidenciaModel.conductorExists.mockResolvedValue(true);
+        incidenciaModel.stationExists.mockResolvedValue(true);
+        incidenciaModel.createIncidencia.mockResolvedValue({ id: 100, ...solvedData, arxiu: null });
+
+        await incidenciaService.createIncidencia(solvedData);
+
+        expect(uploadFile).not.toHaveBeenCalled();
+        expect(getPublicUrl).not.toHaveBeenCalled();
+        expect(incidenciaModel.createIncidencia).toHaveBeenCalledWith(
+          expect.objectContaining({
+            tipus: 'Operatiu',
+            comentari: 'La Incidencia está solucionada',
+            arxiu: null,
+          })
+        );
+      });
+    });
   });
 });

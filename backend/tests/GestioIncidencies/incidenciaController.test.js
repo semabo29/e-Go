@@ -100,5 +100,57 @@ describe('incidenciaController', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: 'Error creando incidencia' });
     });
+
+    test('responde 201 en flujo incidencia solucionada', async () => {
+      // OK
+      const req = {
+        body: {
+          comentari: 'La Incidencia está solucionada',
+          tipus: 'Operatiu',
+          conductor: 18,
+          estacio: 2440207,
+        },
+        file: undefined,
+      };
+      const res = mockRes();
+      incidenciaService.createIncidencia.mockResolvedValue({
+        id: 77,
+        ...req.body,
+        arxiu: null,
+      });
+
+      await incidenciaController.create(req, res);
+
+      expect(incidenciaService.createIncidencia).toHaveBeenCalledWith(req.body, undefined);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        id: 77,
+        tipus: 'Operatiu',
+      }));
+    });
+
+    test('responde 400 si incidencia solucionada llega incompleta', async () => {
+      // Errores de validación de entrada.
+      const req = {
+        body: {
+          comentari: '',
+          tipus: 'Operatiu',
+          conductor: 18,
+          estacio: 2440207,
+        },
+        file: undefined,
+      };
+      const res = mockRes();
+      incidenciaService.createIncidencia.mockRejectedValue({
+        code: 'VALIDATION_ERROR',
+        message: 'El comentario es obligatorio',
+      });
+
+      await incidenciaController.create(req, res);
+
+      expect(incidenciaService.createIncidencia).toHaveBeenCalledWith(req.body, undefined);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'El comentario es obligatorio' });
+    });
   });
 });

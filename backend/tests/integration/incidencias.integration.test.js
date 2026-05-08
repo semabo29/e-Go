@@ -120,4 +120,77 @@ describe('Incidencias integration (real DB)', () => {
     expect(res.body.error).toBe('La estación no existe');
   });
 
+  describe('flujo incidencia solucionada', () => {
+    test('POST /incidencias crea incidencia solucionada con payload esperado (201)', async () => {
+      // se crea la incidencia solucionada correctamente
+      const solvedComment = 'La Incidencia está solucionada';
+      const res = await request(app)
+        .post('/incidencias')
+        .field('comentari', solvedComment)
+        .field('tipus', 'Operatiu')
+        .field('conductor', String(validUserId))
+        .field('estacio', String(validStationId));
+
+      expect(res.status).toBe(201);
+      expect(res.body).toEqual(
+        expect.objectContaining({
+          comentari: solvedComment,
+          tipus: 'Operatiu',
+          conductor: validUserId,
+          estacio: validStationId,
+          arxiu: null,
+          validada: false,
+          resolta: false,
+        })
+      );
+    });
+
+    test('POST /incidencias persistencia DB: guarda incidencia solucionada con defaults', async () => {
+      // se guarda la incidencia solucionada correctamente
+      const solvedComment = `La Incidencia está solucionada - ${Date.now()}`;
+      const createRes = await request(app)
+        .post('/incidencias')
+        .field('comentari', solvedComment)
+        .field('tipus', 'Operatiu')
+        .field('conductor', String(validUserId))
+        .field('estacio', String(validStationId));
+
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.id).toBeDefined();
+
+      const dbRes = await pool.query(
+        'SELECT id, tipus, comentari, conductor, estacio, validada, resolta, datainici, arxiu FROM ego.incidencia WHERE id = $1',
+        [createRes.body.id]
+      );
+
+      expect(dbRes.rows).toHaveLength(1);
+      expect(dbRes.rows[0]).toEqual(
+        expect.objectContaining({
+          id: createRes.body.id,
+          tipus: 'Operatiu',
+          comentari: solvedComment,
+          conductor: validUserId,
+          estacio: validStationId,
+          validada: false,
+          resolta: false,
+          arxiu: null,
+        })
+      );
+      expect(dbRes.rows[0].datainici).toBeTruthy();
+    });
+
+    test('POST /incidencias devuelve 400 si llega tipus "operatiu" en minúscula', async () => {
+      // testeo de validación de entrada case-sensitive
+      const res = await request(app)
+        .post('/incidencias')
+        .field('comentari', 'La Incidencia está solucionada')
+        .field('tipus', 'operatiu')
+        .field('conductor', String(validUserId))
+        .field('estacio', String(validStationId));
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('El tipo seleccionado no es válido');
+    });
+  });
+
 });

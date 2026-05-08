@@ -426,4 +426,109 @@ describe('InicioScreen map and station panel', () => {
 
     alertSpy.mockRestore();
   });
+
+  // Cuando la estación no está operativa, debe mostrarse el botón de incidencia solucionada.
+  it('shows "Reportar incidencia solucionada" button when station operatiu is false', async () => {
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url.includes('/favorites')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      if (url.includes('/stations')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              nom: 'Punt 1',
+              latitud: '41.3901',
+              longitud: '2.1540',
+              municipi: 'Barcelona',
+              adreca: 'Carrer de Test',
+              kw: '50',
+              promotor: 'Ajuntament',
+              ac_dc: 'DC',
+              tipus_connexio: 'CCS',
+              operatiu: false,
+            },
+          ],
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    }) as unknown as typeof fetch;
+
+    const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('station-marker')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('station-marker'));
+
+    expect(getByText('Reportar incidencia solucionada')).toBeTruthy();
+    expect(queryByText('Reportar incidencia')).toBeNull();
+  });
+
+  // El botón de incidencia solucionada debe enviar directamente al backend sin abrir formulario.
+  it('submits solved incidencia directly without opening form modal', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url.includes('/favorites')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      if (url.includes('/stations')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              nom: 'Punt 1',
+              latitud: '41.3901',
+              longitud: '2.1540',
+              municipi: 'Barcelona',
+              adreca: 'Carrer de Test',
+              kw: '50',
+              promotor: 'Ajuntament',
+              ac_dc: 'DC',
+              tipus_connexio: 'CCS',
+              operatiu: false,
+            },
+          ],
+        } as Response);
+      }
+      if (url.includes('/incidencias')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: 321 }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    }) as unknown as typeof fetch;
+
+    const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('station-marker')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('station-marker'));
+    fireEvent.press(getByText('Reportar incidencia solucionada'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Incidencia reportada', 'Se ha marcado la estación como operativa.');
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/incidencias'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+
+    expect(queryByText('Comentario')).toBeNull();
+    alertSpy.mockRestore();
+  });
 });
