@@ -49,6 +49,12 @@ import MapViewDirections from 'react-native-maps-directions';
 import { Polyline } from 'react-native-maps'; //Para pintar el trazado de la ruta
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
+let ImagePickerModule: typeof import('expo-image-picker') | null = null;
+try {
+  ImagePickerModule = require('expo-image-picker');
+} catch {
+  ImagePickerModule = null;
+}
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -67,6 +73,7 @@ interface Estacion {
   tipus_velocitat?: string;
   tipus_connexio?: string;
   ac_dc?: string;
+  operatiu?: boolean;
 }
 
 export default function InicioScreen() {
@@ -114,6 +121,15 @@ export default function InicioScreen() {
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [showIncidenciaForm, setShowIncidenciaForm] = useState(false);
+  const [incidenciaComentario, setIncidenciaComentario] = useState('');
+  const [incidenciaTipo, setIncidenciaTipo] = useState('');
+  const [incidenciaArchivo, setIncidenciaArchivo] = useState<{
+    uri: string;
+    name: string;
+    mimeType: string;
+  } | null>(null);
+  const [incidenciaSubmitting, setIncidenciaSubmitting] = useState(false);
 
   // --- NOUS ESTATS PEL BUSCADOR ---
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,6 +155,7 @@ export default function InicioScreen() {
   const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
+  const INCIDENCIA_TYPES = ['Avariat', 'Operatiu', 'Inexistent', 'DadesIncorrectes', 'Altres'];
 
   //Estados para la navegacion a un punto
   const [isNavigating, setIsNavigating] = useState(false);
@@ -758,6 +775,123 @@ useEffect(() => {
     setAuthError('');
   }
 
+  const resetIncidenciaForm = () => {
+    setIncidenciaComentario('');
+    setIncidenciaTipo('');
+    setIncidenciaArchivo(null);
+  };
+
+  const handleOpenIncidenciaForm = () => {
+    resetIncidenciaForm();
+    setShowIncidenciaForm(true);
+  };
+
+  const handleCloseIncidenciaForm = () => {
+    setShowIncidenciaForm(false);
+    resetIncidenciaForm();
+  };
+
+  const handleIncidenciaSubmit = async () => {
+    if (!user || !selectedStation) return;
+
+    if (!incidenciaComentario.trim() || !incidenciaTipo.trim()) {
+      Alert.alert('Campos obligatorios', 'Debes rellenar comentario y tipo.');
+      return;
+    }
+
+    setIncidenciaSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('comentari', incidenciaComentario.trim());
+      formData.append('tipus', incidenciaTipo);
+      formData.append('conductor', String(user.id));
+      formData.append('estacio', String(selectedStation.id));
+
+      if (incidenciaArchivo) {
+        formData.append('arxiu', {
+          uri: incidenciaArchivo.uri,
+          name: incidenciaArchivo.name,
+          type: incidenciaArchivo.mimeType,
+        } as any);
+      }
+
+      const response = await fetch(`${getApiUrl()}/incidencias`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo registrar la incidencia');
+      }
+
+      Alert.alert('Incidencia enviada', 'La incidencia se ha registrado correctamente.');
+      handleCloseIncidenciaForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al enviar la incidencia';
+      Alert.alert('Error', message);
+    } finally {
+      setIncidenciaSubmitting(false);
+    }
+  };
+
+  const handleSolvedIncidenciaSubmit = async () => {
+    if (!user || !selectedStation) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('comentari', 'La Incidencia está solucionada');
+      formData.append('tipus', 'Operatiu');
+      formData.append('conductor', String(user.id));
+      formData.append('estacio', String(selectedStation.id));
+
+      const response = await fetch(`${getApiUrl()}/incidencias`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo registrar la incidencia solucionada');
+      }
+
+      Alert.alert('Incidencia reportada', 'Se ha marcado la estación como operativa.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al reportar incidencia solucionada';
+      Alert.alert('Error', message);
+    }
+  };
+
+  const handlePickIncidenciaFile = async () => {
+    if (!ImagePickerModule) {
+      Alert.alert(
+        'Adjuntos no disponibles',
+        'Este dispositivo aún no tiene habilitado el módulo nativo para seleccionar imágenes.'
+      );
+      return;
+    }
+
+    const permission = await ImagePickerModule.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permiso requerido', 'Necesitamos permiso para acceder a tus imágenes.');
+      return;
+    }
+
+    const result = await ImagePickerModule.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets.length) return;
+
+    const selected = result.assets[0];
+    setIncidenciaArchivo({
+      uri: selected.uri,
+      name: selected.fileName || `incidencia-${Date.now()}.jpg`,
+      mimeType: selected.mimeType || 'image/jpeg',
+    });
+  };
+
   if (authLoading) {
     return (
       <View style={[styles.screen, styles.centered]}>
@@ -1053,7 +1187,13 @@ useEffect(() => {
                 latitude: parseFloat(est.latitud),
                 longitude: parseFloat(est.longitud),
               }}
-              pinColor={favoriteIds.includes(est.id) ? 'red' : 'green'}
+              pinColor={
+                favoriteIds.includes(est.id)
+                  ? 'red'
+                  : est.operatiu === false
+                    ? 'yellow'
+                    : 'green'
+              }
               onPress={(e: any) => {
                 e.stopPropagation(); //Evita que el toque pase al mapa y cierre el panel
 
@@ -1299,6 +1439,28 @@ useEffect(() => {
 
             {/* Botón de cómo llegar (De TU rama feature/rutas, pero con el icono de dev) */}
             {!isCharging && (
+              selectedStation.operatiu === false ? (
+                <TouchableOpacity
+                  style={styles.solvedReportButton}
+                  activeOpacity={0.8}
+                  onPress={handleSolvedIncidenciaSubmit}
+                >
+                  <MaterialIcons name="check-circle" size={20} color="#fff" />
+                  <Text style={styles.routeButtonText}>Reportar incidencia solucionada</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.reportButton}
+                  activeOpacity={0.8}
+                  onPress={handleOpenIncidenciaForm}
+                >
+                  <MaterialIcons name="report-problem" size={20} color="#fff" />
+                  <Text style={styles.routeButtonText}>Reportar incidencia</Text>
+                </TouchableOpacity>
+              )
+            )}
+
+            {!isCharging && (
               <TouchableOpacity
                 style={styles.routeButton}
                 activeOpacity={0.8}
@@ -1366,6 +1528,71 @@ useEffect(() => {
           onConfirm={handleResultModalConfirm}
         />
       </View>
+
+      <Modal
+        visible={showIncidenciaForm}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseIncidenciaForm}
+      >
+        <View style={styles.reportModalBackdrop}>
+          <View style={styles.reportModalCard}>
+            <Text style={styles.reportModalTitle}>Reportar incidencia</Text>
+            <Text style={styles.reportLabel}>Comentario</Text>
+            <TextInput
+              style={styles.reportTextarea}
+              placeholder="Describe qué ha ocurrido"
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={4}
+              value={incidenciaComentario}
+              onChangeText={setIncidenciaComentario}
+            />
+
+            <Text style={styles.reportLabel}>Tipo</Text>
+            <View style={styles.reportTypeContainer}>
+              {INCIDENCIA_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.reportTypeChip, incidenciaTipo === type && styles.reportTypeChipActive]}
+                  onPress={() => setIncidenciaTipo(type)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.reportTypeChipText, incidenciaTipo === type && styles.reportTypeChipTextActive]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.reportLabel}>Archivo (imagen)</Text>
+            <TouchableOpacity
+              style={styles.reportFileButton}
+              onPress={handlePickIncidenciaFile}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="attach-file" size={18} color="#1f2937" />
+              <Text style={styles.reportFileButtonText}>
+                {incidenciaArchivo ? incidenciaArchivo.name : 'Seleccionar imagen del dispositivo'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.reportActions}>
+              <TouchableOpacity style={styles.reportBackButton} onPress={handleCloseIncidenciaForm} activeOpacity={0.8}>
+                <Text style={styles.reportBackButtonText}>Volver</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.reportSubmitButton, incidenciaSubmitting && styles.reportSubmitButtonDisabled]}
+                onPress={handleIncidenciaSubmit}
+                activeOpacity={0.8}
+                disabled={incidenciaSubmitting}
+              >
+                <Text style={styles.reportSubmitButtonText}>{incidenciaSubmitting ? 'Enviando...' : 'Enviar'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={menuOpen}
@@ -1735,6 +1962,27 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 12,
+    marginTop: 10,
+  },
+  reportButton: {
+    backgroundColor: '#f59e0b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  solvedReportButton: {
+    backgroundColor: '#2563eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
   },
   routeButtonText: {
     color: '#fff',
@@ -1941,6 +2189,112 @@ activeFiltersText: {
     color: '#ef4444', // Vermell més fosc pel text
     fontSize: 14,
     flex: 1,
+  },
+  reportModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  reportModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+  },
+  reportModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  reportLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  reportTextarea: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    minHeight: 92,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#111827',
+    textAlignVertical: 'top',
+  },
+  reportFileButton: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reportFileButtonText: {
+    color: '#1f2937',
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  reportTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reportTypeChip: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#f8fafc',
+  },
+  reportTypeChipActive: {
+    borderColor: '#10b981',
+    backgroundColor: '#ecfdf5',
+  },
+  reportTypeChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  reportTypeChipTextActive: {
+    color: '#047857',
+  },
+  reportActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  reportBackButton: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  reportBackButtonText: {
+    color: '#374151',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  reportSubmitButton: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  reportSubmitButtonDisabled: {
+    opacity: 0.6,
+  },
+  reportSubmitButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
   startDrivingBtn: {
     backgroundColor: '#3b82f6', // Azul Google

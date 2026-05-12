@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import InicioScreen from '@/app/(tabs)/index';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 
 let mockLocalParams: Record<string, any> = {};
 let mockSetParams = jest.fn();
@@ -12,6 +13,10 @@ let mockPush = jest.fn();
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
 }));
 
 jest.mock('expo-router', () => ({
@@ -110,6 +115,7 @@ jest.mock('@/components/FavoriteButton', () => ({
 
 describe('InicioScreen integration: search/filter + map favorites', () => {
   const mockUseAuth = useAuth as jest.Mock;
+  const mockUseCharging = useCharging as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -148,6 +154,18 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
       user: { id: 12, email: 'user@test.com', username: 'test', created_at: '', updated_at: '' },
       logout: jest.fn(),
       isLoading: false,
+    });
+    mockUseCharging.mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
     });
 
     mockLocalParams = {};

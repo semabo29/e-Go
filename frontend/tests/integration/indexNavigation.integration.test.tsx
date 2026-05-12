@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import InicioScreen from '@/app/(tabs)/index';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 
 // 1. SILENCIAMOS WARNINGS INOFENSIVOS EN TESTS
 const originalConsoleError = console.error;
@@ -34,6 +35,9 @@ jest.mock('expo-router', () => ({
 // MOCK ESTABLE PARA EVITAR BUCLES INFINITOS
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
+}));
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
 }));
 
 jest.mock('expo-location', () => ({
@@ -100,6 +104,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
 
 describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
   const mockUseAuth = useAuth as jest.Mock;
+  const mockUseCharging = useCharging as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -109,6 +114,18 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 1, email: 'test@test.com' },
       isLoading: false,
+    });
+    mockUseCharging.mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
     });
 
     (globalThis.fetch as any) = jest.fn(async () => ({
