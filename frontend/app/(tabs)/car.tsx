@@ -95,7 +95,7 @@ export default function VehiclesScreen() {
           router.navigate({
             pathname: '/',
             params: {// Paràmetres de la cerca
-              minKw: Number(potencia) - 20, // L'òptim és 20 kW menys de la potencia màxima
+              maxKw: Number(potencia),
               ac_dc: acDc,
               connectorType: connectorType
             }
@@ -190,7 +190,7 @@ export default function VehiclesScreen() {
               <TouchableOpacity style={styles.applyBtn} onPress={() => router.navigate({
                         pathname: '/',
                         params: { // Filtre en el mapa
-                            minKw: Number(v.kw) - 20,
+                            maxKw: Number(v.kw),
                             ac_dc: v.ac_dc,
                             connectorType: v.tipus_connexio
                         }
