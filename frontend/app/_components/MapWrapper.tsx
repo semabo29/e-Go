@@ -46,6 +46,8 @@ export const MapView = forwardRef((props: any, ref: any) => {
   );
 });
 
+MapView.displayName = 'MapView';
+
 // Export por defecto para evitar errores de Expo Router
 export default function MapWrapper() {
   return null;
