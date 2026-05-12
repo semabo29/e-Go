@@ -65,6 +65,34 @@ async function findConductorByEmailWithPassword(email) {
   return result.rows[0] || null;
 }
 
+/** Usuario en admins con hash de contraseña (login admin local; no exige conductor). */
+async function findAdminByEmailWithPassword(email) {
+  const result = await withPasswordColumnRetry(() =>
+    pool.query(
+      `SELECT u.id, r.user_id, u.email, u.username, u.password_hash, r.created_at AS admin_since
+       FROM ${ADMINS_TABLE} r
+       INNER JOIN ${USUARIOS_TABLE} u ON u.id = r.user_id
+       WHERE u.email = $1`,
+      [email]
+    )
+  );
+  return result.rows[0] || null;
+}
+
+/** Usuario en empresas con hash de contraseña (login empresa local; no exige conductor). */
+async function findCompanyByEmailWithPassword(email) {
+  const result = await withPasswordColumnRetry(() =>
+    pool.query(
+      `SELECT u.id, r.user_id, u.email, u.username, u.password_hash, r.nombre, r.created_at AS company_since
+       FROM ${EMPRESAS_TABLE} r
+       INNER JOIN ${USUARIOS_TABLE} u ON u.id = r.user_id
+       WHERE u.email = $1`,
+      [email]
+    )
+  );
+  return result.rows[0] || null;
+}
+
 async function findById(id) {
   const result = await pool.query(
     `SELECT id, email, username, created_at, updated_at FROM ${USUARIOS_TABLE} WHERE id = $1`,
@@ -169,6 +197,8 @@ module.exports = {
   findConductorByEmail,
   findByEmailWithPassword,
   findConductorByEmailWithPassword,
+  findAdminByEmailWithPassword,
+  findCompanyByEmailWithPassword,
   findById,
   getInfoUser,
   updateUser,

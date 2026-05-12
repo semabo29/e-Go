@@ -15,6 +15,8 @@ jest.mock('../../models/userModel', () => ({
   createUser: jest.fn(),
   findByEmailWithPassword: jest.fn(),
   findConductorByEmailWithPassword: jest.fn(),
+  findAdminByEmailWithPassword: jest.fn(),
+  findCompanyByEmailWithPassword: jest.fn(),
   createLocalUser: jest.fn(),
   setPasswordHashByUserId: jest.fn(),
   ensureConductorForUser: jest.fn(),
@@ -218,6 +220,90 @@ describe('authService', () => {
         expect.objectContaining({
           needsUsername: false,
           user: expect.objectContaining({ id: 21, email: 'legacy@test.com' }),
+        })
+      );
+    });
+  });
+
+  describe('loginAdminWithEmail', () => {
+    test('lanza BAD_REQUEST si falta email', async () => {
+      await expect(authService.loginAdminWithEmail({ password: '123456' })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+      });
+    });
+
+    test('lanza INVALID_CREDENTIALS si no hay admin con contraseña', async () => {
+      userModel.findAdminByEmailWithPassword.mockResolvedValue(null);
+      await expect(
+        authService.loginAdminWithEmail({ email: 'a@test.com', password: '123456' })
+      ).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });
+    });
+
+    test('devuelve admin cuando credenciales son válidas', async () => {
+      userModel.findAdminByEmailWithPassword.mockResolvedValue({
+        id: 5,
+        user_id: 5,
+        email: 'adm@test.com',
+        username: 'adm',
+        password_hash: 'hash',
+        admin_since: '2026-01-01',
+      });
+      bcrypt.compare.mockResolvedValue(true);
+
+      const result = await authService.loginAdminWithEmail({
+        email: 'adm@test.com',
+        password: '123456',
+      });
+
+      expect(result.admin).toEqual(
+        expect.objectContaining({
+          id: 5,
+          user_id: 5,
+          email: 'adm@test.com',
+          username: 'adm',
+        })
+      );
+    });
+  });
+
+  describe('loginCompanyWithEmail', () => {
+    test('lanza BAD_REQUEST si falta email', async () => {
+      await expect(authService.loginCompanyWithEmail({ password: '123456' })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+      });
+    });
+
+    test('lanza INVALID_CREDENTIALS si no hay empresa con contraseña', async () => {
+      userModel.findCompanyByEmailWithPassword.mockResolvedValue(null);
+      await expect(
+        authService.loginCompanyWithEmail({ email: 'a@test.com', password: '123456' })
+      ).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });
+    });
+
+    test('devuelve company cuando credenciales son válidas', async () => {
+      userModel.findCompanyByEmailWithPassword.mockResolvedValue({
+        id: 8,
+        user_id: 8,
+        email: 'co@test.com',
+        username: 'co',
+        nombre: 'Acme',
+        password_hash: 'hash',
+        company_since: '2026-02-01',
+      });
+      bcrypt.compare.mockResolvedValue(true);
+
+      const result = await authService.loginCompanyWithEmail({
+        email: 'co@test.com',
+        password: '123456',
+      });
+
+      expect(result.company).toEqual(
+        expect.objectContaining({
+          id: 8,
+          user_id: 8,
+          email: 'co@test.com',
+          username: 'co',
+          nombre: 'Acme',
         })
       );
     });

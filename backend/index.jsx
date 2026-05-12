@@ -35,6 +35,30 @@ app.post(
 );
 app.use(express.json());
 
+// API Gateway u otros proxies con prefijo de etapa (/prod, /dev): quitarlo para que coincidan las rutas.
+// En Lambda, define API_PATH_PREFIX=/prod (o el valor que use tu despliegue).
+const apiPathPrefix = (process.env.API_PATH_PREFIX || '').trim();
+if (apiPathPrefix) {
+  const prefix = apiPathPrefix.startsWith('/') ? apiPathPrefix : `/${apiPathPrefix}`;
+  app.use((req, res, next) => {
+    const url = req.url || '';
+    const q = url.indexOf('?');
+    const pathPart = q === -1 ? url : url.slice(0, q);
+    const query = q === -1 ? '' : url.slice(q);
+    if (pathPart === prefix || pathPart.startsWith(`${prefix}/`)) {
+      const rest = pathPart.slice(prefix.length) || '/';
+      req.url = rest + query;
+    }
+    next();
+  });
+}
+
+const authController = require('./controllers/authController');
+// Login local admin/empresa: rutas explícitas en la app principal (antes del mount /auth).
+// Así se evitan 404 en despliegues donde el sub-router no recibe bien la ruta.
+app.post('/auth/admin/local/login', authController.adminLocalLogin);
+app.post('/auth/company/local/login', authController.companyLocalLogin);
+
 // --- RUTAS ---
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);

@@ -160,10 +160,13 @@ let memo: string | undefined;
  */
 export function getApiUrl(): string {
   if (memo !== undefined) return memo;
+  let base: string;
   try {
-    memo = computeApiBase();
+    base = computeApiBase();
   } catch {
-    memo = ENV_API || `http://localhost:${defaultApiPort()}`;
+    base = ENV_API || `http://localhost:${defaultApiPort()}`;
   }
-  return memo ?? (ENV_API || `http://localhost:${defaultApiPort()}`);
+  // Evita `//auth/...` si EXPO_PUBLIC_API_URL termina en `/` (algunos proxies devuelven 404).
+  memo = (base || `http://localhost:${defaultApiPort()}`).replace(/\/+$/, '');
+  return memo;
 }
