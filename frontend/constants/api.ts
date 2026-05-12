@@ -23,7 +23,7 @@ function hostFromScriptUrl(): string | null {
     if (!t.startsWith('http://') && !t.startsWith('https://')) return null;
     const hostname = new URL(t).hostname;
     return hostname || null;
-  } catch {
+  } catch (_e) {
     return null;
   }
 }
@@ -52,7 +52,7 @@ function hostFromDevConnection(): string | null {
       const host = clientUri.split(':')[0]?.trim();
       if (host) return host;
     }
-  } catch {
+  } catch (_e) {
     // bridge o manifest no listos
   }
   return null;
@@ -163,7 +163,7 @@ export function getApiUrl(): string {
   let base: string;
   try {
     base = computeApiBase();
-  } catch {
+  } catch (_e) {
     base = ENV_API || `http://localhost:${defaultApiPort()}`;
   }
   // Evita `//auth/...` si EXPO_PUBLIC_API_URL termina en `/` (algunos proxies devuelven 404).

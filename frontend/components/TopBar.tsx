@@ -70,7 +70,9 @@ export default function TopBar({
           onPress={onToggleSearchMode}
           accessibilityRole="button"
           accessibilityLabel={
-            isAddressMode ? 'Canviar a cerca de punts de recàrrega' : 'Canviar a cerca d’adreces al mapa'
+            isAddressMode
+              ? 'Canviar a cerca de punts de recàrrega'
+              : "Canviar a cerca d'adreces al mapa"
           }
         >
           <Ionicons name={isAddressMode ? 'flash-outline' : 'map-outline'} size={22} color={isAddressMode ? '#fff' : '#334155'} />

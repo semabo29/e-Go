@@ -52,7 +52,7 @@ const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
 try {
   ImagePickerModule = require('expo-image-picker');
-} catch {
+} catch (_e) {
   ImagePickerModule = null;
 }
 
@@ -718,7 +718,7 @@ useEffect(() => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         });
-      } catch (fetchErr: unknown) {
+      } catch (fetchErr) {
         const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
         const base = getApiUrl();
         console.error('[Inicio] fetch /auth/google:', fetchErr, '→ URL:', `${base}/auth/google`);
@@ -753,7 +753,7 @@ useEffect(() => {
         setPendingAuth({ pending_token: data.pending_token });
         setAuthStep('username');
       }
-    } catch (err: unknown) {
+    } catch (err) {
       const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
       if (code === statusCodes.SIGN_IN_CANCELLED) {
         setAuthStep('google');
@@ -793,7 +793,7 @@ useEffect(() => {
       } else {
         setAuthError(data.error || 'Error al registrarse');
       }
-    } catch {
+    } catch (_e) {
       setAuthError('No se pudo conectar con el servidor.');
     } finally {
       setAuthLoadingGoogle(false);
@@ -825,7 +825,7 @@ useEffect(() => {
       if (data.user) {
         setUser(data.user);
       }
-    } catch {
+    } catch (_e) {
       setAuthError('No se pudo conectar con el servidor.');
     } finally {
       setAuthLoadingGoogle(false);
@@ -1735,7 +1735,7 @@ useEffect(() => {
                 setMenuOpen(false);
                 try {
                   await GoogleSignin.signOut();
-                } catch {
+                } catch (_e) {
                   // Si no hay sesión Google activa, igualmente cerramos sesión local.
                 }
                 logout();

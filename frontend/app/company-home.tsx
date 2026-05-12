@@ -51,7 +51,7 @@ export default function CompanyHomeScreen() {
         return;
       }
       await refreshStations();
-    } catch {
+    } catch (_e) {
       setError('No se pudo conectar con el servidor');
     } finally {
       setLoadingStations(false);
