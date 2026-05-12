@@ -2295,6 +2295,7 @@ activeFiltersText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
   startDrivingBtn: {
     backgroundColor: '#3b82f6', // Azul Google
     flexDirection: 'row',
