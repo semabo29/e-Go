@@ -129,6 +129,7 @@ export default function InicioScreen() {
   });
 
   const mapRef = useRef<any>(null);
+  
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
 
   const [authStep, setAuthStep] = useState<'google' | 'username'>('google');
@@ -141,6 +142,55 @@ export default function InicioScreen() {
 
   //Estados para la navegacion a un punto
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isDrivingMode, setIsDrivingMode] = useState(false);
+  // Referencia para guardar la suscripción al GPS y poder apagarla
+  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+
+  //NAVEGACIÓN 3D (Waze / Google Maps)
+  useEffect(() => {
+    let isMounted = true;
+
+    const start3DTracking = async () => {
+      if (isDrivingMode) { 
+        locationSubscription.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.BestForNavigation,
+            timeInterval: 1000,
+            distanceInterval: 2,
+          },
+          (location) => {
+            if (!isMounted) return;
+            const { latitude, longitude, heading } = location.coords;
+
+            if (mapRef.current && typeof mapRef.current.animateCamera === 'function') {
+              mapRef.current.animateCamera(
+                {
+                  center: { latitude, longitude },
+                  heading: heading || 0,
+                  pitch: 60, 
+                  zoom: 18,
+                },
+                { duration: 1000 }
+              );
+            }
+          }
+        );
+      } else {
+        // Si no estamos en modo conducción, nos aseguramos de apagar el GPS
+        if (locationSubscription.current) {
+          locationSubscription.current.remove();
+          locationSubscription.current = null;
+        }
+      }
+    };
+
+    start3DTracking();
+
+    return () => {
+      isMounted = false;
+      if (locationSubscription.current) locationSubscription.current.remove();
+    };
+  }, [isDrivingMode]);
   const [routeOrigin, setRouteOrigin] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeDestination, setRouteDestination] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
@@ -965,6 +1015,7 @@ useEffect(() => {
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
           showsUserLocation={true}
+          showsUserHeading={true}
           //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
           onPress={(e: any) => {
             if (isSelectingOrigin) {//Si estamos seleccionando un punto de origen para la ruta solo hacemos el cuerpo del if
@@ -1050,24 +1101,23 @@ useEffect(() => {
               <MapViewDirections
                 origin={routeOrigin}
                 destination={routeDestination}
-                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''} //Usa la del .env
-                strokeWidth={0} //oculta la linea nativa que da problem
-                strokeColor="#3b82f6" //Un azul eléctrico estilo Google Maps
+                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                strokeWidth={0}
+                strokeColor="#3b82f6"
                 mode="DRIVING"
                 onReady={(result) => {
-                  //Guardamos tiempo y distancia para mostrarlo en pantalla
                   setRouteInfo({
                     distance: result.distance,
                     duration: result.duration
                   });
-                    //Guardamos las coordenadas para pintarlas nosotros con el polyline
-                    setRouteCoords(result.coordinates);
+                  setRouteCoords(result.coordinates);
 
-                  //Auto-Zoom: Centra el mapa para que se vean tanto el origen como el destino
-                  mapRef.current?.fitToCoordinates(result.coordinates, {
-                    edgePadding: { top: 100, right: 50, bottom: 200, left: 50 },
-                    animated: true
-                  });
+                  if (!isDrivingMode && mapRef.current) {
+                    mapRef.current.fitToCoordinates(result.coordinates, {
+                      edgePadding: { top: 100, right: 50, bottom: 250, left: 50 },
+                      animated: true
+                    });
+                  }
                 }}
                 onError={(errorMessage) => {
                   Alert.alert("Error de ruta", "No se ha podido calcular la ruta");
@@ -1092,19 +1142,31 @@ useEffect(() => {
             {/* Panel de Información de Ruta Activa */}
             {isNavigating && routeInfo && (
               <View style={styles.navPanel}>
-                <View>
-                    {/* ponemos el nombre de la estacion si existe, si no, uno por default */}
-                  <Text style={styles.navTextBold}>
-                    Ruta hacia {selectedStation ? selectedStation.nom : 'Ubicación seleccionada'}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.navTextBold} numberOfLines={1}>
+                    Hacia {selectedStation ? selectedStation.nom : 'tu destino'}
                   </Text>
                   <Text style={styles.navText}>
                     {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
                   </Text>
                 </View>
+
+                {/* BOTÓN PARA PASAR A MODO 3D */}
+                {!isDrivingMode && (
+                  <TouchableOpacity
+                    style={[styles.startDrivingBtn, { marginRight: 10 }]}
+                    onPress={() => setIsDrivingMode(true)}
+                  >
+                    <MaterialIcons name="navigation" size={20} color="#fff" />
+                    <Text style={styles.startDrivingText}>Iniciar</Text>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                   style={styles.cancelRouteBtn}
                   onPress={() => {
                     setIsNavigating(false);
+                    setIsDrivingMode(false); // 🌟 También reseteamos el modo conducción
                     setRouteOrigin(null);
                     setRouteDestination(null);
                     setRouteInfo(null);
@@ -1879,5 +1941,19 @@ activeFiltersText: {
     color: '#ef4444', // Vermell més fosc pel text
     fontSize: 14,
     flex: 1,
+  },
+  startDrivingBtn: {
+    backgroundColor: '#3b82f6', // Azul Google
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 5,
+  },
+  startDrivingText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

@@ -39,6 +39,15 @@ jest.mock('@/contexts/AuthContext', () => ({
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: () => Promise.resolve({ status: 'granted' }),
   getCurrentPositionAsync: () => Promise.resolve({ coords: { latitude: 41.38, longitude: 2.17 } }),
+  watchPositionAsync: () => Promise.resolve({ remove: jest.fn() }), // Mock the subscription
+  Accuracy: {
+    BestForNavigation: 6, // Mock the enum value
+    Highest: 5,
+    High: 4,
+    Balanced: 3,
+    Low: 2,
+    Lowest: 1,
+  }
 }));
 
 jest.mock('@/components/TopBar', () => () => null);
@@ -53,6 +62,23 @@ jest.mock('react-native-maps', () => {
     default: (props: any) => <View testID="react-native-map" {...props} />,
     Marker: (props: any) => <View testID="rn-marker" {...props} />,
     Polyline: (props: any) => <View testID="polyline" {...props} />,
+  };
+});
+
+jest.mock('react-native-maps-directions', () => {
+  const { View } = require('react-native');
+  return (props: any) => {
+    // Simulamos que la ruta se calcula y dispara el onReady automáticamente
+    if (props.onReady) {
+      setTimeout(() => {
+        props.onReady({
+          distance: 5.2,
+          duration: 12,
+          coordinates: [{ latitude: 41, longitude: 2 }, { latitude: 41.1, longitude: 2.1 }]
+        });
+      }, 0);
+    }
+    return <View testID="map-view-directions" />;
   };
 });
 
@@ -200,6 +226,50 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
     await waitFor(() => {
       expect(queryByText('Ubicación seleccionada')).toBeNull();
       expect(queryByText('Cómo llegar')).toBeNull();
+    });
+  });
+
+  // TC5
+  test('TC5: Iniciar el modo conducción 3D oculta el botón "Iniciar"', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+
+    // 1. Clic en el mapa para marcar un destino libre
+    await act(async () => {
+      fireEvent(getByTestId('map-view'), 'onPress', {
+        nativeEvent: { coordinate: { latitude: 41.0, longitude: 2.0 } },
+      });
+    });
+
+    // 2. Darle a "Cómo llegar"
+    const btn = await waitFor(() => getByText('Cómo llegar'));
+    await act(async () => {
+      fireEvent.press(btn);
+    });
+
+    // 3. Seleccionar "Mi ubicación actual" en la alerta para iniciar la ruta
+    const alertCalls = alertSpy.mock.calls;
+    const alertButtons = alertCalls[0][2];
+    const miUbicacionBtn = alertButtons?.find(b => b.text === 'Mi ubicación actual');
+
+    await act(async () => {
+      if (miUbicacionBtn?.onPress) miUbicacionBtn.onPress();
+    });
+
+    // 4. El mock de MapViewDirections dispara el onReady y aparece el panel con "Iniciar"
+    const iniciarBtn = await waitFor(() => getByText('Iniciar'));
+    expect(iniciarBtn).toBeTruthy();
+
+    // 5. Pulsamos "Iniciar" para pasar al modo 3D (isDrivingMode = true)
+    await act(async () => {
+      fireEvent.press(iniciarBtn);
+    });
+
+    // 6. Verificamos que el botón "Iniciar" desaparece de la interfaz
+    await waitFor(() => {
+      expect(queryByText('Iniciar')).toBeNull();
     });
   });
 });

@@ -1,3 +1,4 @@
+import React, { forwardRef } from 'react';
 import MapViewCluster from 'react-native-map-clustering';
 import { Marker, Callout } from 'react-native-maps';
 import { View, Text, StyleSheet } from 'react-native';
@@ -9,10 +10,10 @@ function formatClusterCount(points: number) {
   return String(points);
 }
 
-// Exportamos MapViewCluster con el nombre MapView para que el código sea intercambiable
-export const MapView = (props: any) => {
+export const MapView = forwardRef((props: any, ref: any) => {
   return (
     <MapViewCluster
+      ref={ref} // <--- ¡ESTA LÍNEA ES VITAL PARA LA NAVEGACIÓN!
       {...props}
       radius={50} // Radio de agrupación
       // Personalización del círculo del cluster
@@ -43,7 +44,9 @@ export const MapView = (props: any) => {
       {props.children}
     </MapViewCluster>
   );
-};
+});
+
+MapView.displayName = 'MapView';
 
 // Export por defecto para evitar errores de Expo Router
 export default function MapWrapper() {
