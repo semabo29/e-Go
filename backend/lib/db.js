@@ -3,6 +3,12 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { Pool } = require('pg');
 
+function normalizeIdentifier(value, fallback) {
+  const raw = (value || fallback || '').toString().trim();
+  // Avoid case-sensitive mismatches like "Usuari" vs real table usuari.
+  return raw.replace(/"/g, '').toLowerCase();
+}
+
 // Host, User, Password, DB Name desde .env o variables de Lambda (RDS)
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -15,13 +21,13 @@ const pool = new Pool({
 });
 
 // Tabla de usuarios y admins (ej. schema ego, tabla usuari)
-const DB_SCHEMA = process.env.DB_SCHEMA || 'public';
-const DB_TABLE_USUARIOS = process.env.DB_TABLE_USUARIOS || 'usuari';
-const DB_TABLE_CONDUCTORES = process.env.DB_TABLE_CONDUCTORES || 'conductor';
-const DB_TABLE_ADMINS = process.env.DB_TABLE_ADMINS || 'admins';
-const DB_TABLE_EMPRESAS = process.env.DB_TABLE_EMPRESAS || 'empresas';
-const DB_TABLE_STATION_REQUESTS = process.env.DB_TABLE_STATION_REQUESTS || 'station_requests';
-const DB_TABLE_SUBSCRIPTIONS = process.env.DB_TABLE_SUBSCRIPTIONS || 'subscription';
+const DB_SCHEMA = normalizeIdentifier(process.env.DB_SCHEMA, 'public');
+const DB_TABLE_USUARIOS = normalizeIdentifier(process.env.DB_TABLE_USUARIOS, 'usuari');
+const DB_TABLE_CONDUCTORES = normalizeIdentifier(process.env.DB_TABLE_CONDUCTORES, 'conductor');
+const DB_TABLE_ADMINS = normalizeIdentifier(process.env.DB_TABLE_ADMINS, 'admins');
+const DB_TABLE_EMPRESAS = normalizeIdentifier(process.env.DB_TABLE_EMPRESAS, 'empresas');
+const DB_TABLE_STATION_REQUESTS = normalizeIdentifier(process.env.DB_TABLE_STATION_REQUESTS, 'station_requests');
+const DB_TABLE_SUBSCRIPTIONS = normalizeIdentifier(process.env.DB_TABLE_SUBSCRIPTIONS, 'subscription');
 const USUARIOS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_USUARIOS}"`;
 const CONDUCTORES_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_CONDUCTORES}"`;
 const ADMINS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_ADMINS}"`;

@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   Platform,
@@ -40,7 +41,10 @@ export default function AdminLoginScreen() {
   const router = useRouter();
   const { openGoogle } = useLocalSearchParams<{ openGoogle?: string }>();
   const [loading, setLoading] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const openedGoogleRef = useRef(false);
 
@@ -72,6 +76,37 @@ export default function AdminLoginScreen() {
       promptAsync();
     }
   }, [openGoogle, request]);
+
+  async function submitAdminLocalLogin() {
+    if (!email.trim() || !password) {
+      setError('Email y contraseña son obligatorios');
+      return;
+    }
+    setLocalLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${getApiUrl()}/auth/admin/local/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const detail = [data.error, data.message].filter(Boolean).join(' — ');
+        setError(detail || 'Error al iniciar sesión');
+        return;
+      }
+      if (data.admin && data.token) {
+        setAdmin(data.admin);
+        await savePrivilegedSession('admin', { token: data.token, user: data.admin });
+        router.replace('/admin-home');
+      }
+    } catch (err) {
+      setError('No se pudo conectar con el servidor. Comprueba la URL del backend.');
+    } finally {
+      setLocalLoading(false);
+    }
+  }
 
   async function loginAdminWithIdToken(idToken: string) {
     try {
@@ -135,7 +170,9 @@ export default function AdminLoginScreen() {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
+      const legacyUserInfo = userInfo as unknown as { idToken?: string };
+      const modernUserInfo = userInfo as unknown as { data?: { idToken?: string } };
+      const idToken = legacyUserInfo.idToken ?? modernUserInfo.data?.idToken;
 
       if (!idToken) {
         setError('No se pudo obtener el token de Google');
@@ -165,10 +202,12 @@ export default function AdminLoginScreen() {
         <Text style={styles.subtitle}>Backoffice de e-Go</Text>
 
         {!GOOGLE_WEB_CLIENT_ID ? (
-          <Text style={styles.errorText}>
-            Configura EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en el .env del frontend
+          <Text style={styles.hintText}>
+            Para continuar con Google, configura EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en el .env del frontend.
           </Text>
-        ) : admin ? (
+        ) : null}
+
+        {admin ? (
           <View style={styles.successBox}>
             <Text style={styles.successTitle}>Sesion iniciada</Text>
             <Text style={styles.successText}>{admin.email}</Text>
@@ -187,10 +226,47 @@ export default function AdminLoginScreen() {
         ) : (
           <>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            <View style={styles.localForm}>
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#9ca3af"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Contraseña"
+                placeholderTextColor="#9ca3af"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={submitAdminLocalLogin}
+                disabled={localLoading || loading}
+                activeOpacity={0.85}
+              >
+                {localLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Iniciar sesión</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.separatorText}>o</Text>
+
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleAdminLogin}
-              disabled={(IS_WEB && !request) || loading}
+              disabled={!GOOGLE_WEB_CLIENT_ID || (IS_WEB && !request) || loading || localLoading}
               activeOpacity={0.8}
             >
               {loading ? (
@@ -282,11 +358,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1f2937',
   },
+  hintText: {
+    color: '#6b7280',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
   errorText: {
     color: '#dc2626',
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 12,
+  },
+  localForm: {
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  input: {
+    width: '100%',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  primaryButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: BRAND_GREEN,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  separatorText: {
+    marginVertical: 14,
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '600',
   },
   openingGoogle: {
     alignItems: 'center',

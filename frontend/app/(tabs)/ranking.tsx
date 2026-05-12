@@ -68,7 +68,7 @@ export default function RankingScreen() {
             
             <View style={styles.nameCol}>
               <TouchableOpacity
-                onPress={() => router.push({ pathname: '/user', params: { userId: item.id } })}
+                onPress={() => router.push({ pathname: '../user', params: { userId: item.id } })}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.username, index < 3 && styles.topUsername]}>

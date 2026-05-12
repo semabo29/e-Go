@@ -1329,7 +1329,7 @@ useEffect(() => {
               onPress={() => {
                 setMenuOpen(false); // Tanquem el menú
                 router.push({
-                  pathname: '/user',
+                  pathname: '../user',
                   params: { userId: user.id }
                 });
               }}

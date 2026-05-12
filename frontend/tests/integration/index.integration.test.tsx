@@ -129,8 +129,12 @@ describe('InicioScreen map and station panel', () => {
     expect(getByText('Cómo llegar')).toBeTruthy();
     expect(getByText('Carrer de Test, Barcelona')).toBeTruthy();
 
-    fireEvent.press(getByTestId('map-view'));
-    expect(queryByText('Cómo llegar')).toBeNull();
+    fireEvent(getByTestId('map-view'), 'onPress', {
+      nativeEvent: { coordinate: { latitude: 41.391, longitude: 2.155 } },
+    });
+    // El botón "Cómo llegar" se mantiene porque ahora se selecciona una ubicación libre.
+    // Lo que debe desaparecer es la información de la estación seleccionada.
+    expect(queryByText('Carrer de Test, Barcelona')).toBeNull();
   });
 
   // Si `useAuth` está en modo carga (`isLoading=true`), debe mostrarse el texto "Cargando…".

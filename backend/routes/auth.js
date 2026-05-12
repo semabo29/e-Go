@@ -12,6 +12,9 @@ router.post('/local/login', authController.localLogin);
 router.post('/local/register', authController.localRegister);
 router.post('/register', authController.register);
 
+router.post('/admin/local/login', authController.adminLocalLogin);
+router.post('/company/local/login', authController.companyLocalLogin);
+
 async function loginPrivilegedUser(req, res, { role, relationTable, selectFields, forbiddenMessage }) {
   const hasIdToken = !!req.body.idToken;
   const hasCode = !!(req.body.code && req.body.redirectUri);

@@ -1,9 +1,11 @@
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const express = require('express');
+const bcrypt = require('bcryptjs');
 
 const { pool } = require('../../lib/db');
 const { getGooglePayload } = require('../../lib/authHelpers');
+const userModel = require('../../models/userModel');
 
 jest.mock('../../lib/db', () => ({
   pool: { query: jest.fn() },
@@ -75,6 +77,54 @@ describe('Company auth', () => {
     expect(decoded.sub).toBe(5);
     expect(decoded.user_id).toBe(8);
     expect(decoded.role).toBe('company');
+  });
+
+  test('POST /auth/company/local/login -> 400 si faltan datos', async () => {
+    const res = await request(app).post('/auth/company/local/login').send({});
+    expect(res.status).toBe(400);
+  });
+
+  test('POST /auth/company/local/login -> 401 si contraseña incorrecta', async () => {
+    jest.spyOn(userModel, 'findCompanyByEmailWithPassword').mockResolvedValue({
+      id: 5,
+      user_id: 8,
+      email: 'empresa@example.com',
+      username: 'empresa',
+      nombre: 'ChargeCo',
+      password_hash: 'hash',
+      company_since: '2026-04-19T10:00:00.000Z',
+    });
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false);
+    const res = await request(app)
+      .post('/auth/company/local/login')
+      .send({ email: 'empresa@example.com', password: 'wrongpass1' });
+    expect(res.status).toBe(401);
+    jest.restoreAllMocks();
+  });
+
+  test('POST /auth/company/local/login -> 200 con JWT company', async () => {
+    jest.spyOn(userModel, 'findCompanyByEmailWithPassword').mockResolvedValue({
+      id: 5,
+      user_id: 8,
+      email: 'empresa@example.com',
+      username: 'empresa',
+      nombre: 'ChargeCo',
+      password_hash: 'hash',
+      company_since: '2026-04-19T10:00:00.000Z',
+    });
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
+    const res = await request(app)
+      .post('/auth/company/local/login')
+      .send({ email: 'empresa@example.com', password: 'secret12' });
+    expect(res.status).toBe(200);
+    expect(res.body.company.email).toBe('empresa@example.com');
+    expect(res.body.company.nombre).toBe('ChargeCo');
+    expect(res.body.token).toBeTruthy();
+    const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
+    expect(decoded.role).toBe('company');
+    expect(decoded.sub).toBe(5);
+    expect(decoded.user_id).toBe(8);
+    jest.restoreAllMocks();
   });
 
   test('GET /company/me -> 200 con token valido', async () => {

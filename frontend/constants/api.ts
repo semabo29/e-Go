@@ -113,11 +113,15 @@ function defaultApiPort(): string {
   return process.env.EXPO_PUBLIC_API_PORT?.trim() || '3000';
 }
 
+function isUsbDevModeEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_DEV_USE_USB === '1';
+}
+
 function computeApiBase(): string {
   const apiPort = defaultApiPort();
 
   // npm run start:usb: expo-start define EXPO_PUBLIC_DEV_USE_USB=1 para Metro → URL fija por adb reverse.
-  if (__DEV__ && Platform.OS !== 'web' && process.env.EXPO_PUBLIC_DEV_USE_USB === '1') {
+  if (__DEV__ && Platform.OS !== 'web' && isUsbDevModeEnabled()) {
     return `http://127.0.0.1:${apiPort}`;
   }
 
@@ -131,10 +135,18 @@ function computeApiBase(): string {
   }
 
   const host = resolveDevMobileHost();
-  if (host && !isLoopbackHost(host)) {
-    return `http://${host}:${apiPort}`;
-  }
   if (host) {
+    // Solo usamos loopback en móvil cuando el desarrollador ha arrancado en modo USB
+    // (npm run start:usb + adb reverse). En otros casos priorizamos host de red.
+    if (isLoopbackHost(host) && !isUsbDevModeEnabled()) {
+      const fromExpo = hostFromDevConnection();
+      if (fromExpo && !isLoopbackHost(fromExpo)) {
+        return `http://${fromExpo}:${apiPort}`;
+      }
+      if (Platform.OS === 'android') {
+        return `http://10.0.2.2:${apiPort}`;
+      }
+    }
     return `http://${host}:${apiPort}`;
   }
 
@@ -148,10 +160,13 @@ let memo: string | undefined;
  */
 export function getApiUrl(): string {
   if (memo !== undefined) return memo;
+  let base: string;
   try {
-    memo = computeApiBase();
+    base = computeApiBase();
   } catch {
-    memo = ENV_API || `http://localhost:${defaultApiPort()}`;
+    base = ENV_API || `http://localhost:${defaultApiPort()}`;
   }
-  return memo ?? (ENV_API || `http://localhost:${defaultApiPort()}`);
+  // Evita `//auth/...` si EXPO_PUBLIC_API_URL termina en `/` (algunos proxies devuelven 404).
+  memo = (base || `http://localhost:${defaultApiPort()}`).replace(/\/+$/, '');
+  return memo;
 }

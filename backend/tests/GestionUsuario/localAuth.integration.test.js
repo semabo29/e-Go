@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 jest.mock('../../lib/db', () => ({
   pool: { query: jest.fn() },
   USUARIOS_TABLE: '"ego"."usuarios"',
+  CONDUCTORES_TABLE: '"ego"."conductor"',
   ADMINS_TABLE: '"ego"."admins"',
 }));
 
@@ -49,7 +50,7 @@ describe('Integración auth local (email/password)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.user).toEqual(expect.objectContaining({ email: 'new@test.com' }));
-    expect(pool.query).toHaveBeenCalledTimes(2);
+    expect(pool.query).toHaveBeenCalledTimes(3);
     const [, values] = pool.query.mock.calls[1];
     expect(values[2]).toBeDefined();
     expect(values[2]).not.toBe('123456');

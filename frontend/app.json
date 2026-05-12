@@ -16,13 +16,14 @@
       }
     },
     "android": {
-      "package": "com.ego.app",
+      "package": "com.ego2.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./app/_assets/favicon.png",
         "backgroundImage": "./app/_assets/favicon.png",
         "monochromeImage": "./app/_assets/favicon.png"
       },
+      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
