@@ -34,7 +34,7 @@ export default function SupportChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={24} color="#10b981" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Asistente e-Go</Text>
+        <Text style={styles.headerTitle}> Salir del Asistente e-Go</Text>
       </View>
 
       <FlatList
@@ -65,8 +65,8 @@ export default function SupportChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 60, backgroundColor: 'white' },
+  container: { flex: 1, backgroundColor: '#6bf276' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 30, backgroundColor: 'white' },
   headerTitle: { fontSize: 18, fontWeight: 'bold', marginLeft: 16, color: '#1e293b' },
   bubble: { padding: 12, borderRadius: 16, marginBottom: 10, maxWidth: '80%' },
   userBubble: { alignSelf: 'flex-end', backgroundColor: '#10b981' },
