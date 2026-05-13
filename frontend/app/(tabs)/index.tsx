@@ -1,5 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-import { useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { MapView, Marker } from '../_components/MapWrapper';
 import TopBar, { MapSearchListItem } from '../../components/TopBar';
 
@@ -30,6 +30,8 @@ import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
 import { ChargingActionCard } from '../../components/ChargingActionCard';
 import { ChargingResultModal } from '../../components/ChargingResultModal';
 import { StartChargingButton } from '../../components/StartChargingButton';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemePreference } from '@/contexts/ThemePreferenceContext';
 import {
   requestLocationPermissions,
   isLocationServiceEnabled,
@@ -77,6 +79,10 @@ interface Estacion {
 }
 
 export default function InicioScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const { preference, setPreference } = useThemePreference();
   const router = useRouter();
   //Llegim els paràmetres de la URL
   const params = useLocalSearchParams();
@@ -1729,6 +1735,26 @@ useEffect(() => {
               <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
             </TouchableOpacity>
 
+            <View style={styles.themeSection}>
+              <Text style={styles.themeSectionTitle}>Tema</Text>
+              <View style={styles.themeSegment}>
+                <TouchableOpacity
+                  style={[styles.themeOption, preference === 'light' && styles.themeOptionActive]}
+                  onPress={() => setPreference('light')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.themeOptionText, preference === 'light' && styles.themeOptionTextActive]}>Claro</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.themeOption, preference === 'dark' && styles.themeOptionActive]}
+                  onPress={() => setPreference('dark')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.themeOptionText, preference === 'dark' && styles.themeOptionTextActive]}>Oscuro</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={async () => {
@@ -1752,10 +1778,10 @@ useEffect(() => {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isDark: boolean) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: isDark ? '#0f172a' : '#f5f5f5',
   },
   centered: {
     justifyContent: 'center',
@@ -1763,7 +1789,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     marginTop: 10,
   },
   scroll: {
@@ -1776,7 +1802,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
@@ -1793,7 +1819,7 @@ const styles = StyleSheet.create({
   cardCompact: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 20,
@@ -1809,13 +1835,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: isDark ? '#f1f5f9' : '#1a1a1a',
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: '#6b7280',
+    color: isDark ? '#94a3b8' : '#6b7280',
     textAlign: 'center',
     marginBottom: 18,
   },
@@ -1828,9 +1854,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: isDark ? '#334155' : '#e2e8f0',
   },
   googleIcon: {
     width: 22,
@@ -1839,7 +1865,7 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
   },
   authSeparatorText: {
     marginTop: 12,
@@ -1852,7 +1878,7 @@ const styles = StyleSheet.create({
     width: '100%',
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -1865,19 +1891,19 @@ const styles = StyleSheet.create({
   },
   adminLinkText: {
     fontSize: 14,
-    color: '#111827',
+    color: isDark ? '#e2e8f0' : '#111827',
     fontWeight: '600',
   },
   welcomeUsernameTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   welcomeUsernameSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: isDark ? '#94a3b8' : '#6b7280',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -1887,7 +1913,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: isDark ? '#334155' : '#e5e7eb',
+    color: isDark ? '#e2e8f0' : '#111827',
     borderRadius: 10,
     marginBottom: 16,
   },
@@ -1919,7 +1946,7 @@ const styles = StyleSheet.create({
   },
   welcomeBackLinkText: {
     fontSize: 14,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     fontWeight: '500',
   },
   centerMapButton: {
@@ -1929,7 +1956,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     width: 48,
     height: 48,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1943,7 +1970,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 24,
     left: 24,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     padding: 8,
     borderRadius: 20,
     elevation: 3,
@@ -1954,7 +1981,7 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 20,
     right: 20,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
@@ -1963,7 +1990,7 @@ const styles = StyleSheet.create({
   infoHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: isDark ? '#475569' : '#e2e8f0',
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 16,
@@ -1978,7 +2005,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: isDark ? '#f1f5f9' : '#1e293b',
     flex: 1,
   },
   infoCloseBtn: {
@@ -1995,7 +2022,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     flex: 1,
   },
   infoBadgeRow: {
@@ -2017,7 +2044,7 @@ const styles = StyleSheet.create({
   },
   infoPromotor: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: isDark ? '#cbd5e1' : '#94a3b8',
     fontStyle: 'italic',
   },
   routeButton: {
@@ -2057,7 +2084,7 @@ const styles = StyleSheet.create({
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
@@ -2065,7 +2092,7 @@ const styles = StyleSheet.create({
     width: '75%',
     maxWidth: 320,
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     paddingTop: 48,
     paddingHorizontal: 20,
   },
@@ -2078,7 +2105,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
   },
   menuClose: {
     padding: 4,
@@ -2093,7 +2120,46 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1f2937',
+    color: isDark ? '#e2e8f0' : '#1f2937',
+  },
+  themeSection: {
+    marginTop: 10,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
+  themeSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: isDark ? '#94a3b8' : '#64748b',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  themeSegment: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    backgroundColor: isDark ? '#334155' : '#f1f5f9',
+    padding: 4,
+    gap: 4,
+  },
+  themeOption: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeOptionActive: {
+    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+  },
+  themeOptionText: {
+    color: isDark ? '#cbd5e1' : '#475569',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeOptionTextActive: {
+    color: isDark ? '#f1f5f9' : '#111827',
+    fontWeight: '700',
   },
   userDot: {
     width: 18,
@@ -2110,7 +2176,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 12,
     zIndex: 10,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     flexDirection: 'row', // La columna de text a l'esquerra, la X a la dreta
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -2119,7 +2185,7 @@ const styles = StyleSheet.create({
     boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: isDark ? '#334155' : '#e2e8f0',
   },
   filtersColumn: {
     flexDirection: 'column',
@@ -2133,13 +2199,13 @@ const styles = StyleSheet.create({
 activeFiltersText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
   },
   clearFilterButton: {
     marginLeft: 12,
     paddingLeft: 12,
     borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
-    borderLeftColor: '#e2e8f0',
+    borderLeftColor: isDark ? '#334155' : '#e2e8f0',
   },
 
   // --- Estilos de los componentes de rutas de navegacion ---
@@ -2148,7 +2214,7 @@ activeFiltersText: {
     top: 50, // Ajusta según tu TopBar
     left: 20,
     right: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDark ? '#1e293b' : '#ffffff',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -2165,12 +2231,12 @@ activeFiltersText: {
   navTextBold: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
     marginBottom: 4,
   },
   navText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: isDark ? '#94a3b8' : '#6b7280',
   },
   cancelRouteBtn: {
     backgroundColor: '#ef4444', // Rojo para cancelar
@@ -2245,25 +2311,25 @@ activeFiltersText: {
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fee2e2', // Un fons vermell claret
+    backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
     padding: 12,
     borderRadius: 8,
     marginTop: 16,
     gap: 8,
   },
   errorText: {
-    color: '#ef4444', // Vermell més fosc pel text
+    color: isDark ? '#fecaca' : '#ef4444',
     fontSize: 14,
     flex: 1,
   },
   reportModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     padding: 18,
   },
   reportModalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 16,
     padding: 18,
     gap: 10,
@@ -2271,27 +2337,27 @@ activeFiltersText: {
   reportModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: isDark ? '#f1f5f9' : '#111827',
     marginBottom: 4,
   },
   reportLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: isDark ? '#cbd5e1' : '#374151',
   },
   reportTextarea: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: isDark ? '#475569' : '#d1d5db',
     borderRadius: 10,
     minHeight: 92,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#111827',
+    color: isDark ? '#e2e8f0' : '#111827',
     textAlignVertical: 'top',
   },
   reportFileButton: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: isDark ? '#475569' : '#d1d5db',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2300,7 +2366,7 @@ activeFiltersText: {
     gap: 8,
   },
   reportFileButtonText: {
-    color: '#1f2937',
+    color: isDark ? '#e2e8f0' : '#1f2937',
     fontSize: 14,
     fontWeight: '500',
     flexShrink: 1,
@@ -2312,11 +2378,11 @@ activeFiltersText: {
   },
   reportTypeChip: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: isDark ? '#475569' : '#d1d5db',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDark ? '#334155' : '#f8fafc',
   },
   reportTypeChipActive: {
     borderColor: '#10b981',
@@ -2325,7 +2391,7 @@ activeFiltersText: {
   reportTypeChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4b5563',
+    color: isDark ? '#cbd5e1' : '#4b5563',
   },
   reportTypeChipTextActive: {
     color: '#047857',
@@ -2338,12 +2404,12 @@ activeFiltersText: {
   reportBackButton: {
     flex: 1,
     borderRadius: 10,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: isDark ? '#334155' : '#f3f4f6',
     paddingVertical: 12,
     alignItems: 'center',
   },
   reportBackButtonText: {
-    color: '#374151',
+    color: isDark ? '#e2e8f0' : '#374151',
     fontWeight: '700',
     fontSize: 15,
   },

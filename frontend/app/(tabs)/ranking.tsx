@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { getApiUrl } from '@/constants/api';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface RankingUser {
   id: number;
@@ -11,9 +12,31 @@ interface RankingUser {
 }
 
 export default function RankingScreen() {
+  const colorScheme = useColorScheme();
+  const themeIndex = colorScheme === 'dark' ? 1 : 0;
+  const pick = (values: [string, string]) => values[themeIndex];
   const router = useRouter();
   const [ranking, setRanking] = useState<RankingUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const theme = {
+    background: pick(['#f8fafc', '#0f172a']),
+    surface: pick(['#ffffff', '#1e293b']),
+    border: pick(['#e2e8f0', '#334155']),
+    cardBorder: pick(['#f1f5f9', '#334155']),
+    title: pick(['#1f2937', '#f1f5f9']),
+    subtitle: pick(['#64748b', '#94a3b8']),
+    loading: pick(['#64748b', '#94a3b8']),
+    username: pick(['#334155', '#e2e8f0']),
+    topUsername: pick(['#065f46', '#6ee7b7']),
+    points: '#10b981',
+    ptsLabel: pick(['#64748b', '#94a3b8']),
+    empty: pick(['#94a3b8', '#94a3b8']),
+    rankNumber: pick(['#94a3b8', '#cbd5e1']),
+    topCardBg: pick(['#ecfdf5', '#052e16']),
+    topCardBorder: pick(['#a7f3d0', '#14532d']),
+    accent: '#10b981',
+  };
+  const styles = useMemo(() => createStyles(theme), [colorScheme]);
 
   useEffect(() => {
     fetchRanking();
@@ -91,10 +114,26 @@ export default function RankingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: {
+  background: string;
+  surface: string;
+  border: string;
+  cardBorder: string;
+  title: string;
+  subtitle: string;
+  loading: string;
+  username: string;
+  topUsername: string;
+  points: string;
+  ptsLabel: string;
+  empty: string;
+  rankNumber: string;
+  topCardBg: string;
+  topCardBorder: string;
+}) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.background,
   },
   centered: {
     justifyContent: 'center',
@@ -102,26 +141,26 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: '#64748b',
+    color: theme.loading,
     fontSize: 16,
   },
   header: {
     padding: 24,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.border,
     marginBottom: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1f2937',
+    color: theme.title,
     marginTop: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: theme.subtitle,
     marginTop: 4,
   },
   listContainer: {
@@ -131,7 +170,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     padding: 16,
     borderRadius: 16,
     marginBottom: 12,
@@ -141,11 +180,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: theme.cardBorder,
   },
   topCard: {
-    backgroundColor: '#ecfdf5', // Fondo verdecito para el Top 3
-    borderColor: '#a7f3d0',
+    backgroundColor: theme.topCardBg,
+    borderColor: theme.topCardBorder,
   },
   rankCol: {
     width: 40,
@@ -154,7 +193,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: theme.rankNumber,
   },
   nameCol: {
     flex: 1,
@@ -163,10 +202,10 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#334155',
+    color: theme.username,
   },
   topUsername: {
-    color: '#065f46',
+    color: theme.topUsername,
     fontWeight: '700',
   },
   pointsCol: {
@@ -175,16 +214,16 @@ const styles = StyleSheet.create({
   points: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#10b981',
+    color: theme.points,
   },
   ptsLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: theme.ptsLabel,
     fontWeight: '500',
   },
   emptyText: {
     textAlign: 'center',
-    color: '#94a3b8',
+    color: theme.empty,
     marginTop: 40,
     fontSize: 16,
   },

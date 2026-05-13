@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, Text, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /** Fila de resultat: estació (backend) o adreça (Places via backend). */
 export type MapSearchListItem =
@@ -28,6 +29,9 @@ export default function TopBar({
   searchMode,
   onToggleSearchMode,
 }: TopBarProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const styles = React.useMemo(() => createStyles(isDark), [isDark]);
   const isAddressMode = searchMode === 'addresses';
 
   return (
@@ -45,13 +49,13 @@ export default function TopBar({
           <Ionicons
             name={isAddressMode ? 'navigate-outline' : 'search'}
             size={20}
-            color="#888"
+            color={isDark ? '#94a3b8' : '#888'}
             style={styles.searchIcon}
           />
           <TextInput
             style={[styles.searchInput, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
             placeholder={isAddressMode ? 'Dirección, calle…' : 'Buscar puntos de carga'}
-            placeholderTextColor="#888"
+            placeholderTextColor={isDark ? '#94a3b8' : '#888'}
             value={searchQuery}
             onChangeText={setSearchQuery}
             underlineColorAndroid="transparent"
@@ -59,7 +63,7 @@ export default function TopBar({
           {isSearching && <ActivityIndicator size="small" color="#10b981" />}
           {searchQuery.length > 0 && !isSearching && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#888" />
+              <Ionicons name="close-circle" size={20} color={isDark ? '#94a3b8' : '#888'} />
             </TouchableOpacity>
           )}
         </View>
@@ -75,11 +79,15 @@ export default function TopBar({
               : "Canviar a cerca d'adreces al mapa"
           }
         >
-          <Ionicons name={isAddressMode ? 'flash-outline' : 'map-outline'} size={22} color={isAddressMode ? '#fff' : '#334155'} />
+          <Ionicons
+            name={isAddressMode ? 'flash-outline' : 'map-outline'}
+            size={22}
+            color={isAddressMode ? '#fff' : isDark ? '#e2e8f0' : '#334155'}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuButton} onPress={onPressMenu}>
-          <Ionicons name="menu" size={32} color="black" />
+          <Ionicons name="menu" size={32} color={isDark ? '#f1f5f9' : 'black'} />
         </TouchableOpacity>
       </View>
 
@@ -140,7 +148,7 @@ export default function TopBar({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isDark: boolean) => StyleSheet.create({
   wrapper: {
     zIndex: 100,
   },
@@ -148,7 +156,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'white',
+    backgroundColor: isDark ? '#1e293b' : 'white',
     paddingHorizontal: 10,
     paddingBottom: 10,
     paddingTop: StatusBar.currentHeight || 24,
@@ -161,19 +169,19 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: isDark ? '#334155' : '#F0F0F0',
     borderRadius: 25,
     marginHorizontal: 4,
     paddingHorizontal: 12,
     height: 40,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 16, color: 'black' },
+  searchInput: { flex: 1, fontSize: 16, color: isDark ? '#f1f5f9' : 'black' },
   modeToggle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: isDark ? '#334155' : '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 2,
@@ -188,7 +196,7 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 10,
     right: 10,
-    backgroundColor: 'white',
+    backgroundColor: isDark ? '#1e293b' : 'white',
     borderRadius: 12,
     maxHeight: 250,
     elevation: 6,
@@ -204,7 +212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: isDark ? '#334155' : '#f1f5f9',
   },
   resultTextContainer: {
     marginLeft: 10,
@@ -213,11 +221,11 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: isDark ? '#f1f5f9' : '#1e293b',
   },
   resultAddress: {
     fontSize: 13,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     marginTop: 2,
   },
   noResults: {
@@ -225,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noResultsText: {
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     fontSize: 14,
   },
 });

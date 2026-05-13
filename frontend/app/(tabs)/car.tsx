@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { getApiUrl } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface Vehicle {
   usuari: number;
@@ -30,6 +31,35 @@ interface Vehicle {
 export default function VehiclesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const colorScheme = useColorScheme();
+  const themeIndex = colorScheme === 'dark' ? 1 : 0;
+
+  const getThemeColor = (values: [string, string]) => values[themeIndex];
+  const theme = {
+    containerBg: getThemeColor(['#f8fafc', '#0f172a']),
+    surface: getThemeColor(['#ffffff', '#1e293b']),
+    border: getThemeColor(['#e2e8f0', '#334155']),
+    title: getThemeColor(['#1f2937', '#f1f5f9']),
+    secondaryText: getThemeColor(['#475569', '#cbd5e1']),
+    mutedText: getThemeColor(['#64748b', '#94a3b8']),
+    inputBg: getThemeColor(['#ffffff', '#0f172a']),
+    inputBorder: getThemeColor(['#cbd5e1', '#475569']),
+    chipBg: getThemeColor(['#f1f5f9', '#334155']),
+    chipBorder: getThemeColor(['#e2e8f0', '#475569']),
+    chipText: getThemeColor(['#64748b', '#cbd5e1']),
+    typeBtnBg: getThemeColor(['#f1f5f9', '#334155']),
+    overlay: getThemeColor(['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.55)']),
+    modalCloseBg: getThemeColor(['#f1f5f9', '#334155']),
+    modalCloseIcon: getThemeColor(['#94a3b8', '#cbd5e1']),
+    badgeBg: getThemeColor(['#ecfdf5', '#052e16']),
+    badgeIcon: getThemeColor(['#10b981', '#34d399']),
+    badgeText: getThemeColor(['#047857', '#6ee7b7']),
+    textPrimaryInverse: '#ffffff',
+    accent: '#10b981',
+    danger: '#ef4444',
+    placeholder: getThemeColor(['#94a3b8', '#94a3b8']),
+  };
+  const styles = useMemo(() => createStyles(theme), [colorScheme]);
 
   // Estats per guardar els valors del formulari abans de guardar el vehicle
   const [nom, setNom] = useState((params.potencia as string) || '');
@@ -173,17 +203,17 @@ export default function VehiclesScreen() {
 				      </Text>
               {/* Informació del vahicle */}
               <View style={styles.infoBadgeRow}>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="bolt" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.kw} kW</Text>
+                <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
+                  <MaterialIcons name="bolt" size={14} color={theme.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: theme.badgeText }]}>{v.kw} kW</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="ev-station" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.ac_dc}</Text>
+                <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
+                  <MaterialIcons name="ev-station" size={14} color={theme.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: theme.badgeText }]}>{v.ac_dc}</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="electrical-services" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.tipus_connexio}</Text>
+                <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
+                  <MaterialIcons name="electrical-services" size={14} color={theme.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: theme.badgeText }]}>{v.tipus_connexio}</Text>
                 </View>
               </View>
 			
@@ -221,7 +251,7 @@ export default function VehiclesScreen() {
 				            Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
 				          ]}
 				          keyboardType="default"
-				          cursorColor="#10b981"
+				          cursorColor={theme.accent}
 				          value={nom}
 				          onChangeText={setNom}
 				          maxLength={50}
@@ -238,9 +268,9 @@ export default function VehiclesScreen() {
 				            styles.input, focusedInput === 'max' && styles.inputFocused,
 				            Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
 				          ]}
-				          placeholderTextColor="#94a3b8"
+				          placeholderTextColor={theme.placeholder}
 				          keyboardType="numeric"
-				          cursorColor="#10b981"
+				          cursorColor={theme.accent}
 				          value={potencia}
 				          onChangeText={setPotencia}
 				          maxLength={4}
@@ -323,7 +353,7 @@ export default function VehiclesScreen() {
 
             {/* Capçalera del pop-up amb la icona i el text */}
             <View style={styles.modalContent}>
-              <MaterialIcons name="error" size={28} color="#ef4444" />
+              <MaterialIcons name="error" size={28} color={theme.danger} />
               <Text style={styles.modalText}>{errorMessage}</Text>
             </View>
 
@@ -332,7 +362,7 @@ export default function VehiclesScreen() {
               style={styles.modalCloseButton}
               onPress={() => setErrorMessage('')}
             >
-              <MaterialIcons name="close" size={24} color="#94a3b8" />
+              <MaterialIcons name="close" size={24} color={theme.modalCloseIcon} />
             </TouchableOpacity>
 
           </View>
@@ -342,13 +372,31 @@ export default function VehiclesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: {
+  containerBg: string;
+  surface: string;
+  border: string;
+  title: string;
+  secondaryText: string;
+  mutedText: string;
+  inputBg: string;
+  inputBorder: string;
+  chipBg: string;
+  chipBorder: string;
+  chipText: string;
+  typeBtnBg: string;
+  overlay: string;
+  modalCloseBg: string;
+  textPrimaryInverse: string;
+  accent: string;
+  danger: string;
+}) => StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc', // Fons clar
+    backgroundColor: theme.containerBg,
   },
   header: {
     flexDirection: 'row',
@@ -356,9 +404,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.border,
   },
   backButton: {
     padding: 4,
@@ -366,18 +414,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: theme.title,
   },
   titleHeader: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: theme.title,
     marginTop: 20,
   },
   titleNew: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: theme.title,
     marginBottom: 16,
   },
   content: {
@@ -386,7 +434,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    color: '#64748b',
+    color: theme.mutedText,
     marginBottom: 32,
     lineHeight: 22,
   },
@@ -398,43 +446,43 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#475569',
+    color: theme.secondaryText,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.inputBg,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: theme.inputBorder,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1f2937',
+    color: theme.title,
     width: '100%',
   },
   inputFocused: {
-    borderColor: '#10b981', // El verd de la teva App
+    borderColor: theme.accent, // El verd de la teva App
     borderWidth: 2,
   },
   footer: {
     flexDirection: 'row',
     padding: 24,
     paddingBottom: 40, // Espai pel bottom
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: theme.border,
     gap: 12,
   },
   clearBtn: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.chipBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   clearBtnText: {
-    color: '#64748b',
+    color: theme.mutedText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -442,13 +490,13 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#10b981', // El verd de la teva App
+    backgroundColor: theme.accent, // El verd de la teva App
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 15,
   },
   applyBtnText: {
-    color: '#fff',
+    color: theme.textPrimaryInverse,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -456,13 +504,13 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#ef4444',
+    backgroundColor: theme.danger,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 15,
   },
   deleteBtnText: {
-    color: '#fff',
+    color: theme.textPrimaryInverse,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -477,21 +525,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.chipBg,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.chipBorder,
   },
   chipActive: {
     backgroundColor: '#ecfdf5', // Verd molt claret de fons
-    borderColor: '#10b981',     // Vora verda
+    borderColor: theme.accent,     // Vora verda
   },
   chipText: {
     fontSize: 14,
-    color: '#64748b',
+    color: theme.chipText,
     fontWeight: '500',
   },
   chipTextActive: {
-    color: '#10b981',
+    color: theme.accent,
     fontWeight: '700',
   },
   // --- Estils per els botons de les corrents ---
@@ -499,33 +547,33 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: theme.inputBorder,
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.typeBtnBg,
   },
   typeBtnActive: {
-    borderColor: '#10b981',
+    borderColor: theme.accent,
     backgroundColor: '#ecfdf5',
   },
   typeBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#64748b',
+    color: theme.mutedText,
   },
   typeBtnTextActive: {
-    color: '#10b981',
+    color: theme.accent,
   },
   // --- Estils del Pop-up Modal ---
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Fons semi-transparent per ressaltar el pop-up
+    backgroundColor: theme.overlay, // Fons semi-transparent per ressaltar el pop-up
     justifyContent: 'center', // Centra verticalment
     alignItems: 'center',     // Centra horitzontalment
     padding: 20,              // Marge de seguretat perquè no toqui les vores en pantalles petites
   },
   modalPopup: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -548,18 +596,18 @@ const styles = StyleSheet.create({
   modalText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.title,
     flexShrink: 1, // Fa que el text salti de línia si és llarg en comptes de tallar-se
     lineHeight: 24,
   },
   modalCloseButton: {
     marginLeft: 16,
     padding: 4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.modalCloseBg,
     borderRadius: 20,
   },
   infoPanel: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
@@ -567,7 +615,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   lastinfoPanel: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)',
