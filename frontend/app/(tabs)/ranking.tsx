@@ -70,7 +70,7 @@ export default function RankingScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={sem.accent} />
+        <ActivityIndicator testID="ranking-loading-indicator" size="large" color={sem.accent} />
         <Text style={styles.loadingText}>Cargando líderes...</Text>
       </View>
     );

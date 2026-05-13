@@ -7,13 +7,18 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import VehiclesScreen from '@/app/(tabs)/car';
 import PaymentsScreen from '@/app/(tabs)/payments';
 import RankingScreen from '@/app/(tabs)/ranking';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 import { ColorblindPreferenceProvider } from '@/contexts/ColorblindPreferenceContext';
 import { ThemePreferenceProvider } from '@/contexts/ThemePreferenceContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const THEME_STORAGE_KEY = 'theme-preference-v1';
+const COLORBLIND_STORAGE_KEY = 'colorblind-friendly-v1';
 const BG_LIGHT = '#f8fafc';
 const BG_DARK = '#0f172a';
+const SEM_DEFAULT = getSemanticColors(false);
+const SEM_COLORBLIND = getSemanticColors(true);
+const PAYMENTS_PRIMARY_DEFAULT = '#85f755';
 
 function fetchInputToUrlString(input: RequestInfo | URL): string {
   if (typeof input === 'string') return input;
@@ -88,18 +93,20 @@ function renderWithThemeProviders(ui: React.ReactElement) {
   );
 }
 
-describe('Tema claro/oscuro en otras pantallas (integración)', () => {
-  beforeEach(async () => {
-    jest.clearAllMocks();
-    await AsyncStorage.clear();
-    setupSharedFetch();
-    (useAuth as unknown as jest.Mock).mockReturnValue({
-      user: { id: 1, email: 'u@test.com', username: 'u', created_at: '', updated_at: '' },
-      logout: jest.fn(),
-      isLoading: false,
-      setUser: jest.fn(),
-    });
+async function resetOtherScreensTestEnv() {
+  jest.clearAllMocks();
+  await AsyncStorage.clear();
+  setupSharedFetch();
+  (useAuth as unknown as jest.Mock).mockReturnValue({
+    user: { id: 1, email: 'u@test.com', username: 'u', created_at: '', updated_at: '' },
+    logout: jest.fn(),
+    isLoading: false,
+    setUser: jest.fn(),
   });
+}
+
+describe('Tema claro/oscuro en otras pantallas (integración)', () => {
+  beforeEach(resetOtherScreensTestEnv);
 
   // La pantalla Garaje expone `testID="garage-screen-root"` en el contenedor raíz para comprobar el tema sin usar SafeAreaView deprecado en el test.
   test('Garaje (car): con tema claro el contenedor raíz usa fondo claro', async () => {
@@ -175,5 +182,95 @@ describe('Tema claro/oscuro en otras pantallas (integración)', () => {
     });
 
     expect(screen.getByTestId('ranking-screen-root')).toHaveStyle({ backgroundColor: BG_DARK });
+  });
+});
+
+describe('Modo accesible (daltonismo) en otras pantallas (integración)', () => {
+  beforeEach(resetOtherScreensTestEnv);
+
+  // Mismo contenedor que en tema claro; el acento del botón principal sigue a getSemanticColors(false).
+  test('Garaje (car): sin modo accesible el botón Guardar usa el acento estándar', async () => {
+    const screen = renderWithThemeProviders(<VehiclesScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Garaje')).toBeTruthy();
+    });
+
+    const flat = StyleSheet.flatten(screen.getByTestId('garage-save-vehicle-button').props.style);
+    expect(flat.backgroundColor).toBe(SEM_DEFAULT.accent);
+  });
+
+  // Con preferencia persistida, el botón principal toma el acento cian del modo accesible.
+  test('Garaje (car): con modo accesible persistido el botón Guardar usa el acento accesible', async () => {
+    await AsyncStorage.setItem(COLORBLIND_STORAGE_KEY, '1');
+
+    const screen = renderWithThemeProviders(<VehiclesScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Garaje')).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      const flat = StyleSheet.flatten(screen.getByTestId('garage-save-vehicle-button').props.style);
+      expect(flat.backgroundColor).toBe(SEM_COLORBLIND.accent);
+    });
+  });
+
+  // Pagos: el CTA "Pasar a Premium" usa verde lima en modo estándar (no el mismo que sem.accent).
+  test('Pagos (payments): sin modo accesible el CTA Premium usa fondo verde lima', async () => {
+    const screen = renderWithThemeProviders(<PaymentsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pasar a Premium')).toBeTruthy();
+    });
+
+    const flat = StyleSheet.flatten(screen.getByTestId('payments-premium-cta').props.style);
+    expect(flat.backgroundColor).toBe(PAYMENTS_PRIMARY_DEFAULT);
+  });
+
+  // Con daltonismo activo el mismo botón usa el acento semántico accesible.
+  test('Pagos (payments): con modo accesible persistido el CTA Premium usa el acento accesible', async () => {
+    await AsyncStorage.setItem(COLORBLIND_STORAGE_KEY, '1');
+
+    const screen = renderWithThemeProviders(<PaymentsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pasar a Premium')).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      const flat = StyleSheet.flatten(screen.getByTestId('payments-premium-cta').props.style);
+      expect(flat.backgroundColor).toBe(SEM_COLORBLIND.accent);
+    });
+  });
+
+  // En carga, el ActivityIndicator del ranking toma color del acento semántico.
+  test('Ranking: sin modo accesible el indicador de carga usa el acento estándar', async () => {
+    const pendingFetch: typeof fetch = () => new Promise<Response>(() => {});
+    globalThis.fetch = jest.fn(pendingFetch);
+
+    const screen = renderWithThemeProviders(<RankingScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cargando líderes...')).toBeTruthy();
+    });
+
+    expect(screen.getByTestId('ranking-loading-indicator').props.color).toBe(SEM_DEFAULT.accent);
+  });
+
+  test('Ranking: con modo accesible persistido el indicador de carga usa el acento accesible', async () => {
+    await AsyncStorage.setItem(COLORBLIND_STORAGE_KEY, '1');
+    const pendingFetch: typeof fetch = () => new Promise<Response>(() => {});
+    globalThis.fetch = jest.fn(pendingFetch);
+
+    const screen = renderWithThemeProviders(<RankingScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cargando líderes...')).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ranking-loading-indicator').props.color).toBe(SEM_COLORBLIND.accent);
+    });
   });
 });

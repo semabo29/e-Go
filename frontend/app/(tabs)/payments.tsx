@@ -440,6 +440,7 @@ export default function PaymentsScreen() {
 
             {!isPremium ? (
               <Pressable
+                testID="payments-premium-cta"
                 style={[styles.button, startingCheckout && styles.buttonDisabled]}
                 onPress={onStartPremium}
                 disabled={startingCheckout}

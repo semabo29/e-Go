@@ -1749,6 +1749,7 @@ useEffect(() => {
                   <Text style={styles.dyslexiaHint}>Colores del mapa y acentos más distinguibles</Text>
                 </View>
                 <Switch
+                  testID="colorblind-friendly-switch"
                   value={colorblindFriendly}
                   onValueChange={setColorblindFriendly}
                   trackColor={{ false: isDark ? '#475569' : '#cbd5e1', true: sem.accent }}

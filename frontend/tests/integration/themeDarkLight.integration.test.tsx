@@ -8,6 +8,7 @@ import { ColorblindPreferenceProvider } from '@/contexts/ColorblindPreferenceCon
 import { ThemePreferenceProvider } from '@/contexts/ThemePreferenceContext';
 
 const THEME_STORAGE_KEY = 'theme-preference-v1';
+const COLORBLIND_STORAGE_KEY = 'colorblind-friendly-v1';
 
 const mockUseAuth = jest.fn();
 const mockUseCharging = jest.fn();
@@ -103,7 +104,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
   function MarkerMock({ onPress, pinColor }: any) {
     let testID = 'station-marker';
     if (pinColor === 'blue') testID = 'user-marker';
-    else if (pinColor === 'red') testID = 'favorite-station-marker';
+    else if (pinColor === 'red' || pinColor === '#a855f7') testID = 'favorite-station-marker';
 
     return (
       <TouchableOpacity
@@ -143,68 +144,71 @@ function fetchInputToUrlString(input: RequestInfo | URL): string {
   return input.url;
 }
 
-describe('InicioScreen — tema claro / oscuro (integración)', () => {
-  beforeEach(async () => {
-    jest.clearAllMocks();
-    await AsyncStorage.clear();
-    mockRequestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
-    mockGetCurrentPositionAsync.mockResolvedValue({
-      coords: { latitude: 41.38, longitude: 2.17 },
-    });
-    mockUseLocalSearchParams.mockReturnValue({});
-    mockUseAuth.mockReturnValue({
-      user: { id: 12, email: 'user@test.com', username: 'test', created_at: '', updated_at: '' },
-      logout: jest.fn(),
-      isLoading: false,
-    });
-    mockUseCharging.mockReturnValue({
-      isCharging: false,
-      session: null,
-      distanceToStation: null,
-      elapsedSeconds: 0,
-      startChargingSession: jest.fn(),
-      updateSessionId: jest.fn(),
-      stopChargingSession: jest.fn(),
-      cancelChargingSession: jest.fn(),
-      autoStopResult: null,
-      clearAutoStopResult: jest.fn(),
-    });
+/** Configuración común de mocks y fetch para pruebas de Inicio (tema y modo accesible). */
+async function setupInicioScreenIntegration() {
+  jest.clearAllMocks();
+  await AsyncStorage.clear();
+  mockRequestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+  mockGetCurrentPositionAsync.mockResolvedValue({
+    coords: { latitude: 41.38, longitude: 2.17 },
+  });
+  mockUseLocalSearchParams.mockReturnValue({});
+  mockUseAuth.mockReturnValue({
+    user: { id: 12, email: 'user@test.com', username: 'test', created_at: '', updated_at: '' },
+    logout: jest.fn(),
+    isLoading: false,
+  });
+  mockUseCharging.mockReturnValue({
+    isCharging: false,
+    session: null,
+    distanceToStation: null,
+    elapsedSeconds: 0,
+    startChargingSession: jest.fn(),
+    updateSessionId: jest.fn(),
+    stopChargingSession: jest.fn(),
+    cancelChargingSession: jest.fn(),
+    autoStopResult: null,
+    clearAutoStopResult: jest.fn(),
+  });
 
-    const integrationFetch: typeof fetch = async (input) => {
-      const url = fetchInputToUrlString(input);
-      if (url.includes('/favorites')) {
-        return new Response(JSON.stringify([{ id: 1 }]), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      if (url.includes('/stations')) {
-        return new Response(
-          JSON.stringify([
-            {
-              id: 1,
-              nom: 'Punt 1',
-              latitud: '41.3901',
-              longitud: '2.1540',
-              municipi: 'Barcelona',
-              adreca: 'Carrer de Test',
-              kw: '50',
-              promotor: 'Ajuntament',
-              ac_dc: 'DC',
-              tipus_connexio: 'CCS',
-            },
-          ]),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      return new Response(JSON.stringify([]), {
+  const integrationFetch: typeof fetch = async (input) => {
+    const url = fetchInputToUrlString(input);
+    if (url.includes('/favorites')) {
+      return new Response(JSON.stringify([{ id: 1 }]), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    };
+    }
+    if (url.includes('/stations')) {
+      return new Response(
+        JSON.stringify([
+          {
+            id: 1,
+            nom: 'Punt 1',
+            latitud: '41.3901',
+            longitud: '2.1540',
+            municipi: 'Barcelona',
+            adreca: 'Carrer de Test',
+            kw: '50',
+            promotor: 'Ajuntament',
+            ac_dc: 'DC',
+            tipus_connexio: 'CCS',
+          },
+        ]),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
 
-    globalThis.fetch = jest.fn(integrationFetch);
-  });
+  globalThis.fetch = jest.fn(integrationFetch);
+}
+
+describe('InicioScreen — tema claro / oscuro (integración)', () => {
+  beforeEach(setupInicioScreenIntegration);
 
   // comprueba que cuando se selecciona modo oscuro, se guarda la configuración 
   test('menú Ajustes: al pulsar Oscuro se guarda el tema oscuro en almacenamiento', async () => {
@@ -266,5 +270,65 @@ describe('InicioScreen — tema claro / oscuro (integración)', () => {
     await waitFor(async () => {
       expect(await AsyncStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
     });
+  });
+});
+
+// Flujo real en Inicio: menú Ajustes → interruptor "Modo accesible" y clave AsyncStorage compartida con la app.
+describe('InicioScreen — modo daltonismo / accesible (integración)', () => {
+  beforeEach(setupInicioScreenIntegration);
+
+  // El Switch del menú debe persistir la preferencia como "1" (mismo contrato que el contexto).
+  test('menú Ajustes: activar Modo accesible guarda colorblind-friendly-v1 = 1', async () => {
+    const { getByTestId, getByText } = renderInicioWithThemeProviders();
+
+    await waitFor(() => {
+      expect(getByTestId('favorite-station-marker')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('open-settings-menu'));
+    expect(getByText('Daltonismo')).toBeTruthy();
+
+    fireEvent(getByTestId('colorblind-friendly-switch'), 'valueChange', true);
+
+    await waitFor(async () => {
+      expect(await AsyncStorage.getItem(COLORBLIND_STORAGE_KEY)).toBe('1');
+    });
+  });
+
+  // Si el usuario ya tenía el modo activo, desactivar debe escribir "0" en almacenamiento.
+  test('menú Ajustes: con modo accesible precargado, desactivar el interruptor guarda 0', async () => {
+    await AsyncStorage.setItem(COLORBLIND_STORAGE_KEY, '1');
+
+    const { getByTestId } = renderInicioWithThemeProviders();
+
+    await waitFor(() => {
+      expect(getByTestId('favorite-station-marker')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('open-settings-menu'));
+    fireEvent(getByTestId('colorblind-friendly-switch'), 'valueChange', false);
+
+    await waitFor(async () => {
+      expect(await AsyncStorage.getItem(COLORBLIND_STORAGE_KEY)).toBe('0');
+    });
+  });
+
+  // Tras cambiar colores del pin favorito, el mock del mapa sigue exponiendo el mismo testID estable.
+  test('tras activar modo accesible, el pin de favorito sigue identificable en el mock del mapa', async () => {
+    const { getByTestId, getByText } = renderInicioWithThemeProviders();
+
+    await waitFor(() => {
+      expect(getByTestId('favorite-station-marker')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('open-settings-menu'));
+    fireEvent(getByTestId('colorblind-friendly-switch'), 'valueChange', true);
+
+    await waitFor(async () => {
+      expect(await AsyncStorage.getItem(COLORBLIND_STORAGE_KEY)).toBe('1');
+    });
+
+    expect(getByText('Ajustes')).toBeTruthy();
+    expect(getByTestId('favorite-station-marker')).toBeTruthy();
   });
 });

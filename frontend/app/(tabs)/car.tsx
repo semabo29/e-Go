@@ -329,7 +329,12 @@ export default function VehiclesScreen() {
           </View>
 
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.applyBtn} onPress={saveCar} activeOpacity={0.8}>
+            <TouchableOpacity
+              testID="garage-save-vehicle-button"
+              style={styles.applyBtn}
+              onPress={saveCar}
+              activeOpacity={0.8}
+            >
               <Text style={styles.applyBtnText}>Guardar vehículo</Text>
             </TouchableOpacity>
           </View>
