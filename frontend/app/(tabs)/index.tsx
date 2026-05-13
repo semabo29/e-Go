@@ -162,7 +162,7 @@ export default function InicioScreen() {
   const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
-  const INCIDENCIA_TYPES = ['Avariat', 'Operatiu', 'Inexistent', 'DadesIncorrectes', 'Altres'];
+  const INCIDENCIA_TYPES = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres'];
 
   //Estados para la navegacion a un punto
   const [isNavigating, setIsNavigating] = useState(false);
