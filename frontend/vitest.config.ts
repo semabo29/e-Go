@@ -7,9 +7,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
-      reportsDirectory: './coverage',
-      include: ['features/**', 'components/**', 'services/**', 'hooks/**'],
+      reportsDirectory: './coverage/vitest',
+      include: ['features/**'],
       exclude: ['**/*.test.*', '**/node_modules/**', '**/dist/**'],
+      thresholds: {
+        branches: 75,
+        lines: 80,
+        statements: 80,
+      },
     },
   },
 });

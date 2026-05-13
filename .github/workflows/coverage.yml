@@ -101,15 +101,18 @@ jobs:
 
       - name: Tests amb cobertura (Vitest)
         working-directory: ./frontend
-        # No bloquegem la pujada de l'artifact si algun test falla
-        continue-on-error: true
         run: npx vitest run --coverage
 
-      - name: Pujar artifact de cobertura frontend
+      - name: Tests amb cobertura (Jest)
+        working-directory: ./frontend
+        run: npx jest --runInBand --coverage tests/integration tests/unit
+
+      - name: Pujar artifacts de cobertura frontend
         uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
-          path: frontend/coverage/lcov.info
+          path: |
+            frontend/coverage/vitest/lcov.info
+            frontend/coverage/jest/lcov.info
           retention-days: 1
-          # No falla si encara no s'ha generat el fitxer
           if-no-files-found: warn
