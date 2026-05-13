@@ -1,18 +1,10 @@
 name: SonarQube Analysis
 
-# Aquest workflow s'executa AUTOMÀTICAMENT quan acaba 'Coverage'
-# i NOMÉS si ha acabat amb èxit. Descarrega els lcov.info dels
-# artifacts i fa l'anàlisi de SonarCloud.
-#
-# IMPORTANT: 'workflow_run' només funciona si aquest fitxer YAML
-# està a la branca per defecte del repositori (normalment 'main').
-# Mentre el desenvolupes a 'sonarqube1' pots activar-lo manualment
-# amb el botó "Run workflow" gràcies al 'workflow_dispatch' de sota.
 on:
   workflow_run:
     workflows: ["Coverage"]
     types: [completed]
-    branches: ["sonarqube1"]
+    branches: ["development", "sonarqube1", "main"]
   workflow_dispatch:
 
 jobs:
