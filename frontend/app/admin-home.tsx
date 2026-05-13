@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type Href, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { ManualStationCard } from '@/components/stations/ManualStationCard';
 import { ManualStation } from '@/components/stations/types';
 import { clearPrivilegedSession, getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
@@ -27,6 +29,9 @@ type AdminPayload = {
 export default function AdminHomeScreen() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createAdminStyles(sem), [sem]);
   const [loading, setLoading] = useState(true);
   const [admin, setAdmin] = useState<AdminPayload | null>(null);
   const [error, setError] = useState('');
@@ -251,7 +256,7 @@ export default function AdminHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -343,7 +348,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#ef4444',
+    backgroundColor: sem.error,
     alignItems: 'center',
   },
   secondaryButtonText: {
@@ -418,7 +423,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 11,
     borderRadius: 10,
-    backgroundColor: '#dc2626',
+    backgroundColor: sem.error,
     alignItems: 'center',
   },
   confirmDeleteText: {

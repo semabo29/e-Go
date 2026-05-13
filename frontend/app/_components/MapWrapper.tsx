@@ -1,7 +1,10 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useMemo } from 'react';
 import MapViewCluster from 'react-native-map-clustering';
 import { Marker, Callout } from 'react-native-maps';
 import { View, Text, StyleSheet } from 'react-native';
+
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 // Exportamos Marker y Callout para que el index.tsx los use normalmente
 export { Marker, Callout };
@@ -11,8 +14,13 @@ function formatClusterCount(points: number) {
 }
 
 export const MapView = forwardRef((props: any, ref: any) => {
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+
   return (
     <MapViewCluster
+      // La llibreria no torna a pintar clusters si només canvia el context; cal remuntar.
+      key={colorblindFriendly ? 'accessible' : 'default'}
       ref={ref} // <--- ¡ESTA LÍNEA ES VITAL PARA LA NAVEGACIÓN!
       {...props}
       radius={50} // Radio de agrupación
@@ -25,14 +33,19 @@ export const MapView = forwardRef((props: any, ref: any) => {
         const size = points >= 100 ? 58 : points >= 30 ? 52 : 46;
         return (
           <Marker
-            key={`cluster-${id}`}
+            key={`cluster-${id}-${sem.accent}`}
             coordinate={{
               longitude: geometry.coordinates[0],
               latitude: geometry.coordinates[1],
             }}
             onPress={onPress}
           >
-            <View style={[styles.clusterContainer, { minWidth: size, minHeight: size }]}>
+            <View
+              style={[
+                styles.clusterContainer,
+                { backgroundColor: sem.accent, minWidth: size, minHeight: size },
+              ]}
+            >
               <Text style={styles.clusterText}>
                 {label}
               </Text>
@@ -55,7 +68,6 @@ export default function MapWrapper() {
 
 const styles = StyleSheet.create({
   clusterContainer: {
-    backgroundColor: '#10b981', // Verde e-Go
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,

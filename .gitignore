@@ -31,6 +31,9 @@ pnpm-debug.log*
 .expo/
 dist/
 web-build/
+# Evita artefactos si alguna herramienta crea una carpeta "nul" (nombre reservado en Windows; rompe git add).
+nul/
+frontend/nul/
 # Carpetas nativas si alguna vez haces 'prebuild' o 'eject'
 /android/
 /ios/
