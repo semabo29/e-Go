@@ -10,6 +10,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -31,7 +32,10 @@ import { ChargingActionCard } from '../../components/ChargingActionCard';
 import { ChargingResultModal } from '../../components/ChargingResultModal';
 import { StartChargingButton } from '../../components/StartChargingButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useThemePreference } from '@/contexts/ThemePreferenceContext';
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import type { SemanticColors } from '@/constants/accessibilityColors';
 import {
   requestLocationPermissions,
   isLocationServiceEnabled,
@@ -81,8 +85,10 @@ interface Estacion {
 export default function InicioScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
   const { preference, setPreference } = useThemePreference();
+  const { colorblindFriendly, setColorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createStyles(isDark, sem), [isDark, colorblindFriendly]);
   const router = useRouter();
   //Llegim els paràmetres de la URL
   const params = useLocalSearchParams();
@@ -965,7 +971,7 @@ useEffect(() => {
   if (authLoading) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <ActivityIndicator size="large" color="#10b981" />
+        <ActivityIndicator size="large" color={sem.accent} />
         <Text style={styles.loadingText}>Cargando…</Text>
       </View>
     );
@@ -1141,7 +1147,7 @@ useEffect(() => {
             {/* Fila de Potència (només es mostra si n'hi ha) */}
             {!!powerText && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="bolt" size={18} color="#10b981" />
+                <MaterialIcons name="bolt" size={18} color={sem.accent} />
                 <Text style={styles.activeFiltersText}>{powerText}</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: showFavoritesFilter ? 'true' : ''})}
@@ -1156,7 +1162,7 @@ useEffect(() => {
             {/* Fila de AC/DC (només es mostra si n'hi ha) */}
             {!!ac_dc && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="ev-station" size={18} color="#10b981" />
+                <MaterialIcons name="ev-station" size={18} color={sem.accent} />
                 <Text style={styles.activeFiltersText}>
                   {ac_dc === 'AC' ? 'AC' : ac_dc === 'DC' ? 'DC' : ac_dc}
                 </Text>
@@ -1173,7 +1179,7 @@ useEffect(() => {
             {/* Fila de Connector (només es mostra si n'hi ha) */}
             {!!connectorType && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="electrical-services" size={18} color="#10b981" />
+                <MaterialIcons name="electrical-services" size={18} color={sem.accent} />
                 <Text style={styles.activeFiltersText}>{connectorType}</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: '', ac_dc: ac_dc || '', showFavorites: showFavoritesFilter ? 'true' : ''})}
@@ -1188,7 +1194,7 @@ useEffect(() => {
             {/*Etiqueta de Favoritos */}
             {showFavoritesFilter && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="favorite" size={18} color="#ef4444" />
+                <MaterialIcons name="favorite" size={18} color={sem.favorite} />
                 <Text style={styles.activeFiltersText}>Favoritos</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: '' })}
@@ -1261,10 +1267,10 @@ useEffect(() => {
               }}
               pinColor={
                 favoriteIds.includes(est.id)
-                  ? 'red'
+                  ? sem.mapFavorite
                   : est.operatiu === false
-                    ? 'yellow'
-                    : 'green'
+                    ? sem.mapInactive
+                    : sem.mapOk
               }
               onPress={(e: any) => {
                 e.stopPropagation(); //Evita que el toque pase al mapa y cierre el panel
@@ -1294,7 +1300,7 @@ useEffect(() => {
                 <Marker
                   key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
                   coordinate={selectedLocation}
-                  pinColor="#f59e0b" //Un color naranja para diferenciarlo de las estaciones
+                  pinColor={sem.mapCustomLocation}
                   title="Ubicación seleccionada"
                 />
             )}
@@ -1304,7 +1310,7 @@ useEffect(() => {
                   <Marker
                     coordinate={routeDestination}
                     title="Ubicación seleccionada"
-                    pinColor="#a855f7"
+                    pinColor={sem.mapRouteDestination}
                   />
             )}
 
@@ -1315,7 +1321,7 @@ useEffect(() => {
                 destination={routeDestination}
                 apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
                 strokeWidth={0}
-                strokeColor="#3b82f6"
+                strokeColor={sem.routeLine}
                 mode="DRIVING"
                 onReady={(result) => {
                   setRouteInfo({
@@ -1343,7 +1349,7 @@ useEffect(() => {
                   key={`polyline-${routeCoords.length}`}
                   coordinates={routeCoords}
                   strokeWidth={4}
-                  strokeColor="#3b82f6"
+                  strokeColor={sem.routeLine}
                   lineJoin="round"
                 />
             )}
@@ -1394,7 +1400,7 @@ useEffect(() => {
 
         {loadingEstaciones && (
           <View style={styles.mapLoading}>
-            <ActivityIndicator size="small" color="#10b981" />
+            <ActivityIndicator size="small" color={sem.accent} />
           </View>
         )}
 
@@ -1404,7 +1410,7 @@ useEffect(() => {
             <View style={styles.infoHandle} />
 
             <View style={styles.infoTitleRow}>
-            <MaterialIcons name="location-on" size={18} color="#10b981" />
+            <MaterialIcons name="location-on" size={18} color={sem.accent} />
               {/* 1. Nombre de la estación */}
               <Text style={styles.infoTitle} numberOfLines={2}>
                 {selectedStation.adreca}, {selectedStation.municipi}
@@ -1440,17 +1446,17 @@ useEffect(() => {
             <View style={styles.infoContent}>
 
               <View style={styles.infoBadgeRow}>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="bolt" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{(parseFloat(selectedStation.kw) !== 0)? selectedStation.kw : 'n/a'} kW</Text>
+                <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
+                  <MaterialIcons name="bolt" size={14} color={sem.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{(parseFloat(selectedStation.kw) !== 0)? selectedStation.kw : 'n/a'} kW</Text>
                 </View>
-              <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                <MaterialIcons name="ev-station" size={14} color="#10b981" />
-                <Text style={[styles.badgeText, { color: '#047857' }]}>{selectedStation.ac_dc}</Text>
+              <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
+                <MaterialIcons name="ev-station" size={14} color={sem.badgeIcon} />
+                <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{selectedStation.ac_dc}</Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                <MaterialIcons name="electrical-services" size={14} color="#10b981" />
-                <Text style={[styles.badgeText, { color: '#047857' }]}>{selectedStation.tipus_connexio}</Text>
+              <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
+                <MaterialIcons name="electrical-services" size={14} color={sem.badgeIcon} />
+                <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{selectedStation.tipus_connexio}</Text>
               </View>
 
               </View>
@@ -1504,7 +1510,7 @@ useEffect(() => {
             {/* Mostrar error de carga si existe */}
             {chargingError && (
               <View style={styles.errorMessage}>
-                <MaterialIcons name="error-outline" size={16} color="#ef4444" />
+                <MaterialIcons name="error-outline" size={16} color={sem.error} />
                 <Text style={styles.errorText}>{chargingError}</Text>
               </View>
             )}
@@ -1554,7 +1560,7 @@ useEffect(() => {
             <View style={styles.infoHandle} />
 
             <View style={styles.infoTitleRow}>
-              <MaterialIcons name="place" size={24} color="#f59e0b" />
+              <MaterialIcons name="place" size={24} color={sem.mapCustomLocation} />
               <Text style={styles.infoTitle} numberOfLines={1}>
                 Ubicación seleccionada
               </Text>
@@ -1731,9 +1737,25 @@ useEffect(() => {
               }}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="favorite" size={22} color="#ef4444" />
+              <MaterialIcons name="favorite" size={22} color={sem.favorite} />
               <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
             </TouchableOpacity>
+
+            <View style={styles.themeSection}>
+              <Text style={styles.themeSectionTitle}>Daltonismo</Text>
+              <View style={styles.dyslexiaRow}>
+                <View style={styles.dyslexiaTexts}>
+                  <Text style={styles.dyslexiaTitle}>Modo accesible</Text>
+                  <Text style={styles.dyslexiaHint}>Colores del mapa y acentos más distinguibles</Text>
+                </View>
+                <Switch
+                  value={colorblindFriendly}
+                  onValueChange={setColorblindFriendly}
+                  trackColor={{ false: isDark ? '#475569' : '#cbd5e1', true: sem.accent }}
+                  thumbColor="#f8fafc"
+                />
+              </View>
+            </View>
 
             <View style={styles.themeSection}>
               <Text style={styles.themeSectionTitle}>Tema</Text>
@@ -1778,7 +1800,7 @@ useEffect(() => {
   );
 }
 
-const createStyles = (isDark: boolean) => StyleSheet.create({
+const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: isDark ? '#0f172a' : '#f5f5f5',
@@ -1929,7 +1951,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     width: '100%',
     paddingVertical: 14,
     borderRadius: 10,
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -2048,7 +2070,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     fontStyle: 'italic',
   },
   routeButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2058,7 +2080,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     marginTop: 10,
   },
   reportButton: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: sem.mapCustomLocation,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2068,7 +2090,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     marginTop: 10,
   },
   solvedReportButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: sem.routeLine,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2161,6 +2183,28 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     color: isDark ? '#f1f5f9' : '#111827',
     fontWeight: '700',
   },
+  dyslexiaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  dyslexiaTexts: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  dyslexiaTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: isDark ? '#f1f5f9' : '#111827',
+  },
+  dyslexiaHint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: isDark ? '#94a3b8' : '#64748b',
+  },
   userDot: {
     width: 18,
     height: 18,
@@ -2226,7 +2270,7 @@ activeFiltersText: {
     shadowRadius: 10,
     zIndex: 100,
     borderWidth: 2,
-    borderColor: '#10b981', // Tu verde e-Go
+    borderColor: sem.accent,
   },
   navTextBold: {
     fontSize: 16,
@@ -2239,7 +2283,7 @@ activeFiltersText: {
     color: isDark ? '#94a3b8' : '#6b7280',
   },
   cancelRouteBtn: {
-    backgroundColor: '#ef4444', // Rojo para cancelar
+    backgroundColor: sem.error,
     padding: 10,
     borderRadius: 50,
   },
@@ -2318,7 +2362,7 @@ activeFiltersText: {
     gap: 8,
   },
   errorText: {
-    color: isDark ? '#fecaca' : '#ef4444',
+    color: isDark ? sem.errorTextDark : sem.errorTextLight,
     fontSize: 14,
     flex: 1,
   },
@@ -2385,8 +2429,8 @@ activeFiltersText: {
     backgroundColor: isDark ? '#334155' : '#f8fafc',
   },
   reportTypeChipActive: {
-    borderColor: '#10b981',
-    backgroundColor: '#ecfdf5',
+    borderColor: sem.accent,
+    backgroundColor: sem.chipActiveBg,
   },
   reportTypeChipText: {
     fontSize: 13,
@@ -2394,7 +2438,7 @@ activeFiltersText: {
     color: isDark ? '#cbd5e1' : '#4b5563',
   },
   reportTypeChipTextActive: {
-    color: '#047857',
+    color: sem.chipActiveText,
   },
   reportActions: {
     flexDirection: 'row',
@@ -2416,7 +2460,7 @@ activeFiltersText: {
   reportSubmitButton: {
     flex: 1,
     borderRadius: 10,
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     paddingVertical: 12,
     alignItems: 'center',
   },

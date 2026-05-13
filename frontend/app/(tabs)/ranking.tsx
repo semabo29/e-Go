@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, Touc
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface RankingUser {
@@ -13,6 +15,8 @@ interface RankingUser {
 
 export default function RankingScreen() {
   const colorScheme = useColorScheme();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const themeIndex = colorScheme === 'dark' ? 1 : 0;
   const pick = (values: [string, string]) => values[themeIndex];
   const router = useRouter();
@@ -27,16 +31,17 @@ export default function RankingScreen() {
     subtitle: pick(['#64748b', '#94a3b8']),
     loading: pick(['#64748b', '#94a3b8']),
     username: pick(['#334155', '#e2e8f0']),
-    topUsername: pick(['#065f46', '#6ee7b7']),
-    points: '#10b981',
+    topUsername: colorblindFriendly
+      ? sem.chipActiveText
+      : pick(['#065f46', '#6ee7b7']),
+    points: sem.accent,
     ptsLabel: pick(['#64748b', '#94a3b8']),
     empty: pick(['#94a3b8', '#94a3b8']),
     rankNumber: pick(['#94a3b8', '#cbd5e1']),
-    topCardBg: pick(['#ecfdf5', '#052e16']),
-    topCardBorder: pick(['#a7f3d0', '#14532d']),
-    accent: '#10b981',
+    topCardBg: colorblindFriendly ? sem.chipActiveBg : pick(['#ecfdf5', '#052e16']),
+    topCardBorder: colorblindFriendly ? sem.accent : pick(['#a7f3d0', '#14532d']),
   };
-  const styles = useMemo(() => createStyles(theme), [colorScheme]);
+  const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
 
   useEffect(() => {
     fetchRanking();
@@ -64,7 +69,7 @@ export default function RankingScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#10b981" />
+        <ActivityIndicator size="large" color={sem.accent} />
         <Text style={styles.loadingText}>Cargando líderes...</Text>
       </View>
     );
@@ -73,7 +78,7 @@ export default function RankingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <MaterialIcons name="emoji-events" size={32} color="#10b981" />
+        <MaterialIcons name="emoji-events" size={32} color={sem.accent} />
         <Text style={styles.title}>Ranking e-Go</Text>
         <Text style={styles.subtitle}>Los conductores más sostenibles</Text>
       </View>

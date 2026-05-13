@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ChargingProvider } from '@/contexts/ChargingContext';
+import { ColorblindPreferenceProvider } from '@/contexts/ColorblindPreferenceContext';
 import { ThemePreferenceProvider } from '@/contexts/ThemePreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -23,7 +24,9 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <ThemePreferenceProvider>
-      <RootLayoutContent />
+      <ColorblindPreferenceProvider>
+        <RootLayoutContent />
+      </ColorblindPreferenceProvider>
     </ThemePreferenceProvider>
   );
 }

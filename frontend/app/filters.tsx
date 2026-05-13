@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,9 +16,15 @@ import {
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+
 export default function FiltersScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createFiltersStyles(sem), [sem]);
 
   // Estats per guardar els valors temporals abans d'aplicar
   const [minKw, setMinKw] = useState((params.minKw as string) || '');
@@ -97,12 +103,12 @@ export default function FiltersScreen() {
               <View style={styles.switchGroup}>
                 <Text style={styles.label}>Mis Estaciones</Text>
                 <View style={styles.switchRow}>
-                  <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? "#ef4444" : "#64748b"} />
+                  <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? sem.favorite : "#64748b"} />
                   <Text style={styles.switchDescription}>Mostrar solo mis favoritos</Text>
                   <Switch
                     value={showFavorites}
                     onValueChange={setShowFavorites}
-                    trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+                    trackColor={{ false: '#cbd5e1', true: sem.accent }}
                     thumbColor="#fff"
                   />
                 </View>
@@ -119,7 +125,7 @@ export default function FiltersScreen() {
                 placeholder="50"
                 placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
-                cursorColor="#10b981"
+                cursorColor={sem.accent}
                 value={minKw}
                 onChangeText={setMinKw}
                 maxLength={4}
@@ -139,7 +145,7 @@ export default function FiltersScreen() {
                 placeholder="150"
                 placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
-                cursorColor="#10b981"
+                cursorColor={sem.accent}
                 value={maxKw}
                 onChangeText={setMaxKw}
                 maxLength={4}
@@ -222,7 +228,7 @@ export default function FiltersScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalPopup}>
             <View style={styles.modalContent}>
-              <MaterialIcons name="error" size={28} color="#ef4444" />
+              <MaterialIcons name="error" size={28} color={sem.error} />
               <Text style={styles.modalText}>{errorMessage}</Text>
             </View>
             <TouchableOpacity
@@ -238,7 +244,7 @@ export default function FiltersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createFiltersStyles = (sem: SemanticColors) => StyleSheet.create({
   switchGroup: {
       marginBottom: 24,
     },
@@ -314,7 +320,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputFocused: {
-    borderColor: '#10b981',
+    borderColor: sem.accent,
     borderWidth: 2,
   },
   footer: {
@@ -343,7 +349,7 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -367,8 +373,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   chipActive: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#10b981',
+    backgroundColor: sem.chipActiveBg,
+    borderColor: sem.accent,
   },
   chipText: {
     fontSize: 14,
@@ -376,7 +382,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   chipTextActive: {
-    color: '#10b981',
+    color: sem.accent,
     fontWeight: '700',
   },
   typeBtn: {
@@ -389,8 +395,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   typeBtnActive: {
-    borderColor: '#10b981',
-    backgroundColor: '#ecfdf5',
+    borderColor: sem.accent,
+    backgroundColor: sem.chipActiveBg,
   },
   typeBtnText: {
     fontSize: 15,
@@ -398,7 +404,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   typeBtnTextActive: {
-    color: '#10b981',
+    color: sem.accent,
   },
   modalBackdrop: {
     flex: 1,

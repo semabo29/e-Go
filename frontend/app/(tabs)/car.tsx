@@ -16,7 +16,9 @@ import {
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface Vehicle {
@@ -32,6 +34,8 @@ export default function VehiclesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const colorScheme = useColorScheme();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const themeIndex = colorScheme === 'dark' ? 1 : 0;
 
   const getThemeColor = (values: [string, string]) => values[themeIndex];
@@ -51,15 +55,16 @@ export default function VehiclesScreen() {
     overlay: getThemeColor(['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.55)']),
     modalCloseBg: getThemeColor(['#f1f5f9', '#334155']),
     modalCloseIcon: getThemeColor(['#94a3b8', '#cbd5e1']),
-    badgeBg: getThemeColor(['#ecfdf5', '#052e16']),
-    badgeIcon: getThemeColor(['#10b981', '#34d399']),
-    badgeText: getThemeColor(['#047857', '#6ee7b7']),
+    badgeBg: sem.badgeBg,
+    badgeIcon: sem.badgeIcon,
+    badgeText: sem.badgeLabel,
     textPrimaryInverse: '#ffffff',
-    accent: '#10b981',
-    danger: '#ef4444',
+    accent: sem.accent,
+    danger: sem.error,
+    chipHighlightBg: sem.chipActiveBg,
     placeholder: getThemeColor(['#94a3b8', '#94a3b8']),
   };
-  const styles = useMemo(() => createStyles(theme), [colorScheme]);
+  const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
 
   // Estats per guardar els valors del formulari abans de guardar el vehicle
   const [nom, setNom] = useState((params.potencia as string) || '');
@@ -390,6 +395,7 @@ const createStyles = (theme: {
   textPrimaryInverse: string;
   accent: string;
   danger: string;
+  chipHighlightBg: string;
 }) => StyleSheet.create({
   contentContainer: {
     flex: 1,
@@ -530,8 +536,8 @@ const createStyles = (theme: {
     borderColor: theme.chipBorder,
   },
   chipActive: {
-    backgroundColor: '#ecfdf5', // Verd molt claret de fons
-    borderColor: theme.accent,     // Vora verda
+    backgroundColor: theme.chipHighlightBg,
+    borderColor: theme.accent,
   },
   chipText: {
     fontSize: 14,
@@ -554,7 +560,7 @@ const createStyles = (theme: {
   },
   typeBtnActive: {
     borderColor: theme.accent,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: theme.chipHighlightBg,
   },
   typeBtnText: {
     fontSize: 15,

@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, Text, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /** Fila de resultat: estació (backend) o adreça (Places via backend). */
@@ -31,7 +33,9 @@ export default function TopBar({
 }: TopBarProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const styles = React.useMemo(() => createStyles(isDark), [isDark]);
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = React.useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = React.useMemo(() => createStyles(isDark, sem), [isDark, colorblindFriendly]);
   const isAddressMode = searchMode === 'addresses';
 
   return (
@@ -60,7 +64,7 @@ export default function TopBar({
             onChangeText={setSearchQuery}
             underlineColorAndroid="transparent"
           />
-          {isSearching && <ActivityIndicator size="small" color="#10b981" />}
+          {isSearching && <ActivityIndicator size="small" color={sem.accent} />}
           {searchQuery.length > 0 && !isSearching && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Ionicons name="close-circle" size={20} color={isDark ? '#94a3b8' : '#888'} />
@@ -107,7 +111,7 @@ export default function TopBar({
                   <Ionicons
                     name={item.kind === 'station' ? 'flash-outline' : 'location-outline'}
                     size={20}
-                    color="#10b981"
+                    color={sem.accent}
                   />
                   <View style={styles.resultTextContainer}>
                     {item.kind === 'station' ? (
@@ -148,7 +152,7 @@ export default function TopBar({
   );
 }
 
-const createStyles = (isDark: boolean) => StyleSheet.create({
+const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create({
   wrapper: {
     zIndex: 100,
   },
@@ -187,7 +191,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     marginRight: 2,
   },
   modeToggleActive: {
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
   },
   menuButton: { padding: 2 },
 

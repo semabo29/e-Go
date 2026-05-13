@@ -3,7 +3,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri, useAuthRequest, useAutoDiscovery } from 'expo-auth-session';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -17,12 +17,12 @@ import {
 } from 'react-native';
 
 import { GOOGLE_WEB_CLIENT_ID, getApiUrl } from '@/constants/api';
-import { Colors } from '@/constants/theme';
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { savePrivilegedSession } from '@/services/privilegedAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const BRAND_GREEN = Colors.light.tint;
 const LOGO = require('./_assets/favicon.png');
 const IS_WEB = Platform.OS === 'web';
 
@@ -39,6 +39,9 @@ type CompanyUser = {
 
 export default function CompanyLoginScreen() {
   const router = useRouter();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createCompanyLoginStyles(sem), [sem]);
   const { openGoogle } = useLocalSearchParams<{ openGoogle?: string }>();
   const [loading, setLoading] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
@@ -204,7 +207,7 @@ export default function CompanyLoginScreen() {
           </View>
         ) : openGoogle === '1' && IS_WEB ? (
           <View style={styles.openingGoogle}>
-            <ActivityIndicator size="large" color={BRAND_GREEN} />
+            <ActivityIndicator size="large" color={sem.accent} />
             <Text style={styles.openingGoogleText}>Iniciando sesion…</Text>
           </View>
         ) : (
@@ -279,7 +282,7 @@ export default function CompanyLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createCompanyLoginStyles = (sem: SemanticColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f5f5f5' },
   scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
   card: {
@@ -320,7 +323,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 14,
     borderRadius: 10,
-    backgroundColor: BRAND_GREEN,
+    backgroundColor: sem.accent,
     alignItems: 'center',
     marginBottom: 4,
   },

@@ -13,8 +13,10 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 import { WelcomePremiumModal } from '@/components/WelcomePremiumModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import {
   buildFallbackStatus,
   formatPeriodEnd,
@@ -31,8 +33,14 @@ const PREMIUM_BENEFITS = [
 
 export default function PaymentsScreen() {
   const colorScheme = useColorScheme();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const themeIndex = colorScheme === 'dark' ? 1 : 0;
   const pick = (values: [string, string]) => values[themeIndex];
+  const premiumBorderPulse = useMemo(
+    () => (colorblindFriendly ? [sem.accent, '#0284c7'] : ['#22c55e', '#16a34a']),
+    [colorblindFriendly, sem.accent]
+  );
   const { user } = useAuth();
   const theme = {
     background: pick(['#f8fafc', '#0f172a']),
@@ -43,7 +51,7 @@ export default function PaymentsScreen() {
     cardBg: pick(['#ffffff', '#1e293b']),
     cardBorder: pick(['#e5e7eb', '#334155']),
     premiumBorder: pick(['#dbe5ee', '#334155']),
-    premiumShadow: pick(['#22c55e', '#16a34a']),
+    premiumShadow: colorblindFriendly ? sem.accent : pick(['#22c55e', '#16a34a']),
     planText: pick(['#111827', '#f1f5f9']),
     planDesc: pick(['#4b5563', '#cbd5e1']),
     premiumName: pick(['#0f172a', '#f1f5f9']),
@@ -55,20 +63,26 @@ export default function PaymentsScreen() {
     secondaryBg: pick(['#f8fafc', '#334155']),
     secondaryBorder: pick(['#cbd5e1', '#475569']),
     secondaryText: pick(['#475569', '#e2e8f0']),
-    activePremiumChipBg: pick(['#e9fbe7', '#14532d']),
-    activePremiumChipText: pick(['#166534', '#86efac']),
-    activePremiumChipBorder: pick(['#86efac', '#22c55e']),
-    activeFreeChipBg: '#22c55e',
+    activePremiumChipBg: colorblindFriendly ? sem.chipActiveBg : pick(['#e9fbe7', '#14532d']),
+    activePremiumChipText: colorblindFriendly ? sem.chipActiveText : pick(['#166534', '#86efac']),
+    activePremiumChipBorder: colorblindFriendly ? sem.accent : pick(['#86efac', '#22c55e']),
+    activeFreeChipBg: colorblindFriendly ? sem.accent : '#22c55e',
     activeFreeChipText: '#ffffff',
-    primaryBtnBg: '#85f755',
-    primaryBtnText: pick(['#0f172a', '#052e16']),
-    periodText: pick(['#166534', '#86efac']),
-    reactivateBg: pick(['rgba(133,247,85,0.2)', 'rgba(34,197,94,0.2)']),
-    reactivateBorder: pick(['rgba(133,247,85,0.55)', 'rgba(34,197,94,0.55)']),
-    reactivateText: pick(['#85f755', '#86efac']),
-    loader: '#10b981',
+    primaryBtnBg: colorblindFriendly ? sem.accent : '#85f755',
+    primaryBtnText: colorblindFriendly ? '#ffffff' : pick(['#0f172a', '#052e16']),
+    periodText: colorblindFriendly ? sem.chipActiveText : pick(['#166534', '#86efac']),
+    reactivateBg: colorblindFriendly
+      ? pick(['rgba(14,165,233,0.16)', 'rgba(2,132,199,0.22)'])
+      : pick(['rgba(133,247,85,0.2)', 'rgba(34,197,94,0.2)']),
+    reactivateBorder: colorblindFriendly
+      ? pick(['rgba(14,165,233,0.45)', 'rgba(2,132,199,0.55)'])
+      : pick(['rgba(133,247,85,0.55)', 'rgba(34,197,94,0.55)']),
+    reactivateText: colorblindFriendly ? pick(['#0ea5e9', '#7dd3fc']) : pick(['#85f755', '#86efac']),
+    loader: sem.accent,
+    premiumAuraFill: sem.accent,
+    activePlanBorder: sem.accent,
   };
-  const styles = useMemo(() => createStyles(theme), [colorScheme]);
+  const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
@@ -325,7 +339,7 @@ export default function PaymentsScreen() {
       <Text style={styles.subtitle}>Elige el plan que mejor se adapte a ti</Text>
 
       {loadingStatus ? (
-        <ActivityIndicator color="#10b981" size="large" style={styles.loader} />
+        <ActivityIndicator color={sem.accent} size="large" style={styles.loader} />
       ) : (
         <View style={styles.plansContainer}>
           <View style={styles.sectionHeader}>
@@ -351,7 +365,7 @@ export default function PaymentsScreen() {
                 transform: [{ scale: premiumScale }],
                 borderColor: premiumPulse.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['#22c55e', '#16a34a'],
+                  outputRange: premiumBorderPulse,
                 }),
                 shadowOpacity: premiumPulse.interpolate({
                   inputRange: [0, 1],
@@ -491,6 +505,8 @@ const createStyles = (theme: {
   reactivateBg: string;
   reactivateBorder: string;
   reactivateText: string;
+  premiumAuraFill: string;
+  activePlanBorder: string;
 }) => StyleSheet.create({
   screen: {
     flexGrow: 1,
@@ -540,7 +556,7 @@ const createStyles = (theme: {
     backgroundColor: theme.cardBg,
   },
   activeFreeCard: {
-    borderColor: '#22c55e',
+    borderColor: theme.activePlanBorder,
     backgroundColor: theme.cardBg,
   },
   premiumCard: {
@@ -554,11 +570,11 @@ const createStyles = (theme: {
   },
   premiumAura: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#22c55e',
+    backgroundColor: theme.premiumAuraFill,
     borderRadius: 18,
   },
   activePremiumCard: {
-    borderColor: '#22c55e',
+    borderColor: theme.activePlanBorder,
     backgroundColor: theme.cardBg,
   },
   headerRow: {
