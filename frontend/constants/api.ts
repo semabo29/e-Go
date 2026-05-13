@@ -4,6 +4,10 @@ import { NativeModules, Platform } from 'react-native';
 export const GOOGLE_WEB_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 
+//Api Groq
+export const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY;
+export const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
 const ENV_API = process.env.EXPO_PUBLIC_API_URL?.trim() || '';
 
 function isLocalhostUrl(url: string): boolean {

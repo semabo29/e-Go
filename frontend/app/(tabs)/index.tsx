@@ -1729,6 +1729,19 @@ useEffect(() => {
               <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
             </TouchableOpacity>
 
+            {/* Botón para ir al asistente IA */}
+            <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push('/support-chat'); //Navega a la pantalla del asistente
+                }}
+              >
+                <MaterialIcons name="support-agent" size={24} color="#10b981" />
+                <Text style={styles.menuItemText}>Asistente Virtual</Text>
+              </TouchableOpacity>
+
+            {/* Botón para cerrar session de google */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={async () => {
