@@ -12,23 +12,14 @@ import {
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
+import { getPremiumModalPalette, type PremiumModalPalette } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+
 const { width: SW, height: SH } = Dimensions.get('window');
 
 const smoothOut = Easing.bezier(0.0, 0.0, 0.2, 1);
 const snapIn = Easing.bezier(0.34, 1.2, 0.64, 1);
 const LIGHTWEIGHT_MODE = true;
-
-const CONFETTI_COLORS = [
-  '#fef08a',
-  '#86efac',
-  '#4ade80',
-  '#fbbf24',
-  '#34d399',
-  '#ffffff',
-  '#a7f3d0',
-  '#fde68a',
-  '#bef264',
-];
 
 interface ConfettiParticle {
   x: Animated.Value;
@@ -41,13 +32,13 @@ interface ConfettiParticle {
   isRect: boolean;
 }
 
-function buildConfetti(count: number): ConfettiParticle[] {
+function buildConfetti(count: number, colors: string[]): ConfettiParticle[] {
   return Array.from({ length: count }, (_, i) => ({
     x: new Animated.Value(SW / 2),
     y: new Animated.Value(SH * 0.34),
     rot: new Animated.Value(0),
     opacity: new Animated.Value(1),
-    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    color: colors[i % colors.length],
     w: Math.random() > 0.4 ? Math.random() * 9 + 5 : Math.random() * 7 + 4,
     h: Math.random() > 0.4 ? Math.random() * 5 + 3 : 0,
     isRect: Math.random() > 0.4,
@@ -132,17 +123,17 @@ function pulseBgDots(dots: BgDot[]) {
   });
 }
 
-function ShieldIcon() {
+function ShieldIcon({ pal }: { pal: PremiumModalPalette }) {
   return (
     <Svg width={130} height={142} viewBox="0 0 140 152" fill="none">
       <Defs>
         <LinearGradient id="shg" x1="70" y1="0" x2="70" y2="152" gradientUnits="userSpaceOnUse">
-          <Stop offset="0%" stopColor="#4ade80" />
-          <Stop offset="100%" stopColor="#15803d" />
+          <Stop offset="0%" stopColor={pal.shieldFillTop} />
+          <Stop offset="100%" stopColor={pal.shieldFillBottom} />
         </LinearGradient>
         <LinearGradient id="shg2" x1="70" y1="20" x2="70" y2="130" gradientUnits="userSpaceOnUse">
-          <Stop offset="0%" stopColor="#166534" stopOpacity={0.7} />
-          <Stop offset="100%" stopColor="#14532d" stopOpacity={0.4} />
+          <Stop offset="0%" stopColor={pal.shieldInnerTop} stopOpacity={0.7} />
+          <Stop offset="100%" stopColor={pal.shieldInnerBottom} stopOpacity={0.4} />
         </LinearGradient>
         <LinearGradient id="shine" x1="30" y1="20" x2="90" y2="80" gradientUnits="userSpaceOnUse">
           <Stop offset="0%" stopColor="white" stopOpacity={0.22} />
@@ -155,7 +146,7 @@ function ShieldIcon() {
       <Path
         d="M70 6L12 28V72C12 106 38 134 70 146C102 134 128 106 128 72V28L70 6Z"
         fill="none"
-        stroke="rgba(134,239,172,0.45)"
+        stroke={pal.shieldStroke}
         strokeWidth={1.5}
       />
       <Path
@@ -173,23 +164,34 @@ interface PerkRowProps {
   label: string;
   tx: Animated.Value;
   opacity: Animated.Value;
+  pal: PremiumModalPalette;
 }
 
-function PerkRow({ label, tx, opacity }: PerkRowProps) {
+function PerkRow({ label, tx, opacity, pal }: PerkRowProps) {
   return (
-    <Animated.View style={[s.perkRow, { opacity, transform: [{ translateX: tx }] }]}>
-      <View style={s.perkIcon}>
+    <Animated.View
+      style={[
+        s.perkRow,
+        {
+          opacity,
+          transform: [{ translateX: tx }],
+          backgroundColor: pal.perkRowBg,
+          borderColor: pal.perkRowBorder,
+        },
+      ]}
+    >
+      <View style={[s.perkIcon, { backgroundColor: pal.perkIconBg }]}>
         <Svg width={14} height={14} viewBox="0 0 14 14" fill="none">
           <Path
             d="M2 7l3.5 3.5L12 3"
-            stroke="#4ade80"
+            stroke={pal.perkCheckStroke}
             strokeWidth={1.8}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         </Svg>
       </View>
-      <Text style={s.perkLabel}>{label}</Text>
+      <Text style={[s.perkLabel, { color: pal.perkLabel }]}>{label}</Text>
     </Animated.View>
   );
 }
@@ -207,6 +209,8 @@ export function WelcomePremiumModal({
   onDismiss,
   mode = 'reactivated',
 }: WelcomePremiumModalProps) {
+  const { colorblindFriendly } = useColorblindPreference();
+  const pal = React.useMemo(() => getPremiumModalPalette(colorblindFriendly), [colorblindFriendly]);
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const streakX = useRef(new Animated.Value(-SW * 0.7)).current;
   const labelOpacity = useRef(new Animated.Value(0)).current;
@@ -344,7 +348,7 @@ export function WelcomePremiumModal({
       ]).start();
 
       if (!LIGHTWEIGHT_MODE) {
-        confetti.current = buildConfetti(85);
+        confetti.current = buildConfetti(85, pal.confetti);
         setTick((v) => v + 1);
         launchConfetti(confetti.current);
 
@@ -366,7 +370,7 @@ export function WelcomePremiumModal({
         );
         glowLoop.current.start();
       } else {
-        confetti.current = buildConfetti(24);
+        confetti.current = buildConfetti(24, pal.confetti);
         setTick((v) => v + 1);
         launchConfetti(confetti.current);
       }
@@ -466,6 +470,7 @@ export function WelcomePremiumModal({
     overlayOpacity,
     pOps,
     pTxs,
+    pal,
     ringIOpacity,
     ringIScale,
     ringOOpacity,
@@ -529,13 +534,16 @@ export function WelcomePremiumModal({
               width: d.size,
               height: d.size,
               borderRadius: d.size / 2,
-              backgroundColor: '#4ade80',
+              backgroundColor: pal.dot,
               opacity: d.opacity,
             }}
           />
         ))}
 
-        <Animated.View pointerEvents="none" style={[s.streak, { transform: [{ translateX: streakX }] }]} />
+        <Animated.View
+          pointerEvents="none"
+          style={[s.streak, { backgroundColor: pal.streak, transform: [{ translateX: streakX }] }]}
+        />
 
         {confetti.current.map((p, i) => (
           <Animated.View
@@ -562,7 +570,9 @@ export function WelcomePremiumModal({
         ))}
 
         <View style={s.content}>
-          <Animated.Text style={[s.eyebrow, { opacity: labelOpacity, transform: [{ translateY: labelY }] }]}>
+          <Animated.Text
+            style={[s.eyebrow, { color: pal.eyebrow, opacity: labelOpacity, transform: [{ translateY: labelY }] }]}
+          >
             E-GO PREMIUM
           </Animated.Text>
 
@@ -573,7 +583,7 @@ export function WelcomePremiumModal({
                 {
                   borderColor: ringOOpacity.interpolate({
                     inputRange: [0, 1],
-                    outputRange: ['rgba(74,222,128,0)', 'rgba(74,222,128,0.22)'],
+                    outputRange: [pal.ringTransparent, pal.ringOVisible],
                   }),
                   transform: [{ scale: ringOScale }],
                   opacity: ringOOpacity,
@@ -586,7 +596,7 @@ export function WelcomePremiumModal({
                 {
                   borderColor: ringIOpacity.interpolate({
                     inputRange: [0, 1],
-                    outputRange: ['rgba(74,222,128,0)', 'rgba(74,222,128,0.15)'],
+                    outputRange: [pal.ringTransparent, pal.ringIVisible],
                   }),
                   transform: [{ scale: ringIScale }],
                   opacity: ringIOpacity,
@@ -597,6 +607,7 @@ export function WelcomePremiumModal({
               style={[
                 s.shieldWrap,
                 {
+                  shadowColor: pal.shieldWrapShadow,
                   opacity: shieldOpacity,
                   shadowRadius: glowR,
                   transform: [
@@ -611,35 +622,43 @@ export function WelcomePremiumModal({
                 },
               ]}
             >
-              <ShieldIcon />
+              <ShieldIcon pal={pal} />
             </Animated.View>
           </View>
 
           <Animated.Text style={[s.titleMain, { opacity: t1Opacity, transform: [{ translateY: t1Y }] }]}>
             {titleMain}
           </Animated.Text>
-          <Animated.Text style={[s.titleAccent, { opacity: t2Opacity, transform: [{ translateY: t2Y }] }]}>
+          <Animated.Text
+            style={[s.titleAccent, { color: pal.titleAccent, opacity: t2Opacity, transform: [{ translateY: t2Y }] }]}
+          >
             {titleAccent}
           </Animated.Text>
 
-          <Animated.View style={[s.divider, { width: divW }]} />
+          <Animated.View style={[s.divider, { width: divW, backgroundColor: pal.divider }]} />
 
-          <Animated.Text style={[s.caption, { opacity: subOpacity, transform: [{ translateY: subY }] }]}>
+          <Animated.Text
+            style={[s.caption, { color: pal.caption, opacity: subOpacity, transform: [{ translateY: subY }] }]}
+          >
             {caption}
           </Animated.Text>
 
           <View style={s.perks}>
             {PERKS.map((label, i) => (
-              <PerkRow key={label} label={label} opacity={pOps[i]} tx={pTxs[i]} />
+              <PerkRow key={label} label={label} opacity={pOps[i]} tx={pTxs[i]} pal={pal} />
             ))}
           </View>
 
           <Animated.View style={{ opacity: ctaOpacity, transform: [{ scale: ctaScale }], width: '100%' }}>
             <Pressable
               onPress={dismiss}
-              style={({ pressed }) => [s.cta, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
+              style={({ pressed }) => [
+                s.cta,
+                { backgroundColor: pal.ctaBg, shadowColor: pal.ctaShadow },
+                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+              ]}
             >
-              <Text style={s.ctaText}>Continuar</Text>
+              <Text style={[s.ctaText, { color: pal.ctaText }]}>Continuar</Text>
             </Pressable>
           </Animated.View>
         </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -6,6 +6,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 interface StartChargingButtonProps {
   stationId: number;
@@ -24,6 +27,8 @@ export function StartChargingButton({
   onError,
 }: StartChargingButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
 
   const handleStartPress = async () => {
     setIsLoading(true);
@@ -43,7 +48,7 @@ export function StartChargingButton({
 
   return (
     <TouchableOpacity
-      style={[styles.button, isCharging && styles.buttonDisabled]}
+      style={[styles.button, { backgroundColor: sem.accent }, isCharging && styles.buttonDisabled]}
       onPress={handleStartPress}
       disabled={isCharging || isLoading}
       activeOpacity={0.8}
@@ -65,7 +70,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10b981',
     paddingVertical: 14,
     borderRadius: 8,
     marginBottom: 8,

@@ -413,7 +413,7 @@ describe('InicioScreen map and station panel', () => {
     fireEvent.press(getByTestId('favorite-station-marker'));
     fireEvent.press(getByText('Reportar incidencia'));
     fireEvent.changeText(getByPlaceholderText('Describe qué ha ocurrido'), 'Conector roto');
-    fireEvent.press(getByText('Operatiu'));
+    fireEvent.press(getByText('Avariat'));
     fireEvent.press(getByText('Enviar'));
 
     await waitFor(() => {

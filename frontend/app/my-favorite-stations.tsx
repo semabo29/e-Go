@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 
 interface Station {
   id: number;
@@ -34,6 +36,9 @@ export default function MyFavoriteStationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createFavoriteStyles(sem), [sem]);
 
   useEffect(() => {
     if (user) {
@@ -189,7 +194,7 @@ export default function MyFavoriteStationsScreen() {
             )}
             {item.kw && (
               <Text style={styles.stationDetail}>
-                <MaterialIcons name="bolt" size={14} color="#10b981" /> {item.kw} kW
+                <MaterialIcons name="bolt" size={14} color={sem.accent} /> {item.kw} kW
               </Text>
             )}
           </View>
@@ -203,7 +208,7 @@ export default function MyFavoriteStationsScreen() {
             onPress={handleComoLlegar}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="directions" size={16} color="#10b981" />
+            <MaterialIcons name="directions" size={16} color={sem.accent} />
             <Text style={styles.routeBtnText}>Cómo llegar</Text>
           </TouchableOpacity>
 
@@ -226,7 +231,7 @@ export default function MyFavoriteStationsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#10b981" />
+          <ActivityIndicator size="large" color={sem.accent} />
           <Text style={styles.loadingText}>Cargando estaciones...</Text>
         </View>
       </SafeAreaView>
@@ -288,7 +293,7 @@ export default function MyFavoriteStationsScreen() {
                       : 'done'
                   }
                   size={20}
-                  color={selectedIds.size > 0 ? '#10b981' : '#cbd5e1'}
+                  color={selectedIds.size > 0 ? sem.accent : '#cbd5e1'}
                 />
                 <Text style={styles.selectAllText}>
                   {selectedIds.size === favorites.length
@@ -323,7 +328,7 @@ export default function MyFavoriteStationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -399,8 +404,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   stationItemSelected: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#10b981',
+    backgroundColor: sem.chipActiveBg,
+    borderColor: sem.accent,
   },
   checkboxContainer: {
     marginRight: 12,
@@ -415,8 +420,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: sem.accent,
+    borderColor: sem.accent,
   },
   stationInfo: {
     flex: 1,
@@ -455,10 +460,10 @@ const styles = StyleSheet.create({
   routeBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10b981',
+    color: sem.accent,
   },
   chargeBtn: {
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
   },
   chargeBtnText: {
     fontSize: 13,
@@ -495,7 +500,7 @@ const styles = StyleSheet.create({
   removeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: sem.error,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 6,

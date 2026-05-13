@@ -1,6 +1,24 @@
 import '@testing-library/jest-native/extend-expect';
 import { jest } from '@jest/globals';
 
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
+
+// Jest no aplica insets reals; exponemos SafeAreaView como View y el provider como fragmento para que los tests rendericen hijos.
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    SafeAreaProvider: ({ children }: { children?: unknown }) =>
+      React.createElement(React.Fragment, null, children),
+    SafeAreaView: View,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+    initialWindowMetrics: null,
+  };
+});
+
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 // Mock global para módulos de mapas nativos en Jest (evita RNMapsAirModule errors).
 jest.mock('react-native-maps-directions', () => () => null);

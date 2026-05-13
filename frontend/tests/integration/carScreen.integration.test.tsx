@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import VehiclesScreen from '@/app/(tabs)/car';
 import { useAuth } from '@/contexts/AuthContext';
-import { Alert } from 'react-native';
+import { Alert, TextInput } from 'react-native';
 
 const mockNavigate = jest.fn();
 const mockPush = jest.fn();
@@ -110,18 +110,29 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
 
   // hace POST `/car` y navega a la pantalla index con los parametros esperados.
   test('saves car successfully and navigates with expected params', async () => {
-    mockParams = {
-      potencia: '100',
-      connectorType: 'CCS Combo2',
-      ac_dc: 'AC',
-    };
+    mockParams = {};
 
-    const { getByText } = render(<VehiclesScreen />);
-
-    // Esperamos a que el fetch inicial se ejecute y renderice el vehículo
-    await waitFor(() => {
-      expect(getByText('Car Test 1')).toBeTruthy();
+    (globalThis.fetch as any) = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/car?usuari_id=1') && options?.method === undefined) {
+        return { json: async () => [] } as any;
+      }
+      if (url.includes('/car') && options?.method === 'POST') {
+        return { ok: true, status: 201, json: async () => ({}) } as any;
+      }
+      return { json: async () => [] } as any;
     });
+
+    const { getByText, UNSAFE_getAllByType } = render(<VehiclesScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Nuevo vehículo')).toBeTruthy();
+    });
+
+    const textInputs = UNSAFE_getAllByType(TextInput);
+    fireEvent.changeText(textInputs[0], 'Nuevo vehículo test');
+    fireEvent.changeText(textInputs[1], '100');
+    fireEvent.press(getByText('AC'));
+    fireEvent.press(getByText('CCS Combo2'));
 
     fireEvent.press(getByText('Guardar vehículo'));
 
@@ -138,7 +149,7 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
       expect(mockNavigate).toHaveBeenCalledWith({
         pathname: '/',
         params: {
-          minKw: 80,
+          maxKw: 100,
           ac_dc: 'AC',
           connectorType: 'CCS Combo2',
         },
@@ -148,7 +159,7 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
     const fetchMock = globalThis.fetch as unknown as jest.Mock;
     await waitFor(() => {
       const getCalls = fetchMock.mock.calls.filter((c) => typeof c[0] === 'string' && c[0].includes('/car?usuari_id=1')).length;
-      expect(getCalls).toBeGreaterThanOrEqual(2); // initial load + refresh after save
+      expect(getCalls).toBeGreaterThanOrEqual(2); // carga inicial + refresco tras guardar
     });
   });
 
@@ -368,11 +379,17 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
 
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
-    const { getByText } = render(<VehiclesScreen />);
+    const { getByText, UNSAFE_getAllByType } = render(<VehiclesScreen />);
 
     await waitFor(() => {
       expect(getByText('Nuevo vehículo')).toBeTruthy();
     });
+
+    const textInputs = UNSAFE_getAllByType(TextInput);
+    fireEvent.changeText(textInputs[0], 'Nombre para guardar');
+    fireEvent.changeText(textInputs[1], '100');
+    fireEvent.press(getByText('AC'));
+    fireEvent.press(getByText('CCS Combo2'));
 
     fireEvent.press(getByText('Guardar vehículo'));
 
@@ -405,11 +422,17 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
 
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
-    const { getByText } = render(<VehiclesScreen />);
+    const { getByText, UNSAFE_getAllByType } = render(<VehiclesScreen />);
 
     await waitFor(() => {
       expect(getByText('Nuevo vehículo')).toBeTruthy();
     });
+
+    const textInputs = UNSAFE_getAllByType(TextInput);
+    fireEvent.changeText(textInputs[0], 'Nombre para guardar');
+    fireEvent.changeText(textInputs[1], '100');
+    fireEvent.press(getByText('AC'));
+    fireEvent.press(getByText('CCS Combo2'));
 
     fireEvent.press(getByText('Guardar vehículo'));
 

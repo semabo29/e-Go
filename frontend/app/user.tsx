@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Image, View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 
@@ -78,6 +80,9 @@ export default function PerfilScreen() {
   const idUser = Number.isInteger(parsedUserId) && parsedUserId > 0 ? parsedUserId : user?.id ?? 1;
 
   const router = useRouter();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createUserStyles(sem), [sem]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -219,7 +224,7 @@ export default function PerfilScreen() {
                 )}
                 {perfil?.admin && (
                   <View style={styles.badge}>
-                    <MaterialIcons name="shield" size={16} color="#f59e0b" />
+                    <MaterialIcons name="shield" size={16} color={sem.mapCustomLocation} />
                     <Text style={styles.badgeLabel}>Admin</Text>
                   </View>
                 )}
@@ -252,7 +257,7 @@ export default function PerfilScreen() {
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0f766e" />
+            <ActivityIndicator size="large" color={sem.accent} />
             <Text style={styles.loadingText}>Cargando perfil...</Text>
           </View>
         ) : perfil ? (
@@ -268,7 +273,7 @@ export default function PerfilScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createUserStyles = (sem: SemanticColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -394,7 +399,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     alignItems: 'center',
   },
   cancelButton: {
@@ -410,7 +415,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   saveButtonDisabled: {
-    backgroundColor: '#86efac',
+    backgroundColor: sem.chipActiveBg,
   },
   saveButtonText: {
     color: '#ffffff',
@@ -432,7 +437,7 @@ const styles = StyleSheet.create({
   points: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#10b981',
+    color: sem.accent,
   },
   ptsLabel: {
     fontSize: 12,
