@@ -16,7 +16,7 @@ describe('groqService', () => {
       choices: [{ message: { content: 'Hola, soy tu asistente.' } }]
     };
 
-    //Usamos el casting (as jest.MockedFunction...) para que TS sepa que podemos usar mockResolvedValueOnce
+    //Usamos el casting (as jest.MockedFunction...) para que TypeScript sepa que podemos usar mockResolvedValueOnce
     (globalThis.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
