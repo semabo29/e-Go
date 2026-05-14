@@ -5,7 +5,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 interface ChargingActionCardProps {
   isCharging: boolean;
   elapsedSeconds: number;
-  distanceToStation: number;
+  distanceToStation: number | null; // Permetem null
   onFinishCharging: () => void;
   onCancelCharging: () => void;
 }
@@ -88,8 +88,8 @@ export function ChargingActionCard({
           </TouchableOpacity>
         </View>
 
-        {/* Advertencia de distancia */}
-        {distanceToStation > 30 && (
+        {/* Advertencia de distancia: Comprovem que NO sigui null abans de veure si és > 30 */}
+        {(distanceToStation !== null && distanceToStation > 30) && (
           <View style={styles.warningSection}>
             <MaterialIcons name="warning" size={16} color="#ef4444" />
             <Text style={styles.warningText}>Te estás alejando del punto de carga</Text>
@@ -103,7 +103,7 @@ export function ChargingActionCard({
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>¿Finalizar carga?</Text>
             <Text style={styles.modalMessage}>
-              Habrás completado {minutes} minutos de carga y recibirás {minutes*10} puntos{'\n'}
+              Habrás completado {minutes} minutos de carga y recibirás {minutes * 10} puntos{'\n'}
               {minutes > 0 ? '(puede ser más con bonificación Premium)' : ''}
             </Text>
 
@@ -267,4 +267,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
