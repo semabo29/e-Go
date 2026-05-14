@@ -65,6 +65,8 @@ describe('StationBottomSheet - Integració de Ressenyes', () => {
     chargingError: '',
     setChargingError: jest.fn(),
     onStartNavigation: jest.fn(),
+    onOpenIncidenciaForm: jest.fn(),
+    onSolvedIncidencia: jest.fn(),
   };
 
   beforeEach(() => {
