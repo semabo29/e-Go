@@ -19,7 +19,35 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+jest.mock('react-native-reanimated', () => {
+  const reactNative = require('react-native');
+  return {
+    __esModule: true,
+    default: reactNative.View,
+    useSharedValue: jest.fn(() => ({ value: 0 })),
+    useAnimatedStyle: jest.fn(() => ({})),
+    useAnimatedProps: jest.fn(() => ({})),
+    withTiming: jest.fn((v) => v),
+    withSpring: jest.fn((v) => v),
+    runOnUI: jest.fn((fn) => fn),
+    runOnJS: jest.fn((fn) => fn),
+    makeMutable: jest.fn(() => ({ value: 0 })),
+  };
+});
+
+// --- 2. Mock para el Bottom Sheet de tus compañeros ---
+jest.mock('@gorhom/bottom-sheet', () => {
+  const reactNative = require('react-native');
+  return {
+    __esModule: true,
+    default: reactNative.View,
+    BottomSheetView: reactNative.View,
+    BottomSheetScrollView: reactNative.ScrollView,
+    BottomSheetModal: reactNative.View,
+    BottomSheetModalProvider: reactNative.View,
+    BottomSheetTextInput: reactNative.TextInput,
+  };
+});
 // Mock global para módulos de mapas nativos en Jest (evita RNMapsAirModule errors).
 jest.mock('react-native-maps-directions', () => () => null);
 jest.mock('react-native-maps', () => {
