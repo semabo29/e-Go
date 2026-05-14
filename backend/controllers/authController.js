@@ -1,10 +1,26 @@
 const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
 
+function generateUserToken(user) {
+  // Agafem la clau secreta del fitxer .env, o usem un text per defecte si falla
+  const secret = process.env.JWT_SECRET || 'clau_secreta_per_defecte';
+  return jwt.sign(
+    { id: user.id, email: user.email, role: 'conductor' }, // Guardem la ID de l'usuari a dins!
+    secret,
+    { expiresIn: '30d' } // El token durarà 30 dies
+  );
+}
+
 // POST /auth/google: login con Google (code o idToken)
 async function googleLogin(req, res) {
   try {
     const data = await authService.loginWithGoogle(req.body);
+
+    // SI TOT VA BÉ I TENIM USUARI, LI GENEREM EL TOKEN I L'AFEGIM A LA RESPOSTA
+    if (data.user && !data.needsUsername) {
+      data.token = generateUserToken(data.user);
+    }
+
     res.json(data);
   } catch (err) {
     if (err.code === 'BAD_REQUEST') {
@@ -25,6 +41,12 @@ async function googleLogin(req, res) {
 async function localLogin(req, res) {
   try {
     const data = await authService.loginWithEmail(req.body);
+
+    // AFEGIM EL TOKEN AL LOGIN NORMAL TAMBÉ
+    if (data.user) {
+      data.token = generateUserToken(data.user);
+    }
+
     res.json(data);
   } catch (err) {
     if (err.code === 'BAD_REQUEST') {
@@ -42,7 +64,9 @@ async function localLogin(req, res) {
 async function register(req, res) {
   try {
     const { user } = await authService.register(req.body);
-    res.status(201).json({ user });
+    // AFEGIM EL TOKEN AL REGISTRE
+    const token = generateUserToken(user);
+    res.status(201).json({ user, token });
   } catch (err) {
     if (err.code === 'MISSING_USERNAME' || err.code === 'INVALID_USERNAME') {
       return res.status(400).json({ error: err.message });
@@ -63,7 +87,9 @@ async function register(req, res) {
 async function localRegister(req, res) {
   try {
     const { user } = await authService.registerWithEmail(req.body);
-    res.status(201).json({ user });
+    // AFEGIM EL TOKEN AL REGISTRE LOCAL
+    const token = generateUserToken(user);
+    res.status(201).json({ user, token });
   } catch (err) {
     if (err.code === 'BAD_REQUEST') {
       return res.status(400).json({ error: err.message });

@@ -15,6 +15,7 @@ const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de fa
 const vehicleRoutes = require('./routes/vehicles');//Importamos la ruta de vehiculos
 const subscriptionRoutes = require('./routes/subscription');
 const chargingRoutes = require('./routes/charging'); // Importamos la ruta de carga
+const reviewsRoutes = require('./routes/reviews');
 const rankingRoutes = require('./routes/ranking');
 const userRoutes = require('./routes/users');
 const incidenciaRoutes = require('./routes/incidencias');
@@ -71,6 +72,7 @@ app.use('/favorites', favoriteRoutes);
 app.use('/car', vehicleRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/charging', chargingRoutes); // Rutas para sesiones de carga y puntos
+app.use('/', reviewsRoutes);
 app.use('/ranking', rankingRoutes);
 app.use('/user', userRoutes);
 app.use('/incidencias', incidenciaRoutes);

@@ -52,7 +52,8 @@ import { FavoriteButton } from '../../components/FavoriteButton';
 
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
-import { Polyline } from 'react-native-maps'; //Para pintar el trazado de la ruta
+import { Polyline } from 'react-native-maps';
+import {StationBottomSheet} from "@/components/StationBottomSheet"; //Para pintar el trazado de la ruta
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
@@ -334,7 +335,6 @@ export default function InicioScreen() {
         if (apiResponse.session?.id) {
           // Actualizar sesión con ID del backend
           updateSessionId(apiResponse.session.id);
-          console.log('Sesión creada en backend:', apiResponse.session.id);
         }
       }
 
@@ -754,7 +754,10 @@ useEffect(() => {
       }
 
       if (data.user) {
-        setUser(data.user);
+        setUser({
+          ...data.user,
+          token: data.token // Assumint que el teu backend envia el token a "data.token"
+        });
         setAuthStep('google');
         setPendingAuth(null);
         setWelcomeUsername('');
@@ -829,13 +832,16 @@ useEffect(() => {
           password: welcomePassword,
         }),
       });
-      const data = await res.json();
+      const data = await res.json()
       if (!res.ok) {
         setAuthError(data.error || 'No se pudo iniciar sesión');
         return;
       }
       if (data.user) {
-        setUser(data.user);
+        setUser({
+          ...data.user,
+          token: data.token // Assumint que el teu backend envia el token a "data.token"
+        });
       }
     } catch (_e) {
       setAuthError('No se pudo conectar con el servidor.');
@@ -1405,153 +1411,29 @@ useEffect(() => {
         )}
 
         {/* Mini panel de información de la estación */}
-        {!isNavigating && selectedStation && !isSelectingOrigin &&(
-          <View style={styles.infoPanel}>
-            <View style={styles.infoHandle} />
-
-            <View style={styles.infoTitleRow}>
-            <MaterialIcons name="location-on" size={18} color={sem.accent} />
-              {/* 1. Nombre de la estación */}
-              <Text style={styles.infoTitle} numberOfLines={2}>
-                {selectedStation.adreca}, {selectedStation.municipi}
-              </Text>
-
-              {/* 2. Botón de favoritos (solo si hay usuario) */}
-              {user && (
-                <FavoriteButton
-                  estacio_id={selectedStation.id}
-                  isInitiallyFavorite={favoriteIds.includes(selectedStation.id)}
-                  onToggle={(isFav) => {
-                    if (isFav) {
-                      setFavoriteIds([...favoriteIds, selectedStation.id]);
-                    } else {
-                      setFavoriteIds(favoriteIds.filter(id => id !== selectedStation.id));
-                    }
-                  }}
-                />
-              )}
-
-              {/* 3. Botón de cerrar */}
-              <TouchableOpacity
-                onPress={() => setSelectedStation(null)}
-                style={styles.infoCloseBtn}
-              >
-                <MaterialIcons name="close" size={20} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-
-
-            {/* CONTENIDO DEL PANEL: Dirección, kW, etc. */}
-            <View style={styles.infoContent}>
-
-              <View style={styles.infoBadgeRow}>
-                <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
-                  <MaterialIcons name="bolt" size={14} color={sem.badgeIcon} />
-                  <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{(parseFloat(selectedStation.kw) !== 0)? selectedStation.kw : 'n/a'} kW</Text>
-                </View>
-              <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
-                <MaterialIcons name="ev-station" size={14} color={sem.badgeIcon} />
-                <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{selectedStation.ac_dc}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
-                <MaterialIcons name="electrical-services" size={14} color={sem.badgeIcon} />
-                <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{selectedStation.tipus_connexio}</Text>
-              </View>
-
-              </View>
-
-              {selectedStation.promotor && (
-                <Text style={styles.infoPromotor}>
-                  Gestor: {selectedStation.promotor}
-                </Text>
-              )}
-            </View>
-{/* Mostrar timer si está cargando */}
-            {isCharging && (
-              <View>
-                <ChargingTimerDisplay
-                  elapsedSeconds={elapsedSeconds}
-                  distanceToStation={distanceToStation}
-                />
-              </View>
-            )}
-
-            {/* Mostrar tarjeta de acciones si está cargando */}
-            {isCharging && (
-              <ChargingActionCard
-                isCharging={isCharging}
-                elapsedSeconds={elapsedSeconds}
-                distanceToStation={distanceToStation}
-                onFinishCharging={handleFinishCharging}
-                onCancelCharging={handleCancelCharging}
-              />
-            )}
-
-            {/* Mostrar botón para iniciar carga si no está cargando */}
-            {!isCharging && userLocation && (
-              <View style={styles.chargingButtonContainer}>
-                <StartChargingButton
-                  stationId={selectedStation.id}
-                  stationLat={parseFloat(selectedStation.latitud)}
-                  stationLon={parseFloat(selectedStation.longitud)}
-                  userLat={userLocation.coords.latitude}
-                  userLon={userLocation.coords.longitude}
-                  isCharging={isCharging}
-                  onStartCharging={handleStartCharging}
-                  onError={(message) => {
-                    setChargingError(message);
-                    Alert.alert('Error', message);
-                  }}
-                />
-              </View>
-            )}
-
-            {/* Mostrar error de carga si existe */}
-            {chargingError && (
-              <View style={styles.errorMessage}>
-                <MaterialIcons name="error-outline" size={16} color={sem.error} />
-                <Text style={styles.errorText}>{chargingError}</Text>
-              </View>
-            )}
-
-            {/* Botón de cómo llegar (De TU rama feature/rutas, pero con el icono de dev) */}
-            {!isCharging && (
-              selectedStation.operatiu === false ? (
-                <TouchableOpacity
-                  style={styles.solvedReportButton}
-                  activeOpacity={0.8}
-                  onPress={handleSolvedIncidenciaSubmit}
-                >
-                  <MaterialIcons name="check-circle" size={20} color="#fff" />
-                  <Text style={styles.routeButtonText}>Reportar incidencia solucionada</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.reportButton}
-                  activeOpacity={0.8}
-                  onPress={handleOpenIncidenciaForm}
-                >
-                  <MaterialIcons name="report-problem" size={20} color="#fff" />
-                  <Text style={styles.routeButtonText}>Reportar incidencia</Text>
-                </TouchableOpacity>
-              )
-            )}
-
-            {!isCharging && (
-              <TouchableOpacity
-                style={styles.routeButton}
-                activeOpacity={0.8}
-                onPress={() => handleStartNavigation({
-                  latitude: parseFloat(selectedStation.latitud),
-                  longitude: parseFloat(selectedStation.longitud)
-                })}
-              >
-                <MaterialIcons name="directions" size={20} color="#fff" />
-                <Text style={styles.routeButtonText}>Cómo llegar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {!isNavigating && selectedStation && !isSelectingOrigin && (
+          <StationBottomSheet
+            station={selectedStation}
+            onClose={() => setSelectedStation(null)}
+            isFavorite={favoriteIds.includes(selectedStation.id)}
+            onToggleFavorite={(isFav) => {
+              if (isFav) {
+                setFavoriteIds([...favoriteIds, selectedStation.id]);
+              } else {
+                setFavoriteIds(favoriteIds.filter(id => id !== selectedStation.id));
+              }
+            }}
+            userLocation={userLocation}
+            isCharging={isCharging}
+            elapsedSeconds={elapsedSeconds}
+            distanceToStation={distanceToStation}
+            onStartCharging={handleStartCharging}
+            onFinishCharging={handleFinishCharging}
+            onCancelCharging={handleCancelCharging}
+            chargingError={chargingError}
+            setChargingError={setChargingError}
+            onStartNavigation={handleStartNavigation}
+          />
         )}
 
         {/* Mini panel para cuando se clica a una ubicacion cualquiera del mapa (De TU rama feature/rutas) */}

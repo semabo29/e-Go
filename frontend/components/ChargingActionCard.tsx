@@ -8,7 +8,7 @@ import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext'
 interface ChargingActionCardProps {
   isCharging: boolean;
   elapsedSeconds: number;
-  distanceToStation: number;
+  distanceToStation: number | null; // Permetem null
   onFinishCharging: () => void;
   onCancelCharging: () => void;
 }
@@ -94,8 +94,8 @@ export function ChargingActionCard({
           </TouchableOpacity>
         </View>
 
-        {/* Advertencia de distancia */}
-        {distanceToStation > 30 && (
+        {/* Advertencia de distancia: Comprovem que NO sigui null abans de veure si és > 30 */}
+        {(distanceToStation !== null && distanceToStation > 30) && (
           <View style={styles.warningSection}>
             <MaterialIcons name="warning" size={16} color={sem.error} />
             <Text style={[styles.warningText, { color: sem.error }]}>Te estás alejando del punto de carga</Text>
