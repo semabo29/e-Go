@@ -1,12 +1,10 @@
 name: SonarQube Analysis
 
-# Independent del workflow "Coverage": mateixes ramificacions (push/PR) però sense esperar-lo ni descarregar artifacts.
-# Les propietats LCOV de sonar-project.properties s'anul·len aquí perquè l'anàlisi no depengui de fitxers generats per tests.
 on:
   push:
-    branches: ["development", "sonarqube1", "main"]
+    branches: ["development", "main"]
   pull_request:
-    branches: ["development", "sonarqube1", "main"]
+    branches: ["development", "main"]
   workflow_dispatch:
 
 jobs:
