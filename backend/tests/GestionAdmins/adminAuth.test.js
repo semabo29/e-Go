@@ -18,6 +18,8 @@ jest.mock('../../lib/authHelpers', () => ({
   verifyPendingToken: jest.fn(),
 }));
 
+const bcrypt = require('bcryptjs');
+const userModel = require('../../models/userModel');
 const authRoutes = require('../../routes/auth');
 const adminRoutes = require('../../routes/admin');
 
@@ -52,6 +54,50 @@ describe('Admin auth', () => {
       .post('/auth/admin/google')
       .send({ idToken: 'ok' });
     expect(res.status).toBe(403);
+  });
+
+  test('POST /auth/admin/local/login -> 400 si faltan datos', async () => {
+    const res = await request(app).post('/auth/admin/local/login').send({});
+    expect(res.status).toBe(400);
+  });
+
+  test('POST /auth/admin/local/login -> 401 si contraseña incorrecta', async () => {
+    jest.spyOn(userModel, 'findAdminByEmailWithPassword').mockResolvedValue({
+      id: 1,
+      user_id: 1,
+      email: 'admin@example.com',
+      username: 'admin',
+      password_hash: 'hash',
+      admin_since: '2026-03-17T00:00:00.000Z',
+    });
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false);
+    const res = await request(app)
+      .post('/auth/admin/local/login')
+      .send({ email: 'admin@example.com', password: 'wrongpass1' });
+    expect(res.status).toBe(401);
+    jest.restoreAllMocks();
+  });
+
+  test('POST /auth/admin/local/login -> 200 con JWT admin', async () => {
+    jest.spyOn(userModel, 'findAdminByEmailWithPassword').mockResolvedValue({
+      id: 1,
+      user_id: 1,
+      email: 'admin@example.com',
+      username: 'admin',
+      password_hash: 'hash',
+      admin_since: '2026-03-17T00:00:00.000Z',
+    });
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
+    const res = await request(app)
+      .post('/auth/admin/local/login')
+      .send({ email: 'admin@example.com', password: 'secret12' });
+    expect(res.status).toBe(200);
+    expect(res.body.admin.email).toBe('admin@example.com');
+    expect(res.body.token).toBeTruthy();
+    const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
+    expect(decoded.role).toBe('admin');
+    expect(decoded.email).toBe('admin@example.com');
+    jest.restoreAllMocks();
   });
 
   test('POST /auth/admin/google -> 200 si es admin', async () => {

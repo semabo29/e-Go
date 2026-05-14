@@ -1,7 +1,7 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-import { useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { MapView, Marker } from '../_components/MapWrapper';
-import TopBar from '../../components/TopBar';
+import TopBar, { MapSearchListItem } from '../../components/TopBar';
 
 import {
   Image,
@@ -10,6 +10,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -30,6 +31,11 @@ import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
 import { ChargingActionCard } from '../../components/ChargingActionCard';
 import { ChargingResultModal } from '../../components/ChargingResultModal';
 import { StartChargingButton } from '../../components/StartChargingButton';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+import { useThemePreference } from '@/contexts/ThemePreferenceContext';
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import type { SemanticColors } from '@/constants/accessibilityColors';
 import {
   requestLocationPermissions,
   isLocationServiceEnabled,
@@ -50,6 +56,12 @@ import { Polyline } from 'react-native-maps';
 import {StationBottomSheet} from "@/components/StationBottomSheet"; //Para pintar el trazado de la ruta
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
+let ImagePickerModule: typeof import('expo-image-picker') | null = null;
+try {
+  ImagePickerModule = require('expo-image-picker');
+} catch (_e) {
+  ImagePickerModule = null;
+}
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -68,9 +80,16 @@ interface Estacion {
   tipus_velocitat?: string;
   tipus_connexio?: string;
   ac_dc?: string;
+  operatiu?: boolean;
 }
 
 export default function InicioScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const { preference, setPreference } = useThemePreference();
+  const { colorblindFriendly, setColorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createStyles(isDark, sem), [isDark, colorblindFriendly]);
   const router = useRouter();
   //Llegim els paràmetres de la URL
   const params = useLocalSearchParams();
@@ -115,10 +134,20 @@ export default function InicioScreen() {
   const [loadingEstaciones, setLoadingEstaciones] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Estacion | null>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [showIncidenciaForm, setShowIncidenciaForm] = useState(false);
+  const [incidenciaComentario, setIncidenciaComentario] = useState('');
+  const [incidenciaTipo, setIncidenciaTipo] = useState('');
+  const [incidenciaArchivo, setIncidenciaArchivo] = useState<{
+    uri: string;
+    name: string;
+    mimeType: string;
+  } | null>(null);
+  const [incidenciaSubmitting, setIncidenciaSubmitting] = useState(false);
 
   // --- NOUS ESTATS PEL BUSCADOR ---
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Estacion[]>([]);
+  const [searchResults, setSearchResults] = useState<MapSearchListItem[]>([]);
+  const [searchMode, setSearchMode] = useState<'stations' | 'addresses'>('stations');
   const [isSearching, setIsSearching] = useState(false);
 
   // Estado para controlar la región visible del mapa
@@ -130,6 +159,7 @@ export default function InicioScreen() {
   });
 
   const mapRef = useRef<any>(null);
+  
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
 
   const [authStep, setAuthStep] = useState<'google' | 'username'>('google');
@@ -139,9 +169,59 @@ export default function InicioScreen() {
   const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
+  const INCIDENCIA_TYPES = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres'];
 
   //Estados para la navegacion a un punto
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isDrivingMode, setIsDrivingMode] = useState(false);
+  // Referencia para guardar la suscripción al GPS y poder apagarla
+  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+
+  //NAVEGACIÓN 3D (Waze / Google Maps)
+  useEffect(() => {
+    let isMounted = true;
+
+    const start3DTracking = async () => {
+      if (isDrivingMode) { 
+        locationSubscription.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.BestForNavigation,
+            timeInterval: 1000,
+            distanceInterval: 2,
+          },
+          (location) => {
+            if (!isMounted) return;
+            const { latitude, longitude, heading } = location.coords;
+
+            if (mapRef.current && typeof mapRef.current.animateCamera === 'function') {
+              mapRef.current.animateCamera(
+                {
+                  center: { latitude, longitude },
+                  heading: heading || 0,
+                  pitch: 60, 
+                  zoom: 18,
+                },
+                { duration: 1000 }
+              );
+            }
+          }
+        );
+      } else {
+        // Si no estamos en modo conducción, nos aseguramos de apagar el GPS
+        if (locationSubscription.current) {
+          locationSubscription.current.remove();
+          locationSubscription.current = null;
+        }
+      }
+    };
+
+    start3DTracking();
+
+    return () => {
+      isMounted = false;
+      if (locationSubscription.current) locationSubscription.current.remove();
+    };
+  }, [isDrivingMode]);
   const [routeOrigin, setRouteOrigin] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeDestination, setRouteDestination] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
@@ -497,14 +577,36 @@ useEffect(() => {
 // Efecte per buscar quan l'usuari escriu (amb debounce de 500ms)
   useEffect(() => {
     if (searchQuery.length < 3) {
-      setSearchResults([]); // Si hi ha menys de 3 lletres, no busquem
+      setSearchResults([]);
       return;
     }
 
     const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
       try {
-        // Construïm els paràmetres de la URL afegint-hi la cerca I ELS FILTRES
+        if (searchMode === 'addresses') {
+          const response = await fetch(
+            `${getApiUrl()}/geocode/autocomplete?input=${encodeURIComponent(searchQuery)}`
+          );
+          const data = await response.json();
+          if (!response.ok) {
+            setSearchResults([]);
+            return;
+          }
+          const rows = Array.isArray(data) ? data : [];
+          setSearchResults(
+            rows
+              .map((r: { placeId?: string; place_id?: string; label: string; subtitle?: string }) => ({
+                kind: 'address' as const,
+                placeId: (r.placeId || r.place_id || '').trim(),
+                label: r.label || '',
+                subtitle: r.subtitle || '',
+              }))
+              .filter((row) => row.placeId.length > 0)
+          );
+          return;
+        }
+
         let queryParams = [`q=${encodeURIComponent(searchQuery)}`];
 
         if (minKw) queryParams.push(`minKw=${minKw}`);
@@ -515,16 +617,17 @@ useEffect(() => {
         // Ajuntem tots els paràmetres amb un "&"
         const queryString = queryParams.join('&');
 
-        // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
         const response = await fetch(`${getApiUrl()}/stations/search?${queryString}`);
         const data = await response.json();
 
         // --- APLIQUEM EL FILTRE DE FAVORITS LOCALMENT ---
-        let resultatsFinals = data;
+        let resultatsFinals = Array.isArray(data) ? data : [];
         if (showFavoritesFilter) {
-          resultatsFinals = data.filter((est: Estacion) => favoriteIds.includes(est.id));
+          resultatsFinals = resultatsFinals.filter((est: Estacion) => favoriteIds.includes(est.id));
         }
-        setSearchResults(resultatsFinals);
+        setSearchResults(
+          resultatsFinals.map((est: Estacion) => ({ kind: 'station' as const, station: est }))
+        );
       } catch (error) {
         console.error('Error cercant estacions:', error);
       } finally {
@@ -533,27 +636,67 @@ useEffect(() => {
     }, 500); // Espera mig segon després de parar d'escriure
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, minKw, maxKw, connectorType, ac_dc, showFavoritesFilter, favoriteIds]);
+  }, [searchQuery, searchMode, minKw, maxKw, connectorType, ac_dc, showFavoritesFilter, favoriteIds]);
 
 
-  // Funció que s'executa quan toquem un resultat del desplegable
-  const handleSelectSearchResult = (station: Estacion) => {
-    // 1. Tanquem el buscador i esborrem resultats
+  const toggleSearchMode = () => {
+    setSearchMode((m) => (m === 'stations' ? 'addresses' : 'stations'));
     setSearchQuery('');
     setSearchResults([]);
+  };
 
-    // 2. Centrem el mapa al punt exacte
-    if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
-      mapRef.current.animateToRegion({
-        latitude: parseFloat(station.latitud),
-        longitude: parseFloat(station.longitud),
-        latitudeDelta: 0.01, // Més a prop (zoom in)
-        longitudeDelta: 0.01,
-      }, 1000);
+  // Funció que s'executa quan toquem un resultat del desplegable
+  const handleSelectSearchResult = async (item: MapSearchListItem) => {
+    if (item.kind === 'station') {
+      const station = item.station as Estacion;
+      setSearchQuery('');
+      setSearchResults([]);
+
+      if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
+        mapRef.current.animateToRegion(
+          {
+            latitude: parseFloat(station.latitud),
+            longitude: parseFloat(station.longitud),
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          },
+          1000
+        );
+      }
+
+      setSelectedStation(station);
+      return;
     }
 
-    // 3. Obrim la informació de l'estació seleccionada (la caixeta de baix)
-    setSelectedStation(station);
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `${getApiUrl()}/geocode/place?placeId=${encodeURIComponent(item.placeId)}`
+      );
+      const data = await response.json();
+      if (!response.ok || typeof data.lat !== 'number' || typeof data.lng !== 'number') {
+        console.warn('geocode/place:', data);
+        return;
+      }
+      setSelectedStation(null);
+      if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
+        mapRef.current.animateToRegion(
+          {
+            latitude: data.lat,
+            longitude: data.lng,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          },
+          1000
+        );
+      }
+    } catch (e) {
+      console.error('Error resolviendo dirección:', e);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // --- LÒGICA PEL TEXT DELS FILTRES ---
@@ -587,7 +730,7 @@ useEffect(() => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         });
-      } catch (fetchErr: unknown) {
+      } catch (fetchErr) {
         const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
         const base = getApiUrl();
         console.error('[Inicio] fetch /auth/google:', fetchErr, '→ URL:', `${base}/auth/google`);
@@ -625,7 +768,7 @@ useEffect(() => {
         setPendingAuth({ pending_token: data.pending_token });
         setAuthStep('username');
       }
-    } catch (err: unknown) {
+    } catch (err) {
       const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
       if (code === statusCodes.SIGN_IN_CANCELLED) {
         setAuthStep('google');
@@ -665,7 +808,7 @@ useEffect(() => {
       } else {
         setAuthError(data.error || 'Error al registrarse');
       }
-    } catch {
+    } catch (_e) {
       setAuthError('No se pudo conectar con el servidor.');
     } finally {
       setAuthLoadingGoogle(false);
@@ -700,7 +843,7 @@ useEffect(() => {
           token: data.token // Assumint que el teu backend envia el token a "data.token"
         });
       }
-    } catch {
+    } catch (_e) {
       setAuthError('No se pudo conectar con el servidor.');
     } finally {
       setAuthLoadingGoogle(false);
@@ -714,10 +857,127 @@ useEffect(() => {
     setAuthError('');
   }
 
+  const resetIncidenciaForm = () => {
+    setIncidenciaComentario('');
+    setIncidenciaTipo('');
+    setIncidenciaArchivo(null);
+  };
+
+  const handleOpenIncidenciaForm = () => {
+    resetIncidenciaForm();
+    setShowIncidenciaForm(true);
+  };
+
+  const handleCloseIncidenciaForm = () => {
+    setShowIncidenciaForm(false);
+    resetIncidenciaForm();
+  };
+
+  const handleIncidenciaSubmit = async () => {
+    if (!user || !selectedStation) return;
+
+    if (!incidenciaComentario.trim() || !incidenciaTipo.trim()) {
+      Alert.alert('Campos obligatorios', 'Debes rellenar comentario y tipo.');
+      return;
+    }
+
+    setIncidenciaSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('comentari', incidenciaComentario.trim());
+      formData.append('tipus', incidenciaTipo);
+      formData.append('conductor', String(user.id));
+      formData.append('estacio', String(selectedStation.id));
+
+      if (incidenciaArchivo) {
+        formData.append('arxiu', {
+          uri: incidenciaArchivo.uri,
+          name: incidenciaArchivo.name,
+          type: incidenciaArchivo.mimeType,
+        } as any);
+      }
+
+      const response = await fetch(`${getApiUrl()}/incidencias`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo registrar la incidencia');
+      }
+
+      Alert.alert('Incidencia enviada', 'La incidencia se ha registrado correctamente.');
+      handleCloseIncidenciaForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al enviar la incidencia';
+      Alert.alert('Error', message);
+    } finally {
+      setIncidenciaSubmitting(false);
+    }
+  };
+
+  const handleSolvedIncidenciaSubmit = async () => {
+    if (!user || !selectedStation) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('comentari', 'La Incidencia está solucionada');
+      formData.append('tipus', 'Operatiu');
+      formData.append('conductor', String(user.id));
+      formData.append('estacio', String(selectedStation.id));
+
+      const response = await fetch(`${getApiUrl()}/incidencias`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo registrar la incidencia solucionada');
+      }
+
+      Alert.alert('Incidencia reportada', 'Se ha marcado la estación como operativa.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al reportar incidencia solucionada';
+      Alert.alert('Error', message);
+    }
+  };
+
+  const handlePickIncidenciaFile = async () => {
+    if (!ImagePickerModule) {
+      Alert.alert(
+        'Adjuntos no disponibles',
+        'Este dispositivo aún no tiene habilitado el módulo nativo para seleccionar imágenes.'
+      );
+      return;
+    }
+
+    const permission = await ImagePickerModule.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permiso requerido', 'Necesitamos permiso para acceder a tus imágenes.');
+      return;
+    }
+
+    const result = await ImagePickerModule.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets.length) return;
+
+    const selected = result.assets[0];
+    setIncidenciaArchivo({
+      uri: selected.uri,
+      name: selected.fileName || `incidencia-${Date.now()}.jpg`,
+      mimeType: selected.mimeType || 'image/jpeg',
+    });
+  };
+
   if (authLoading) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <ActivityIndicator size="large" color="#10b981" />
+        <ActivityIndicator size="large" color={sem.accent} />
         <Text style={styles.loadingText}>Cargando…</Text>
       </View>
     );
@@ -863,6 +1123,8 @@ useEffect(() => {
         searchResults={searchResults}
         onSelectResult={handleSelectSearchResult}
         isSearching={isSearching}
+        searchMode={searchMode}
+        onToggleSearchMode={toggleSearchMode}
       />
 
       {/* Aviso de selección de origen para cuando estamos seleccionando el punto de origen de una ruta */}
@@ -891,7 +1153,7 @@ useEffect(() => {
             {/* Fila de Potència (només es mostra si n'hi ha) */}
             {!!powerText && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="bolt" size={18} color="#10b981" />
+                <MaterialIcons name="bolt" size={18} color={sem.accent} />
                 <Text style={styles.activeFiltersText}>{powerText}</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: '', maxKw: '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: showFavoritesFilter ? 'true' : ''})}
@@ -906,7 +1168,7 @@ useEffect(() => {
             {/* Fila de AC/DC (només es mostra si n'hi ha) */}
             {!!ac_dc && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="ev-station" size={18} color="#10b981" />
+                <MaterialIcons name="ev-station" size={18} color={sem.accent} />
                 <Text style={styles.activeFiltersText}>
                   {ac_dc === 'AC' ? 'AC' : ac_dc === 'DC' ? 'DC' : ac_dc}
                 </Text>
@@ -923,7 +1185,7 @@ useEffect(() => {
             {/* Fila de Connector (només es mostra si n'hi ha) */}
             {!!connectorType && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="electrical-services" size={18} color="#10b981" />
+                <MaterialIcons name="electrical-services" size={18} color={sem.accent} />
                 <Text style={styles.activeFiltersText}>{connectorType}</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: '', ac_dc: ac_dc || '', showFavorites: showFavoritesFilter ? 'true' : ''})}
@@ -938,7 +1200,7 @@ useEffect(() => {
             {/*Etiqueta de Favoritos */}
             {showFavoritesFilter && (
               <View style={styles.filterRow}>
-                <MaterialIcons name="favorite" size={18} color="#ef4444" />
+                <MaterialIcons name="favorite" size={18} color={sem.favorite} />
                 <Text style={styles.activeFiltersText}>Favoritos</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: '' })}
@@ -971,6 +1233,7 @@ useEffect(() => {
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
           showsUserLocation={true}
+          showsUserHeading={true}
           //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
           onPress={(e: any) => {
             if (isSelectingOrigin) {//Si estamos seleccionando un punto de origen para la ruta solo hacemos el cuerpo del if
@@ -1008,7 +1271,13 @@ useEffect(() => {
                 latitude: parseFloat(est.latitud),
                 longitude: parseFloat(est.longitud),
               }}
-              pinColor={favoriteIds.includes(est.id) ? 'red' : 'green'}
+              pinColor={
+                favoriteIds.includes(est.id)
+                  ? sem.mapFavorite
+                  : est.operatiu === false
+                    ? sem.mapInactive
+                    : sem.mapOk
+              }
               onPress={(e: any) => {
                 e.stopPropagation(); //Evita que el toque pase al mapa y cierre el panel
 
@@ -1037,7 +1306,7 @@ useEffect(() => {
                 <Marker
                   key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
                   coordinate={selectedLocation}
-                  pinColor="#f59e0b" //Un color naranja para diferenciarlo de las estaciones
+                  pinColor={sem.mapCustomLocation}
                   title="Ubicación seleccionada"
                 />
             )}
@@ -1047,7 +1316,7 @@ useEffect(() => {
                   <Marker
                     coordinate={routeDestination}
                     title="Ubicación seleccionada"
-                    pinColor="#a855f7"
+                    pinColor={sem.mapRouteDestination}
                   />
             )}
 
@@ -1056,24 +1325,23 @@ useEffect(() => {
               <MapViewDirections
                 origin={routeOrigin}
                 destination={routeDestination}
-                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''} //Usa la del .env
-                strokeWidth={0} //oculta la linea nativa que da problem
-                strokeColor="#3b82f6" //Un azul eléctrico estilo Google Maps
+                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                strokeWidth={0}
+                strokeColor={sem.routeLine}
                 mode="DRIVING"
                 onReady={(result) => {
-                  //Guardamos tiempo y distancia para mostrarlo en pantalla
                   setRouteInfo({
                     distance: result.distance,
                     duration: result.duration
                   });
-                    //Guardamos las coordenadas para pintarlas nosotros con el polyline
-                    setRouteCoords(result.coordinates);
+                  setRouteCoords(result.coordinates);
 
-                  //Auto-Zoom: Centra el mapa para que se vean tanto el origen como el destino
-                  mapRef.current?.fitToCoordinates(result.coordinates, {
-                    edgePadding: { top: 100, right: 50, bottom: 200, left: 50 },
-                    animated: true
-                  });
+                  if (!isDrivingMode && mapRef.current) {
+                    mapRef.current.fitToCoordinates(result.coordinates, {
+                      edgePadding: { top: 100, right: 50, bottom: 250, left: 50 },
+                      animated: true
+                    });
+                  }
                 }}
                 onError={(errorMessage) => {
                   Alert.alert("Error de ruta", "No se ha podido calcular la ruta");
@@ -1087,7 +1355,7 @@ useEffect(() => {
                   key={`polyline-${routeCoords.length}`}
                   coordinates={routeCoords}
                   strokeWidth={4}
-                  strokeColor="#3b82f6"
+                  strokeColor={sem.routeLine}
                   lineJoin="round"
                 />
             )}
@@ -1098,19 +1366,31 @@ useEffect(() => {
             {/* Panel de Información de Ruta Activa */}
             {isNavigating && routeInfo && (
               <View style={styles.navPanel}>
-                <View>
-                    {/* ponemos el nombre de la estacion si existe, si no, uno por default */}
-                  <Text style={styles.navTextBold}>
-                    Ruta hacia {selectedStation ? selectedStation.nom : 'Ubicación seleccionada'}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.navTextBold} numberOfLines={1}>
+                    Hacia {selectedStation ? selectedStation.nom : 'tu destino'}
                   </Text>
                   <Text style={styles.navText}>
                     {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
                   </Text>
                 </View>
+
+                {/* BOTÓN PARA PASAR A MODO 3D */}
+                {!isDrivingMode && (
+                  <TouchableOpacity
+                    style={[styles.startDrivingBtn, { marginRight: 10 }]}
+                    onPress={() => setIsDrivingMode(true)}
+                  >
+                    <MaterialIcons name="navigation" size={20} color="#fff" />
+                    <Text style={styles.startDrivingText}>Iniciar</Text>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                   style={styles.cancelRouteBtn}
                   onPress={() => {
                     setIsNavigating(false);
+                    setIsDrivingMode(false); // 🌟 También reseteamos el modo conducción
                     setRouteOrigin(null);
                     setRouteDestination(null);
                     setRouteInfo(null);
@@ -1126,7 +1406,7 @@ useEffect(() => {
 
         {loadingEstaciones && (
           <View style={styles.mapLoading}>
-            <ActivityIndicator size="small" color="#10b981" />
+            <ActivityIndicator size="small" color={sem.accent} />
           </View>
         )}
 
@@ -1162,7 +1442,7 @@ useEffect(() => {
             <View style={styles.infoHandle} />
 
             <View style={styles.infoTitleRow}>
-              <MaterialIcons name="place" size={24} color="#f59e0b" />
+              <MaterialIcons name="place" size={24} color={sem.mapCustomLocation} />
               <Text style={styles.infoTitle} numberOfLines={1}>
                 Ubicación seleccionada
               </Text>
@@ -1208,6 +1488,71 @@ useEffect(() => {
           onConfirm={handleResultModalConfirm}
         />
       </View>
+
+      <Modal
+        visible={showIncidenciaForm}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseIncidenciaForm}
+      >
+        <View style={styles.reportModalBackdrop}>
+          <View style={styles.reportModalCard}>
+            <Text style={styles.reportModalTitle}>Reportar incidencia</Text>
+            <Text style={styles.reportLabel}>Comentario</Text>
+            <TextInput
+              style={styles.reportTextarea}
+              placeholder="Describe qué ha ocurrido"
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={4}
+              value={incidenciaComentario}
+              onChangeText={setIncidenciaComentario}
+            />
+
+            <Text style={styles.reportLabel}>Tipo</Text>
+            <View style={styles.reportTypeContainer}>
+              {INCIDENCIA_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.reportTypeChip, incidenciaTipo === type && styles.reportTypeChipActive]}
+                  onPress={() => setIncidenciaTipo(type)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.reportTypeChipText, incidenciaTipo === type && styles.reportTypeChipTextActive]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.reportLabel}>Archivo (imagen)</Text>
+            <TouchableOpacity
+              style={styles.reportFileButton}
+              onPress={handlePickIncidenciaFile}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="attach-file" size={18} color="#1f2937" />
+              <Text style={styles.reportFileButtonText}>
+                {incidenciaArchivo ? incidenciaArchivo.name : 'Seleccionar imagen del dispositivo'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.reportActions}>
+              <TouchableOpacity style={styles.reportBackButton} onPress={handleCloseIncidenciaForm} activeOpacity={0.8}>
+                <Text style={styles.reportBackButtonText}>Volver</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.reportSubmitButton, incidenciaSubmitting && styles.reportSubmitButtonDisabled]}
+                onPress={handleIncidenciaSubmit}
+                activeOpacity={0.8}
+                disabled={incidenciaSubmitting}
+              >
+                <Text style={styles.reportSubmitButtonText}>{incidenciaSubmitting ? 'Enviando...' : 'Enviar'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={menuOpen}
@@ -1274,9 +1619,59 @@ useEffect(() => {
               }}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="favorite" size={22} color="#ef4444" />
+              <MaterialIcons name="favorite" size={22} color={sem.favorite} />
               <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
             </TouchableOpacity>
+
+              {/* Botón para ir al asistente IA (De tu rama chatbot) */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push('/support-chat'); 
+              }}
+            >
+              <MaterialIcons name="support-agent" size={24} color="#10b981" />
+              <Text style={styles.menuItemText}>Asistente Virtual</Text>
+            </TouchableOpacity>
+
+            {/* Opciones de Accesibilidad y Tema (De la rama development) */}
+            <View style={styles.themeSection}>
+              <Text style={styles.themeSectionTitle}>Daltonismo</Text>
+              <View style={styles.dyslexiaRow}>
+                <View style={styles.dyslexiaTexts}>
+                  <Text style={styles.dyslexiaTitle}>Modo accesible</Text>
+                  <Text style={styles.dyslexiaHint}>Colores del mapa y acentos más distinguibles</Text>
+                </View>
+                <Switch
+                  testID="colorblind-friendly-switch"
+                  value={colorblindFriendly}
+                  onValueChange={setColorblindFriendly}
+                  trackColor={{ false: isDark ? '#475569' : '#cbd5e1', true: sem.accent }}
+                  thumbColor="#f8fafc"
+                />
+              </View>
+            </View>
+
+            <View style={styles.themeSection}>
+              <Text style={styles.themeSectionTitle}>Tema</Text>
+              <View style={styles.themeSegment}>
+                <TouchableOpacity
+                  style={[styles.themeOption, preference === 'light' && styles.themeOptionActive]}
+                  onPress={() => setPreference('light')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.themeOptionText, preference === 'light' && styles.themeOptionTextActive]}>Claro</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.themeOption, preference === 'dark' && styles.themeOptionActive]}
+                  onPress={() => setPreference('dark')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.themeOptionText, preference === 'dark' && styles.themeOptionTextActive]}>Oscuro</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -1284,7 +1679,7 @@ useEffect(() => {
                 setMenuOpen(false);
                 try {
                   await GoogleSignin.signOut();
-                } catch {
+                } catch (_e) {
                   // Si no hay sesión Google activa, igualmente cerramos sesión local.
                 }
                 logout();
@@ -1301,10 +1696,10 @@ useEffect(() => {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: isDark ? '#0f172a' : '#f5f5f5',
   },
   centered: {
     justifyContent: 'center',
@@ -1312,7 +1707,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     marginTop: 10,
   },
   scroll: {
@@ -1325,7 +1720,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
@@ -1342,7 +1737,7 @@ const styles = StyleSheet.create({
   cardCompact: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 20,
@@ -1358,13 +1753,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: isDark ? '#f1f5f9' : '#1a1a1a',
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: '#6b7280',
+    color: isDark ? '#94a3b8' : '#6b7280',
     textAlign: 'center',
     marginBottom: 18,
   },
@@ -1377,9 +1772,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: isDark ? '#334155' : '#e2e8f0',
   },
   googleIcon: {
     width: 22,
@@ -1388,7 +1783,7 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
   },
   authSeparatorText: {
     marginTop: 12,
@@ -1401,7 +1796,7 @@ const styles = StyleSheet.create({
     width: '100%',
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -1414,19 +1809,19 @@ const styles = StyleSheet.create({
   },
   adminLinkText: {
     fontSize: 14,
-    color: '#111827',
+    color: isDark ? '#e2e8f0' : '#111827',
     fontWeight: '600',
   },
   welcomeUsernameTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   welcomeUsernameSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: isDark ? '#94a3b8' : '#6b7280',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -1436,7 +1831,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: isDark ? '#334155' : '#e5e7eb',
+    color: isDark ? '#e2e8f0' : '#111827',
     borderRadius: 10,
     marginBottom: 16,
   },
@@ -1451,7 +1847,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 14,
     borderRadius: 10,
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -1468,7 +1864,7 @@ const styles = StyleSheet.create({
   },
   welcomeBackLinkText: {
     fontSize: 14,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     fontWeight: '500',
   },
   centerMapButton: {
@@ -1478,7 +1874,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     width: 48,
     height: 48,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1492,7 +1888,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 24,
     left: 24,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     padding: 8,
     borderRadius: 20,
     elevation: 3,
@@ -1503,7 +1899,7 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 20,
     right: 20,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
@@ -1512,7 +1908,7 @@ const styles = StyleSheet.create({
   infoHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: isDark ? '#475569' : '#e2e8f0',
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 16,
@@ -1527,7 +1923,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: isDark ? '#f1f5f9' : '#1e293b',
     flex: 1,
   },
   infoCloseBtn: {
@@ -1544,7 +1940,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#64748b',
+    color: isDark ? '#94a3b8' : '#64748b',
     flex: 1,
   },
   infoBadgeRow: {
@@ -1566,17 +1962,38 @@ const styles = StyleSheet.create({
   },
   infoPromotor: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: isDark ? '#cbd5e1' : '#94a3b8',
     fontStyle: 'italic',
   },
   routeButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
     borderRadius: 12,
+    marginTop: 10,
+  },
+  reportButton: {
+    backgroundColor: sem.mapCustomLocation,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  solvedReportButton: {
+    backgroundColor: sem.routeLine,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
   },
   routeButtonText: {
     color: '#fff',
@@ -1585,7 +2002,7 @@ const styles = StyleSheet.create({
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
@@ -1593,7 +2010,7 @@ const styles = StyleSheet.create({
     width: '75%',
     maxWidth: 320,
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     paddingTop: 48,
     paddingHorizontal: 20,
   },
@@ -1606,7 +2023,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
   },
   menuClose: {
     padding: 4,
@@ -1621,7 +2038,68 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1f2937',
+    color: isDark ? '#e2e8f0' : '#1f2937',
+  },
+  themeSection: {
+    marginTop: 10,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
+  themeSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: isDark ? '#94a3b8' : '#64748b',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  themeSegment: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    backgroundColor: isDark ? '#334155' : '#f1f5f9',
+    padding: 4,
+    gap: 4,
+  },
+  themeOption: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeOptionActive: {
+    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+  },
+  themeOptionText: {
+    color: isDark ? '#cbd5e1' : '#475569',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeOptionTextActive: {
+    color: isDark ? '#f1f5f9' : '#111827',
+    fontWeight: '700',
+  },
+  dyslexiaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  dyslexiaTexts: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  dyslexiaTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: isDark ? '#f1f5f9' : '#111827',
+  },
+  dyslexiaHint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: isDark ? '#94a3b8' : '#64748b',
   },
   userDot: {
     width: 18,
@@ -1638,7 +2116,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 12,
     zIndex: 10,
-    backgroundColor: '#fff',
+    backgroundColor: isDark ? '#1e293b' : '#fff',
     flexDirection: 'row', // La columna de text a l'esquerra, la X a la dreta
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -1647,7 +2125,7 @@ const styles = StyleSheet.create({
     boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: isDark ? '#334155' : '#e2e8f0',
   },
   filtersColumn: {
     flexDirection: 'column',
@@ -1661,13 +2139,13 @@ const styles = StyleSheet.create({
 activeFiltersText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
   },
   clearFilterButton: {
     marginLeft: 12,
     paddingLeft: 12,
     borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
-    borderLeftColor: '#e2e8f0',
+    borderLeftColor: isDark ? '#334155' : '#e2e8f0',
   },
 
   // --- Estilos de los componentes de rutas de navegacion ---
@@ -1676,7 +2154,7 @@ activeFiltersText: {
     top: 50, // Ajusta según tu TopBar
     left: 20,
     right: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDark ? '#1e293b' : '#ffffff',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -1688,20 +2166,20 @@ activeFiltersText: {
     shadowRadius: 10,
     zIndex: 100,
     borderWidth: 2,
-    borderColor: '#10b981', // Tu verde e-Go
+    borderColor: sem.accent,
   },
   navTextBold: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: isDark ? '#f1f5f9' : '#1f2937',
     marginBottom: 4,
   },
   navText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: isDark ? '#94a3b8' : '#6b7280',
   },
   cancelRouteBtn: {
-    backgroundColor: '#ef4444', // Rojo para cancelar
+    backgroundColor: sem.error,
     padding: 10,
     borderRadius: 50,
   },
@@ -1773,15 +2251,135 @@ activeFiltersText: {
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fee2e2', // Un fons vermell claret
+    backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
     padding: 12,
     borderRadius: 8,
     marginTop: 16,
     gap: 8,
   },
   errorText: {
-    color: '#ef4444', // Vermell més fosc pel text
+    color: isDark ? sem.errorTextDark : sem.errorTextLight,
     fontSize: 14,
     flex: 1,
+  },
+  reportModalBackdrop: {
+    flex: 1,
+    backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  reportModalCard: {
+    backgroundColor: isDark ? '#1e293b' : '#fff',
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+  },
+  reportModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: isDark ? '#f1f5f9' : '#111827',
+    marginBottom: 4,
+  },
+  reportLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#cbd5e1' : '#374151',
+  },
+  reportTextarea: {
+    borderWidth: 1,
+    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderRadius: 10,
+    minHeight: 92,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: isDark ? '#e2e8f0' : '#111827',
+    textAlignVertical: 'top',
+  },
+  reportFileButton: {
+    borderWidth: 1,
+    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reportFileButtonText: {
+    color: isDark ? '#e2e8f0' : '#1f2937',
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  reportTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reportTypeChip: {
+    borderWidth: 1,
+    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: isDark ? '#334155' : '#f8fafc',
+  },
+  reportTypeChipActive: {
+    borderColor: sem.accent,
+    backgroundColor: sem.chipActiveBg,
+  },
+  reportTypeChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: isDark ? '#cbd5e1' : '#4b5563',
+  },
+  reportTypeChipTextActive: {
+    color: sem.chipActiveText,
+  },
+  reportActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  reportBackButton: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: isDark ? '#334155' : '#f3f4f6',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  reportBackButtonText: {
+    color: isDark ? '#e2e8f0' : '#374151',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  reportSubmitButton: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: sem.accent,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  reportSubmitButtonDisabled: {
+    opacity: 0.6,
+  },
+  reportSubmitButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  startDrivingBtn: {
+    backgroundColor: '#3b82f6', // Azul Google
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 5,
+  },
+  startDrivingText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

@@ -74,7 +74,7 @@ const skiaModule = (() => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('@shopify/react-native-skia');
-  } catch {
+  } catch (_e) {
     return null;
   }
 })();

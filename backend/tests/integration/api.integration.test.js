@@ -81,4 +81,15 @@ describe('API integration', () => {
     expect(res.body).toHaveProperty('message');
   });
 
+  test('POST /auth/company/local/login está registrada en la app (no 404)', async () => {
+    const res = await request(app).post('/auth/company/local/login').send({});
+    expect(res.status).not.toBe(404);
+    expect(res.body.error).toBeTruthy();
+  });
+
+  test('POST /auth/admin/local/login está registrada en la app (no 404)', async () => {
+    const res = await request(app).post('/auth/admin/local/login').send({});
+    expect(res.status).not.toBe(404);
+    expect(res.body.error).toBeTruthy();
+  });
 });

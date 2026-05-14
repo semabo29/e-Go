@@ -149,9 +149,54 @@ async function loginWithEmail(body) {
   };
 }
 
+async function loginAdminWithEmail(body) {
+  const { normalizedEmail } = validateLocalCredentials(body, false);
+  const row = await userModel.findAdminByEmailWithPassword(normalizedEmail);
+  if (!row || !row.password_hash) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  const ok = await bcrypt.compare(body.password, row.password_hash);
+  if (!ok) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  return {
+    admin: {
+      id: row.id,
+      user_id: row.user_id,
+      email: row.email,
+      username: row.username,
+      admin_since: row.admin_since,
+    },
+  };
+}
+
+async function loginCompanyWithEmail(body) {
+  const { normalizedEmail } = validateLocalCredentials(body, false);
+  const row = await userModel.findCompanyByEmailWithPassword(normalizedEmail);
+  if (!row || !row.password_hash) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  const ok = await bcrypt.compare(body.password, row.password_hash);
+  if (!ok) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  return {
+    company: {
+      id: row.id,
+      user_id: row.user_id,
+      email: row.email,
+      username: row.username,
+      nombre: row.nombre,
+      company_since: row.company_since,
+    },
+  };
+}
+
 module.exports = {
   loginWithGoogle,
   loginWithEmail,
+  loginAdminWithEmail,
+  loginCompanyWithEmail,
   register,
   registerWithEmail,
 };

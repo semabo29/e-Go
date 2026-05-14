@@ -10,10 +10,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 import { WelcomePremiumModal } from '@/components/WelcomePremiumModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import {
   buildFallbackStatus,
   formatPeriodEnd,
@@ -29,7 +32,57 @@ const PREMIUM_BENEFITS = [
 ];
 
 export default function PaymentsScreen() {
+  const colorScheme = useColorScheme();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const themeIndex = colorScheme === 'dark' ? 1 : 0;
+  const pick = (values: [string, string]) => values[themeIndex];
+  const premiumBorderPulse = useMemo(
+    () => (colorblindFriendly ? [sem.accent, '#0284c7'] : ['#22c55e', '#16a34a']),
+    [colorblindFriendly, sem.accent]
+  );
   const { user } = useAuth();
+  const theme = {
+    background: pick(['#f8fafc', '#0f172a']),
+    title: pick(['#111827', '#f1f5f9']),
+    subtitle: pick(['#4b5563', '#94a3b8']),
+    sectionTitle: pick(['#0f172a', '#e2e8f0']),
+    sectionHint: pick(['#64748b', '#94a3b8']),
+    cardBg: pick(['#ffffff', '#1e293b']),
+    cardBorder: pick(['#e5e7eb', '#334155']),
+    premiumBorder: pick(['#dbe5ee', '#334155']),
+    premiumShadow: colorblindFriendly ? sem.accent : pick(['#22c55e', '#16a34a']),
+    planText: pick(['#111827', '#f1f5f9']),
+    planDesc: pick(['#4b5563', '#cbd5e1']),
+    premiumName: pick(['#0f172a', '#f1f5f9']),
+    premiumDesc: pick(['#475569', '#cbd5e1']),
+    eyebrow: pick(['#64748b', '#94a3b8']),
+    benefitText: pick(['#1e293b', '#e2e8f0']),
+    benefitCheck: pick(['#64748b', '#94a3b8']),
+    muted: pick(['#64748b', '#94a3b8']),
+    secondaryBg: pick(['#f8fafc', '#334155']),
+    secondaryBorder: pick(['#cbd5e1', '#475569']),
+    secondaryText: pick(['#475569', '#e2e8f0']),
+    activePremiumChipBg: colorblindFriendly ? sem.chipActiveBg : pick(['#e9fbe7', '#14532d']),
+    activePremiumChipText: colorblindFriendly ? sem.chipActiveText : pick(['#166534', '#86efac']),
+    activePremiumChipBorder: colorblindFriendly ? sem.accent : pick(['#86efac', '#22c55e']),
+    activeFreeChipBg: colorblindFriendly ? sem.accent : '#22c55e',
+    activeFreeChipText: '#ffffff',
+    primaryBtnBg: colorblindFriendly ? sem.accent : '#85f755',
+    primaryBtnText: colorblindFriendly ? '#ffffff' : pick(['#0f172a', '#052e16']),
+    periodText: colorblindFriendly ? sem.chipActiveText : pick(['#166534', '#86efac']),
+    reactivateBg: colorblindFriendly
+      ? pick(['rgba(14,165,233,0.16)', 'rgba(2,132,199,0.22)'])
+      : pick(['rgba(133,247,85,0.2)', 'rgba(34,197,94,0.2)']),
+    reactivateBorder: colorblindFriendly
+      ? pick(['rgba(14,165,233,0.45)', 'rgba(2,132,199,0.55)'])
+      : pick(['rgba(133,247,85,0.55)', 'rgba(34,197,94,0.55)']),
+    reactivateText: colorblindFriendly ? pick(['#0ea5e9', '#7dd3fc']) : pick(['#85f755', '#86efac']),
+    loader: sem.accent,
+    premiumAuraFill: sem.accent,
+    activePlanBorder: sem.accent,
+  };
+  const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
@@ -286,7 +339,7 @@ export default function PaymentsScreen() {
       <Text style={styles.subtitle}>Elige el plan que mejor se adapte a ti</Text>
 
       {loadingStatus ? (
-        <ActivityIndicator color="#10b981" size="large" style={styles.loader} />
+        <ActivityIndicator color={sem.accent} size="large" style={styles.loader} />
       ) : (
         <View style={styles.plansContainer}>
           <View style={styles.sectionHeader}>
@@ -312,7 +365,7 @@ export default function PaymentsScreen() {
                 transform: [{ scale: premiumScale }],
                 borderColor: premiumPulse.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['#22c55e', '#16a34a'],
+                  outputRange: premiumBorderPulse,
                 }),
                 shadowOpacity: premiumPulse.interpolate({
                   inputRange: [0, 1],
@@ -387,6 +440,7 @@ export default function PaymentsScreen() {
 
             {!isPremium ? (
               <Pressable
+                testID="payments-premium-cta"
                 style={[styles.button, startingCheckout && styles.buttonDisabled]}
                 onPress={onStartPremium}
                 disabled={startingCheckout}
@@ -420,21 +474,55 @@ export default function PaymentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: {
+  background: string;
+  title: string;
+  subtitle: string;
+  sectionTitle: string;
+  sectionHint: string;
+  cardBg: string;
+  cardBorder: string;
+  premiumBorder: string;
+  premiumShadow: string;
+  planText: string;
+  planDesc: string;
+  premiumName: string;
+  premiumDesc: string;
+  eyebrow: string;
+  benefitText: string;
+  benefitCheck: string;
+  muted: string;
+  secondaryBg: string;
+  secondaryBorder: string;
+  secondaryText: string;
+  activePremiumChipBg: string;
+  activePremiumChipText: string;
+  activePremiumChipBorder: string;
+  activeFreeChipBg: string;
+  activeFreeChipText: string;
+  primaryBtnBg: string;
+  primaryBtnText: string;
+  periodText: string;
+  reactivateBg: string;
+  reactivateBorder: string;
+  reactivateText: string;
+  premiumAuraFill: string;
+  activePlanBorder: string;
+}) => StyleSheet.create({
   screen: {
     flexGrow: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.background,
     paddingHorizontal: 20,
     paddingVertical: 28,
   },
   title: {
-    color: '#111827',
+    color: theme.title,
     fontSize: 30,
     fontWeight: '800',
     marginBottom: 6,
   },
   subtitle: {
-    color: '#4b5563',
+    color: theme.subtitle,
     fontSize: 15,
     marginBottom: 20,
   },
@@ -445,13 +533,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   sectionTitle: {
-    color: '#0f172a',
+    color: theme.sectionTitle,
     fontSize: 18,
     fontWeight: '700',
   },
   sectionHint: {
     marginTop: 2,
-    color: '#64748b',
+    color: theme.sectionHint,
     fontSize: 13,
   },
   plansContainer: {
@@ -460,22 +548,22 @@ const styles = StyleSheet.create({
   },
   planCard: {
     borderRadius: 18,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.cardBg,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.cardBorder,
   },
   freeCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.cardBg,
   },
   activeFreeCard: {
-    borderColor: '#22c55e',
-    backgroundColor: '#ffffff',
+    borderColor: theme.activePlanBorder,
+    backgroundColor: theme.cardBg,
   },
   premiumCard: {
-    backgroundColor: '#ffffff',
-    borderColor: '#dbe5ee',
-    shadowColor: '#22c55e',
+    backgroundColor: theme.cardBg,
+    borderColor: theme.premiumBorder,
+    shadowColor: theme.premiumShadow,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
     elevation: 4,
@@ -483,12 +571,12 @@ const styles = StyleSheet.create({
   },
   premiumAura: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#22c55e',
+    backgroundColor: theme.premiumAuraFill,
     borderRadius: 18,
   },
   activePremiumCard: {
-    borderColor: '#22c55e',
-    backgroundColor: '#ffffff',
+    borderColor: theme.activePlanBorder,
+    backgroundColor: theme.cardBg,
   },
   headerRow: {
     flexDirection: 'row',
@@ -496,13 +584,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   planName: {
-    color: '#111827',
+    color: theme.planText,
     fontSize: 22,
     fontWeight: '800',
   },
   activeFreeChip: {
-    backgroundColor: '#22c55e',
-    color: '#ffffff',
+    backgroundColor: theme.activeFreeChipBg,
+    color: theme.activeFreeChipText,
     fontSize: 12,
     fontWeight: '700',
     borderRadius: 999,
@@ -511,49 +599,49 @@ const styles = StyleSheet.create({
   },
   planPrice: {
     marginTop: 8,
-    color: '#111827',
+    color: theme.planText,
     fontSize: 30,
     fontWeight: '700',
   },
   planDesc: {
     marginTop: 6,
-    color: '#4b5563',
+    color: theme.planDesc,
     fontSize: 14,
     lineHeight: 20,
   },
   premiumEyebrow: {
-    color: '#64748b',
+    color: theme.eyebrow,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   premiumName: {
-    color: '#0f172a',
+    color: theme.premiumName,
     fontSize: 24,
     fontWeight: '800',
     marginTop: 2,
   },
   activePremiumChip: {
-    backgroundColor: '#e9fbe7',
-    color: '#166534',
+    backgroundColor: theme.activePremiumChipBg,
+    color: theme.activePremiumChipText,
     fontSize: 12,
     fontWeight: '700',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#86efac',
+    borderColor: theme.activePremiumChipBorder,
   },
   premiumPrice: {
     marginTop: 12,
-    color: '#0f172a',
+    color: theme.premiumName,
     fontSize: 36,
     fontWeight: '800',
   },
   premiumDesc: {
     marginTop: 6,
-    color: '#475569',
+    color: theme.premiumDesc,
     fontSize: 14,
   },
   benefitsWrap: {
@@ -570,23 +658,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   benefitCheck: {
-    color: '#64748b',
+    color: theme.benefitCheck,
     fontSize: 14,
     fontWeight: '800',
   },
   benefitText: {
-    color: '#1e293b',
+    color: theme.benefitText,
     fontSize: 14,
     fontWeight: '500',
   },
   periodText: {
     marginTop: 8,
-    color: '#166534',
+    color: theme.periodText,
     fontSize: 13,
   },
   button: {
     marginTop: 14,
-    backgroundColor: '#85f755',
+    backgroundColor: theme.primaryBtnBg,
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 12,
@@ -595,42 +683,42 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#0f172a',
+    color: theme.primaryBtnText,
     fontWeight: '700',
     fontSize: 15,
     textAlign: 'center',
   },
   secondaryButton: {
     marginTop: 12,
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
+    backgroundColor: theme.secondaryBg,
+    borderColor: theme.secondaryBorder,
     borderWidth: 1,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 12,
   },
   secondaryButtonText: {
-    color: '#475569',
+    color: theme.secondaryText,
     fontWeight: '700',
     fontSize: 15,
   },
   cancelInfo: {
     marginTop: 10,
-    color: '#64748b',
+    color: theme.muted,
     fontSize: 13,
   },
   reactivateButton: {
     marginTop: 10,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(133,247,85,0.2)',
+    backgroundColor: theme.reactivateBg,
     borderWidth: 1,
-    borderColor: 'rgba(133,247,85,0.55)',
+    borderColor: theme.reactivateBorder,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
   },
   reactivateButtonText: {
-    color: '#85f755',
+    color: theme.reactivateText,
     fontWeight: '700',
     fontSize: 14,
   },

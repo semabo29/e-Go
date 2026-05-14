@@ -4,6 +4,10 @@ import { NativeModules, Platform } from 'react-native';
 export const GOOGLE_WEB_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 
+//Api Groq
+export const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY;
+export const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
 const ENV_API = process.env.EXPO_PUBLIC_API_URL?.trim() || '';
 
 function isLocalhostUrl(url: string): boolean {
@@ -23,7 +27,7 @@ function hostFromScriptUrl(): string | null {
     if (!t.startsWith('http://') && !t.startsWith('https://')) return null;
     const hostname = new URL(t).hostname;
     return hostname || null;
-  } catch {
+  } catch (_e) {
     return null;
   }
 }
@@ -52,7 +56,7 @@ function hostFromDevConnection(): string | null {
       const host = clientUri.split(':')[0]?.trim();
       if (host) return host;
     }
-  } catch {
+  } catch (_e) {
     // bridge o manifest no listos
   }
   return null;
@@ -160,10 +164,13 @@ let memo: string | undefined;
  */
 export function getApiUrl(): string {
   if (memo !== undefined) return memo;
+  let base: string;
   try {
-    memo = computeApiBase();
-  } catch {
-    memo = ENV_API || `http://localhost:${defaultApiPort()}`;
+    base = computeApiBase();
+  } catch (_e) {
+    base = ENV_API || `http://localhost:${defaultApiPort()}`;
   }
-  return memo ?? (ENV_API || `http://localhost:${defaultApiPort()}`);
+  // Evita `//auth/...` si EXPO_PUBLIC_API_URL termina en `/` (algunos proxies devuelven 404).
+  memo = (base || `http://localhost:${defaultApiPort()}`).replace(/\/+$/, '');
+  return memo;
 }
