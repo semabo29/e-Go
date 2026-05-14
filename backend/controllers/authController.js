@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
-const jwt = require('jsonwebtoken');
 
 function generateUserToken(user) {
   // Agafem la clau secreta del fitxer .env, o usem un text per defecte si falla
