@@ -197,6 +197,125 @@ describe('stripeWebhookController', () => {
     expect(res.json).toHaveBeenCalledWith({ received: true });
   });
 
+  test('checkout.session.completed sin userId o subscription: no upsert', async () => {
+    const event = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          mode: 'subscription',
+          client_reference_id: '',
+          subscription: null,
+        },
+      },
+    };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: { retrieve: jest.fn() },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+    expect(stripe.subscriptions.retrieve).not.toHaveBeenCalled();
+    expect(subscriptionModel.upsertFromStripe).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('customer.subscription.updated sin usuari_id ni fila en BD: no upsert', async () => {
+    const event = {
+      type: 'customer.subscription.updated',
+      data: { object: { id: 'sub_orphan' } },
+    };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue({
+          id: 'sub_orphan',
+          customer: 'cus_x',
+          status: 'canceled',
+          metadata: {},
+          cancel_at_period_end: false,
+        }),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    subscriptionModel.findByStripeSubscriptionId.mockResolvedValue(null);
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+    expect(subscriptionModel.upsertFromStripe).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('invoice.paid sin subscription en factura: no retrieve', async () => {
+    const event = {
+      type: 'invoice.paid',
+      data: { object: { subscription: null } },
+    };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: { retrieve: jest.fn() },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+    expect(stripe.subscriptions.retrieve).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('checkout.session.completed guarda sub sin current_period_end en Stripe', async () => {
+    const event = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          mode: 'subscription',
+          client_reference_id: '3',
+          subscription: 'sub_nop',
+        },
+      },
+    };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue({
+          id: 'sub_nop',
+          customer: 'cus_nop',
+          status: 'active',
+          current_period_end: null,
+          cancel_at_period_end: false,
+        }),
+      },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    subscriptionModel.upsertFromStripe.mockResolvedValue({});
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+    expect(subscriptionModel.upsertFromStripe).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({
+        current_period_end: null,
+        stripe_subscription_id: 'sub_nop',
+      })
+    );
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
+  test('evento desconocido se ignora sin error', async () => {
+    const event = { type: 'charge.succeeded', data: { object: {} } };
+    const stripe = {
+      webhooks: { constructEvent: jest.fn().mockReturnValue(event) },
+      subscriptions: { retrieve: jest.fn() },
+    };
+    stripeLib.getStripe.mockReturnValue(stripe);
+    const req = { body: Buffer.from('{}'), headers: { 'stripe-signature': 'ok' } };
+    const res = mockRes();
+    await handleWebhook(req, res);
+    expect(stripe.subscriptions.retrieve).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ received: true });
+  });
+
   test('retorna 500 si falla procesamiento interno del evento', async () => {
     const event = {
       type: 'customer.subscription.updated',

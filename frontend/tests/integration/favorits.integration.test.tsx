@@ -327,7 +327,7 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
   // Confirmamos la integración real: al alternar favorito desde el panel de estación,
   // el marker cambia entre verde (no favorito) y rojo (favorito).
   test('toggling FavoriteButton changes marker pin (green -> red -> green)', async () => {
-    const { getByTestId, getByText, queryByTestId } = render(<InicioScreen />);
+    const { getByTestId, getByText, getAllByText, queryByTestId } = render(<InicioScreen />);
 
     await waitFor(() => {
       expect(getByTestId('station-marker')).toBeTruthy();
@@ -336,18 +336,18 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
     fireEvent.press(getByTestId('station-marker'));
 
     await waitFor(() => {
-      expect(getByText('favorite-border')).toBeTruthy();
+      expect(getAllByText('favorite-border').length).toBeGreaterThan(0);
     });
 
     // When pressing the icon name Text, it should trigger the parent TouchableOpacity.
-    fireEvent.press(getByText('favorite-border'));
+    fireEvent.press(getAllByText('favorite-border')[0]);
 
     await waitFor(() => {
       expect(getByTestId('favorite-station-marker')).toBeTruthy();
       expect(queryByTestId('station-marker')).toBeNull();
     });
 
-    fireEvent.press(getByText('favorite'));
+    fireEvent.press(getAllByText('favorite')[0]);
 
     await waitFor(() => {
       expect(getByTestId('station-marker')).toBeTruthy();

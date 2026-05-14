@@ -52,7 +52,9 @@ describe('FiltersScreen integration', () => {
 
     fireEvent.press(getByText('Aplicar Filtros'));
 
-    expect(getByText('La potencia mínima no puede ser mayor que la máxima')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('La potencia mínima no puede ser mayor que la máxima')).toBeTruthy();
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 

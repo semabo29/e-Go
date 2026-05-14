@@ -8,6 +8,11 @@ jest.mock('@/constants/api', () => ({
   getApiUrl: () => 'http://localhost:3000',
 }));
 
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useLocalSearchParams: () => ({}),
+}));
+
 describe('RankingScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
