@@ -1,7 +1,5 @@
 name: SonarQube Analysis
 
-# Independent del workflow "Coverage": s'executa en push/PR sense esperar-lo ni descarregar artifacts.
-# Mentre no hi hagi fitxers LCOV al repositori en aquest job, Sonar analitzarà codi però sense mètriques de cobertura.
 on:
   push:
     branches: ["development", "sonarqube1", "main"]
@@ -19,6 +17,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # Rutes definides a sonar-project.properties; sense això el scanner pot fallar si no hi ha LCOV reals.
+      - name: LCOV buits (sense cobertura d'aquest workflow)
+        run: |
+          mkdir -p backend/coverage frontend/coverage/jest frontend/coverage/vitest
+          for p in backend/coverage/lcov.info frontend/coverage/jest/lcov.info frontend/coverage/vitest/lcov.info; do
+            printf '%s\n' 'TN:' 'SF:backend/index.js' 'end_of_record' > "$p"
+          done
 
       - name: Anàlisi amb SonarCloud
         uses: SonarSource/sonarqube-scan-action@v4
