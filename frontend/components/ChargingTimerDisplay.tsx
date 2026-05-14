@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+
 interface ChargingTimerDisplayProps {
   elapsedSeconds: number;
-  distanceToStation: number;
+  distanceToStation: number | null; // Permetem null
 }
 
 export function ChargingTimerDisplay({ elapsedSeconds, distanceToStation }: ChargingTimerDisplayProps) {
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+
   // Convertir segundos a formato HH:MM:SS
   const hours = Math.floor(elapsedSeconds / 3600);
   const minutes = Math.floor((elapsedSeconds % 3600) / 60);
@@ -15,15 +21,19 @@ export function ChargingTimerDisplay({ elapsedSeconds, distanceToStation }: Char
 
   const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  // Determinar color basado en distancia
-  const distanceColor = distanceToStation <= 30 ? '#10b981' : '#ef4444';
-  const distanceStatus = distanceToStation <= 30 ? 'Conectado' : 'Fuera de rango';
+  // Determinar si estem connectats i tenim la dada
+  const hasDistance = distanceToStation !== null;
+  const isConnected = hasDistance && distanceToStation <= 30;
+
+  // Lògica de colors i textos tenint en compte el null
+  const distanceColor = !hasDistance ? '#94a3b8' : (isConnected ? '#10b981' : '#ef4444');
+  const distanceStatus = !hasDistance ? 'Calculando...' : (isConnected ? 'Conectado' : 'Fuera de rango');
 
   return (
     <View style={styles.container}>
       {/* Timer */}
       <View style={styles.timerSection}>
-        <MaterialIcons name="timer" size={48} color="#10b981" />
+        <MaterialIcons name="timer" size={48} color={sem.accent} />
         <Text style={styles.timeText}>{timeString}</Text>
         <Text style={styles.timeLabel}>Tiempo de carga</Text>
       </View>
@@ -33,7 +43,9 @@ export function ChargingTimerDisplay({ elapsedSeconds, distanceToStation }: Char
         <View style={[styles.distanceBadge, { borderColor: distanceColor }]}>
           <MaterialIcons name="location-on" size={20} color={distanceColor} />
           <View style={styles.distanceInfo}>
-            <Text style={styles.distanceValue}>{distanceToStation} m</Text>
+            <Text style={styles.distanceValue}>
+              {hasDistance ? `${distanceToStation} m` : '-- m'}
+            </Text>
             <Text style={[styles.distanceStatus, { color: distanceColor }]}>{distanceStatus}</Text>
           </View>
         </View>
@@ -99,4 +111,3 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
-

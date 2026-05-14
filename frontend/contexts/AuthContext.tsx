@@ -10,6 +10,7 @@ export type User = {
   username: string;
   created_at: string;
   updated_at: string;
+  token?: string;
 };
 
 function normalizeGuestUser(user: User): User {

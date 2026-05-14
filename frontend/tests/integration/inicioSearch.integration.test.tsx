@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import InicioScreen from '@/app/(tabs)/index';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 
 let mockLocalParams: Record<string, any> = {};
 let mockSetParams = jest.fn();
@@ -12,6 +13,10 @@ let mockPush = jest.fn();
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
 }));
 
 jest.mock('expo-router', () => ({
@@ -33,7 +38,13 @@ jest.mock('expo-location', () => ({
 // Simplified TopBar: exposes a real TextInput so we can drive the search flow.
 jest.mock('@/components/TopBar', () => ({
   __esModule: true,
-  default: ({ searchQuery, setSearchQuery, searchResults, onSelectResult, isSearching }: any) => {
+  default: ({
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    onSelectResult,
+    isSearching,
+  }: any) => {
     const { TextInput, TouchableOpacity, Text } = require('react-native');
     return (
       <>
@@ -48,15 +59,19 @@ jest.mock('@/components/TopBar', () => ({
 
         {searchQuery.length > 0 && searchResults.length > 0 ? (
           <>
-            {searchResults.map((r: any) => (
-              <TouchableOpacity
-                key={r.id}
-                testID={`result-${r.id}`}
-                onPress={() => onSelectResult?.(r)}
-              >
-                <Text>{r.nom}</Text>
-              </TouchableOpacity>
-            ))}
+            {searchResults.map((r: any) => {
+              const station = r.kind === 'station' ? r.station : null;
+              if (!station) return null;
+              return (
+                <TouchableOpacity
+                  key={station.id}
+                  testID={`result-${station.id}`}
+                  onPress={() => onSelectResult?.(r)}
+                >
+                  <Text>{station.nom}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </>
         ) : null}
       </>
@@ -110,6 +125,7 @@ jest.mock('@/components/FavoriteButton', () => ({
 
 describe('InicioScreen integration: search/filter + map favorites', () => {
   const mockUseAuth = useAuth as jest.Mock;
+  const mockUseCharging = useCharging as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -148,6 +164,18 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
       user: { id: 12, email: 'user@test.com', username: 'test', created_at: '', updated_at: '' },
       logout: jest.fn(),
       isLoading: false,
+    });
+    mockUseCharging.mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
     });
 
     mockLocalParams = {};

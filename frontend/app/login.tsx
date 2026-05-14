@@ -1,6 +1,6 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { Href, useRouter, useLocalSearchParams } from 'expo-router'; 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -13,10 +13,10 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
-import { Colors } from '@/constants/theme';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 
-const BRAND_GREEN = Colors.light.tint;
 const LOGO = require('./_assets/favicon.png');
 
 GoogleSignin.configure({
@@ -25,6 +25,8 @@ GoogleSignin.configure({
 
 export default function LoginScreen() {
   const { setUser } = useAuth();
+  const { colorblindFriendly } = useColorblindPreference();
+  const brandAccent = useMemo(() => getSemanticColors(colorblindFriendly).accent, [colorblindFriendly]);
   const router = useRouter();
   const { openGoogle, mode } = useLocalSearchParams<{ openGoogle?: string; mode?: string }>();
   const [authMode, setAuthMode] = useState<'google' | 'local-login' | 'local-register'>('google');
@@ -219,7 +221,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <TouchableOpacity style={styles.primaryButton} onPress={registerWithUsername} disabled={loading}>
+          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: brandAccent }]} onPress={registerWithUsername} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Continuar</Text>}
           </TouchableOpacity>
         </View>
@@ -275,7 +277,7 @@ export default function LoginScreen() {
             <Text style={styles.separatorText}>o</Text>
 
             <TouchableOpacity
-              style={[styles.primaryButton, styles.mailButton]}
+              style={[styles.primaryButton, styles.mailButton, { backgroundColor: brandAccent }]}
               onPress={() => {
                 setAuthMode('local-login');
                 setError('');
@@ -333,7 +335,7 @@ export default function LoginScreen() {
                 onChangeText={setConfirmPassword}
               />
             ) : null}
-            <TouchableOpacity style={styles.primaryButton} onPress={submitLocalAuth} disabled={loading}>
+            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: brandAccent }]} onPress={submitLocalAuth} disabled={loading}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -383,7 +385,7 @@ const styles = StyleSheet.create({
   skipGoogleButton: { marginTop: 10 },
   googleIcon: { width: 22, height: 22 },
   googleButtonText: { fontSize: 16, fontWeight: '600', color: '#1f2937' },
-  primaryButton: { width: '100%', paddingVertical: 14, borderRadius: 10, backgroundColor: BRAND_GREEN, alignItems: 'center', marginTop: 8 },
+  primaryButton: { width: '100%', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 8 },
   primaryButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   separatorText: { marginTop: 12, marginBottom: 8, color: '#6b7280', fontSize: 14, fontWeight: '600' },
   mailButton: { marginTop: 0, marginBottom: 4 },
