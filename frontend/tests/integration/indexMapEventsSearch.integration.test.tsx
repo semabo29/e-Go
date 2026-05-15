@@ -289,7 +289,10 @@ describe('InicioScreen — mapa y marcadores', () => {
     render(<InicioScreen />);
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('minKw=22'));
+      const calls = (globalThis.fetch as jest.Mock).mock.calls;
+      expect(
+        calls.some((c) => typeof c[0] === 'string' && (c[0] as string).includes('minKw=22'))
+      ).toBe(true);
     });
   });
 

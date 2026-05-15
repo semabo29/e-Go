@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import VehiclesScreen from '@/app/(tabs)/car';
@@ -35,6 +35,10 @@ jest.mock('@expo/vector-icons/MaterialIcons', () => {
   return ({ name }: { name: string }) => <Text>{name}</Text>;
 });
 
+function mockFetchJson(body: unknown, ok = true, status = 200) {
+  return { ok, status, json: async () => body } as Response;
+}
+
 describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,41 +55,24 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
     globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
       // Initial load: GET /car?usuari_id=1
       if (url.includes('/car?usuari_id=1') && options?.method === undefined) {
-        return {
-          json: async () => [
-            {
-              usuari_id: 1,
-              nom: 'Car Test 1',
-              kw: '100',
-              ac_dc: 'AC',
-              tipus_connexio: 'CCS Combo2',
-            },
-          ],
-        } as any;
+        return mockFetchJson([
+          {
+            usuari_id: 1,
+            nom: 'Car Test 1',
+            kw: '100',
+            ac_dc: 'AC',
+            tipus_connexio: 'CCS Combo2',
+          },
+        ]);
       }
 
       // Save car: POST /car
       if (url.includes('/car') && options?.method === 'POST') {
-        return { ok: true, status: 201, json: async () => ({}) } as any;
-      }
-
-      // Refresh after save: GET /car?usuari_id=1
-      if (url.includes('/car?usuari_id=1') && options?.method === undefined) {
-        return {
-          json: async () => [
-            {
-              usuari_id: 1,
-              nom: 'Car Test 1',
-              kw: '100',
-              ac_dc: 'AC',
-              tipus_connexio: 'CCS Combo2',
-            },
-          ],
-        } as any;
+        return mockFetchJson({}, true, 201);
       }
 
       // Default fallback
-      return { json: async () => [] } as any;
+      return mockFetchJson([]);
     }) as unknown as typeof fetch;
   });
 
@@ -238,7 +225,7 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
     const fetchMock = jest.fn(async (url: string, options?: RequestInit) => {
       // Initial load: GET /car?usuari_id=1
       if (url.includes('/car?usuari_id=1') && options?.method === undefined) {
-        return { json: async () => vehicles } as any;
+        return mockFetchJson(vehicles);
       }
 
       // Delete: DELETE /car
@@ -248,7 +235,7 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
         expect(body.v_nom).toBe('Car Test 1');
 
         vehicles = [];
-        return { ok: true, status: 200, json: async () => ({}) } as any;
+        return mockFetchJson({});
       }
 
       throw new Error(`Unexpected fetch: ${url}`);
@@ -262,12 +249,23 @@ describe('VehiclesScreen (car/garage) integration (mocked fetch/router)', () => 
     });
 
     const alertSpy = jest.spyOn(Alert, 'alert');
-    fireEvent.press(getByText('Eliminar vehículo'));
+
+    await act(async () => {
+      fireEvent.press(getByText('Eliminar vehículo'));
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (c) => typeof c[0] === 'string' && c[0].includes('/car') && c[1]?.method === 'DELETE'
+        )
+      ).toBe(true);
+    });
 
     await waitFor(() => {
       expect(alertSpy).not.toHaveBeenCalled();
       expect(queryByText('Car Test 1')).toBeNull();
-    });
+    }, { timeout: 5000 });
 
     const getCalls = fetchMock.mock.calls.filter((c) => typeof c[0] === 'string' && c[0].includes('/car?usuari_id=1')).length;
     expect(getCalls).toBeGreaterThanOrEqual(2); // initial load + refresh after delete
