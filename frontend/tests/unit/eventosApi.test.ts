@@ -43,8 +43,8 @@ describe('normalizeEventosApiTokenString', () => {
 
 describe('normalizeEventosApiBaseUrl', () => {
   test('URL por defecto sin barra final', () => {
-    expect(normalizeEventosApiBaseUrl(undefined)).toBe('http://13.38.238.95/api/external/eventos');
-    expect(normalizeEventosApiBaseUrl('')).toBe('http://13.38.238.95/api/external/eventos');
+    expect(normalizeEventosApiBaseUrl(undefined)).toBe('https://13.38.238.95/api/external/eventos');
+    expect(normalizeEventosApiBaseUrl('')).toBe('https://13.38.238.95/api/external/eventos');
   });
 
   test('recorta barras finales de la URL configurada', () => {
