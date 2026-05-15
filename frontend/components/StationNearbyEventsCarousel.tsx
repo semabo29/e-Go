@@ -209,6 +209,7 @@ export function StationNearbyEventsCarousel({
           </TouchableOpacity>
 
           <View
+            testID="eventos-carousel-viewport"
             style={styles.slideColumn}
             onLayout={(e) => setViewportWidth(Math.floor(e.nativeEvent.layout.width))}
           >
