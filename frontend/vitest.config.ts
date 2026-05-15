@@ -11,9 +11,10 @@ export default defineConfig({
       include: ['features/**'],
       exclude: ['**/*.test.*', '**/node_modules/**', '**/dist/**'],
       thresholds: {
-        branches: 75,
-        lines: 80,
         statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
       },
     },
   },

@@ -2,6 +2,27 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
+jest.mock('@/components/WelcomePremiumModal', () => {
+  const React = require('react');
+  const { Pressable, Text } = require('react-native');
+  return {
+    WelcomePremiumModal: ({
+      visible,
+      onDismiss,
+    }: {
+      visible: boolean;
+      onDismiss: () => void;
+    }) => {
+      if (!visible) return null;
+      return React.createElement(
+        Pressable,
+        { testID: 'welcome-premium-dismiss', onPress: onDismiss },
+        React.createElement(Text, null, 'WelcomePremiumMock')
+      );
+    },
+  };
+});
+
 import PaymentsScreen from '@/app/(tabs)/payments';
 import { useAuth } from '@/contexts/AuthContext';
 import * as WebBrowser from 'expo-web-browser';
@@ -471,6 +492,81 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
 
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+
+  test('sin usuario no solicita estado de suscripción', async () => {
+    (useAuth as unknown as jest.Mock).mockReturnValue({
+      user: null,
+      logout: jest.fn(),
+      isLoading: false,
+      setUser: jest.fn(),
+    });
+    const spy = jest.fn();
+    globalThis.fetch = spy as unknown as typeof fetch;
+    render(<PaymentsScreen />);
+    await waitFor(() => {
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('checkout confirmado muestra modal de bienvenida y se puede cerrar', async () => {
+    let premium = false;
+    const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync').mockResolvedValue(undefined as any);
+
+    (globalThis.fetch as any) = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/subscription/status')) {
+        const body = premium
+          ? {
+              status: 'active',
+              isPremium: true,
+              current_period_end: '2026-12-31T00:00:00.000Z',
+              cancel_at_period_end: false,
+            }
+          : {
+              status: 'inactive',
+              isPremium: false,
+              current_period_end: null,
+              cancel_at_period_end: false,
+            };
+        return { ok: true, status: 200, json: async () => body } as any;
+      }
+      if (url.includes('/subscription/create-checkout-session') && options?.method === 'POST') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ url: 'https://checkout.test/xyz', sessionId: 'cs_test_welcome' }),
+        } as any;
+      }
+      if (url.includes('/subscription/confirm-checkout-session') && options?.method === 'POST') {
+        premium = true;
+        return { ok: true, status: 200, json: async () => ({ confirmed: true, pending: false }) } as any;
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    const { getByText, getByTestId, queryByTestId } = render(<PaymentsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Pasar a Premium')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Pasar a Premium'));
+
+    await waitFor(() => {
+      expect(openSpy).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('welcome-premium-dismiss')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('welcome-premium-dismiss'));
+
+    await waitFor(() => {
+      expect(queryByTestId('welcome-premium-dismiss')).toBeNull();
+    });
+
+    openSpy.mockRestore();
   });
 });
 

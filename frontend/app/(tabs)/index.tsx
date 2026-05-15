@@ -36,6 +36,7 @@ import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext'
 import { useThemePreference } from '@/contexts/ThemePreferenceContext';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import type { SemanticColors } from '@/constants/accessibilityColors';
+import { LanguageMenuSelector } from '@/components/LanguageMenuSelector';
 import {
   requestLocationPermissions,
   isLocationServiceEnabled,
@@ -54,6 +55,7 @@ import {
   getFitCoordinatesForEventFocus,
   resolveNavigationOrigin,
 } from '@/utils/eventMapFocus';
+import { useTranslation } from 'react-i18next';
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
@@ -87,6 +89,7 @@ interface Estacion {
 }
 
 export default function InicioScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preference, setPreference } = useThemePreference();
@@ -172,7 +175,7 @@ export default function InicioScreen() {
   const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
-  const INCIDENCIA_TYPES = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres'];
+  const INCIDENCIA_TYPE_KEYS = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres'] as const;
 
   //Estados para la navegacion a un punto
   const [isNavigating, setIsNavigating] = useState(false);
@@ -282,11 +285,11 @@ export default function InicioScreen() {
       }
       //Preguntamos al usuario el origen
       Alert.alert(
-        "Iniciar ruta",
-        "¿Desde dónde quieres calcular la ruta?",
+        t('navigation.startRouteTitle'),
+        t('navigation.startRouteBody'),
         [
           {
-            text: "Mi ubicación actual",
+            text: t('navigation.myLocation'),
             onPress: () => {
               if (userLocation && userLocation.coords) {
                 setRouteOrigin({
@@ -295,25 +298,25 @@ export default function InicioScreen() {
                 });
                 setIsNavigating(true);
               } else {
-                Alert.alert("GPS desactivado", "No podemos encontrar tu ubicación actual.");
+                Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
               }
             }
           },
           {
-            text: "Buscar otro origen",
+            text: t('navigation.searchOtherOrigin'),
             onPress: () => {
               setIsSelectingOrigin(true); //Activamos el modo selección de punto de origen
               //Alert.alert("Modo búsqueda", "Busca un lugar en la barra superior para usarlo como origen.");
             }
           },
-          { text: "Cancelar", style: "cancel" }
+          { text: t('common.cancel'), style: "cancel" }
         ]
       );
   };
   // Función para manejar el inicio de una sesión de carga
   const handleStartCharging = async (): Promise<boolean> => {
-    if (!user || !selectedStation) {
-      setChargingError('Faltan datos necesarios para iniciar la carga');
+    if (!user || !selectedStation || !userLocation) {
+      setChargingError(t('charging.missingData'));
       return false;
     }
 
@@ -321,21 +324,21 @@ export default function InicioScreen() {
       // Verificar permisos de ubicación
       const hasPermission = await requestLocationPermissions();
       if (!hasPermission) {
-        setChargingError('Necesitas otorgar permisos de ubicación');
+        setChargingError(t('charging.needLocationPermission'));
         return false;
       }
 
       // Verificar que los servicios de ubicación estén habilitados
       const isEnabled = await isLocationServiceEnabled();
       if (!isEnabled) {
-        setChargingError('Por favor, activa los servicios de ubicación en tu dispositivo');
+        setChargingError(t('charging.enableLocationServices'));
         return false;
       }
 
       // Obtener ubicación actual
       const currentLocation = await getCurrentLocation();
       if (!currentLocation) {
-        setChargingError('No se pudo obtener tu ubicación actual');
+        setChargingError(t('charging.couldNotGetLocation'));
         return false;
       }
 
@@ -349,9 +352,9 @@ export default function InicioScreen() {
 
       if (distance > 30) {
         Alert.alert(
-          'Demasiado lejos',
-          `Te encuentras a ${distance} metros del punto de carga.\n\nDebes acercarte a menos de 30 metros para poder iniciar la carga.`,
-          [{ text: 'Entendido', style: 'default' }]
+          t('charging.tooFarTitle'),
+          t('charging.tooFarBody', { distance }),
+          [{ text: t('common.understood'), style: 'default' }]
         );
         return false; // Aturem l'execució aquí mateix
       }
@@ -383,7 +386,7 @@ export default function InicioScreen() {
 
       return success;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al iniciar carga';
+      const message = error instanceof Error ? error.message : t('charging.startError');
       setChargingError(message);
       console.error('Error iniciando carga:', error);
       return false;
@@ -437,7 +440,7 @@ export default function InicioScreen() {
         }
       } catch (error) {
         console.error('Error al finalizar:', error);
-        Alert.alert('Error', 'No se ha podido finalizar la sesión correctamente.');
+        Alert.alert(t('common.error'), t('charging.finishSessionError'));
       } finally {
         setResultLoading(false);
       }
@@ -446,12 +449,12 @@ export default function InicioScreen() {
   // Función para cancelar la carga
   const handleCancelCharging = () => {
     Alert.alert(
-      'Cancelar carga',
-      '¿Estás seguro de que deseas cancelar la sesión de carga?',
+      t('charging.cancelTitle'),
+      t('charging.cancelBody'),
       [
-        { text: 'Continuar', style: 'cancel' },
+        { text: t('charging.cancelContinue'), style: 'cancel' },
         {
-          text: 'Cancelar sesión',
+          text: t('charging.cancelSession'),
           style: 'destructive',
           onPress: () => {
             cancelChargingSession();
@@ -484,8 +487,8 @@ export default function InicioScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { //alerta para informar el proque de la necesidad de ubi
         Alert.alert(
-          'Permiso necesario',
-          'Para mostrarte los puntos de carga más cercanos, necesitamos acceso a tu ubicación.'
+          t('charging.locationPermissionTitle'),
+          t('charging.locationPermissionBody')
         );
         return;
       }
@@ -745,11 +748,11 @@ useEffect(() => {
   // --- LÒGICA PEL TEXT DELS FILTRES ---
   let powerText = '';
   if (minKw && maxKw) {
-    powerText = `${minKw} - ${maxKw} kW`;
+    powerText = t('home.filters.powerBetween', { min: minKw, max: maxKw });
   } else if (minKw) {
-    powerText = `≥ ${minKw} kW`;
+    powerText = t('home.filters.powerMin', { min: minKw });
   } else if (maxKw) {
-    powerText = `≤ ${maxKw} kW`;
+    powerText = t('home.filters.powerMax', { max: maxKw });
   }
 
   const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc || !!showFavoritesFilter;
@@ -762,7 +765,7 @@ useEffect(() => {
       const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
 
       if (!idToken) {
-        setAuthError('No se pudo obtener el token de Google');
+        setAuthError(t('login.errors.googleToken'));
         return;
       }
 
@@ -780,11 +783,11 @@ useEffect(() => {
         if (msg.includes('Network request failed')) {
           setAuthError(
             __DEV__
-              ? `No llega al backend. URL usada: ${base}. Con USB usa npm run start:usb (cierra Metro y vuelve a abrir), adb reverse y backend en marcha en el PC.`
-              : 'No llega al backend. Comprueba conexión y que el servidor esté en marcha.'
+              ? t('login.errors.networkDev', { url: base })
+              : t('login.errors.networkProd')
           );
         } else {
-          setAuthError('No se pudo conectar con el servidor.');
+          setAuthError(t('login.errors.server'));
         }
         return;
       }
@@ -793,7 +796,7 @@ useEffect(() => {
 
       if (!res.ok) {
         if (data?.code !== 'USER_BANNED') {
-          setAuthError(data.error || 'Error al iniciar sesión');
+          setAuthError(data.error || t('login.errors.loginFailed'));
         }
         return;
       }
@@ -821,9 +824,9 @@ useEffect(() => {
         setWelcomeUsername('');
         setAuthError('');
       } else if (code === statusCodes.IN_PROGRESS) {
-        setAuthError('Ya hay un inicio de sesión en curso');
+        setAuthError(t('login.errors.inProgress'));
       } else {
-        setAuthError('Error al conectar con Google');
+        setAuthError(t('login.errors.googleConnect'));
         console.error('[Google Native Error]', err);
       }
     } finally {
@@ -852,11 +855,11 @@ useEffect(() => {
         setWelcomeUsername('');
       } else {
         if (data?.code !== 'USER_BANNED') {
-          setAuthError(data.error || 'Error al registrarse');
+          setAuthError(data.error || t('login.errors.registerFailed'));
         }
       }
     } catch (_e) {
-      setAuthError('No se pudo conectar con el servidor.');
+      setAuthError(t('login.errors.server'));
     } finally {
       setAuthLoadingGoogle(false);
     }
@@ -864,7 +867,7 @@ useEffect(() => {
 
   async function submitLocalWelcomeAuth() {
     if (!welcomeEmail.trim() || !welcomePassword.trim()) {
-      setAuthError('Email y contraseña son obligatorios');
+      setAuthError(t('login.errors.emailPasswordRequired'));
       return;
     }
 
@@ -882,7 +885,7 @@ useEffect(() => {
       const data = await res.json()
       if (!res.ok) {
         if (data?.code !== 'USER_BANNED') {
-          setAuthError(data.error || 'No se pudo iniciar sesión');
+          setAuthError(data.error || t('login.errors.localLoginFailed'));
         }
         return;
       }
@@ -893,7 +896,7 @@ useEffect(() => {
         });
       }
     } catch (_e) {
-      setAuthError('No se pudo conectar con el servidor.');
+      setAuthError(t('login.errors.server'));
     } finally {
       setAuthLoadingGoogle(false);
     }
@@ -926,7 +929,7 @@ useEffect(() => {
     if (!user || !selectedStation) return;
 
     if (!incidenciaComentario.trim() || !incidenciaTipo.trim()) {
-      Alert.alert('Campos obligatorios', 'Debes rellenar comentario y tipo.');
+      Alert.alert(t('incident.requiredTitle'), t('incident.requiredBody'));
       return;
     }
 
@@ -953,14 +956,14 @@ useEffect(() => {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.error || 'No se pudo registrar la incidencia');
+        throw new Error(data?.error || t('incident.registerError'));
       }
 
-      Alert.alert('Incidencia enviada', 'La incidencia se ha registrado correctamente.');
+      Alert.alert(t('incident.sentTitle'), t('incident.sentBody'));
       handleCloseIncidenciaForm();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al enviar la incidencia';
-      Alert.alert('Error', message);
+      const message = error instanceof Error ? error.message : t('incident.sendError');
+      Alert.alert(t('common.error'), message);
     } finally {
       setIncidenciaSubmitting(false);
     }
@@ -983,28 +986,28 @@ useEffect(() => {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.error || 'No se pudo registrar la incidencia solucionada');
+        throw new Error(data?.error || t('incident.solvedRegisterError'));
       }
 
-      Alert.alert('Incidencia reportada', 'Se ha marcado la estación como operativa.');
+      Alert.alert(t('incident.reportedTitle'), t('incident.reportedBody'));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al reportar incidencia solucionada';
-      Alert.alert('Error', message);
+      const message = error instanceof Error ? error.message : t('incident.solvedReportError');
+      Alert.alert(t('common.error'), message);
     }
   };
 
   const handlePickIncidenciaFile = async () => {
     if (!ImagePickerModule) {
       Alert.alert(
-        'Adjuntos no disponibles',
-        'Este dispositivo aún no tiene habilitado el módulo nativo para seleccionar imágenes.'
+        t('incident.attachmentsUnavailableTitle'),
+        t('incident.attachmentsUnavailableBody')
       );
       return;
     }
 
     const permission = await ImagePickerModule.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permiso requerido', 'Necesitamos permiso para acceder a tus imágenes.');
+      Alert.alert(t('incident.photosPermissionTitle'), t('incident.photosPermissionBody'));
       return;
     }
 
@@ -1027,7 +1030,7 @@ useEffect(() => {
     return (
       <View style={[styles.screen, styles.centered]}>
         <ActivityIndicator size="large" color={sem.accent} />
-        <Text style={styles.loadingText}>Cargando…</Text>
+        <Text style={styles.loadingText}>{t('home.loading')}</Text>
       </View>
     );
   }
@@ -1045,9 +1048,9 @@ useEffect(() => {
         >
           <View style={styles.cardCompact}>
             <Image source={LOGO} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>Bienvenido a e-Go</Text>
+            <Text style={styles.title}>{t('home.welcomeTitle')}</Text>
             <Text style={styles.subtitle}>
-              Tu navegador de estaciones de carga en Catalunya
+              {t('home.welcomeSubtitle')}
             </Text>
             <View style={styles.authLinksRow}>
               <TouchableOpacity
@@ -1055,26 +1058,26 @@ useEffect(() => {
                 onPress={() => router.push('/company-login' as Href)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.adminLinkText}>Acceso Empresa</Text>
+                <Text style={styles.adminLinkText}>{t('login.companyAccess')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.adminLink}
                 onPress={() => router.push('/admin-login')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.adminLinkText}>Acceso Admin</Text>
+                <Text style={styles.adminLinkText}>{t('login.adminAccess')}</Text>
               </TouchableOpacity>
             </View>
 
             {authStep === 'username' ? (
               <>
-                <Text style={styles.welcomeUsernameTitle}>Elige tu nombre de usuario</Text>
+                <Text style={styles.welcomeUsernameTitle}>{t('login.chooseUsernameTitle')}</Text>
                 <Text style={styles.welcomeUsernameSubtitle}>
-                  Así aparecerás en la aplicación
+                  {t('login.chooseUsernameSubtitle')}
                 </Text>
                 <TextInput
                   style={styles.welcomeUsernameInput}
-                  placeholder="Nombre de usuario"
+                  placeholder={t('common.username')}
                   placeholderTextColor="#9ca3af"
                   value={welcomeUsername}
                   onChangeText={setWelcomeUsername}
@@ -1090,11 +1093,11 @@ useEffect(() => {
                   {authLoadingGoogle ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.welcomePrimaryButtonText}>Continuar</Text>
+                    <Text style={styles.welcomePrimaryButtonText}>{t('common.continue')}</Text>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={resetWelcomeAuthToGoogle} style={styles.welcomeBackLink}>
-                  <Text style={styles.welcomeBackLinkText}>Volver a Google</Text>
+                  <Text style={styles.welcomeBackLinkText}>{t('home.welcomeBackGoogle')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -1111,15 +1114,15 @@ useEffect(() => {
                     style={styles.googleIcon}
                     resizeMode="contain"
                   />
-                  <Text style={styles.loginButtonText}>Continuar con Google</Text>
+                  <Text style={styles.loginButtonText}>{t('login.continueGoogle')}</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.authSeparatorText}>o</Text>
+                <Text style={styles.authSeparatorText}>{t('common.or')}</Text>
 
-                <Text style={styles.localAuthHeading}>Inicia sesión</Text>
+                <Text style={styles.localAuthHeading}>{t('home.localAuthHeading')}</Text>
                 <TextInput
                   style={styles.welcomeUsernameInput}
-                  placeholder="Mail"
+                  placeholder={t('common.mail')}
                   placeholderTextColor="#9ca3af"
                   value={welcomeEmail}
                   onChangeText={setWelcomeEmail}
@@ -1128,7 +1131,7 @@ useEffect(() => {
                 />
                 <TextInput
                   style={styles.welcomeUsernameInput}
-                  placeholder="Contraseña"
+                  placeholder={t('common.password')}
                   placeholderTextColor="#9ca3af"
                   value={welcomePassword}
                   onChangeText={setWelcomePassword}
@@ -1143,17 +1146,17 @@ useEffect(() => {
                   {authLoadingGoogle ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.welcomePrimaryButtonText}>Iniciar sesión</Text>
+                    <Text style={styles.welcomePrimaryButtonText}>{t('login.signIn')}</Text>
                   )}
                 </TouchableOpacity>
 
-                <Text style={styles.authSeparatorText}>o</Text>
+                <Text style={styles.authSeparatorText}>{t('common.or')}</Text>
                 <TouchableOpacity
                   style={styles.welcomeBackLink}
                   onPress={() => router.push({ pathname: '/login', params: { mode: 'register' } })}
                   disabled={authLoadingGoogle}
                 >
-                  <Text style={styles.welcomeBackLinkText}>Regístrate</Text>
+                  <Text style={styles.welcomeBackLinkText}>{t('home.registerCta')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -1181,7 +1184,7 @@ useEffect(() => {
         <View style={styles.originSelectionNotice}>
           <View style={styles.originSelectionContent}>
             <MaterialIcons name="location-on" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.originSelectionText}>Selecciona el punto de origen en el mapa</Text>
+            <Text style={styles.originSelectionText}>{t('home.originSelectHint')}</Text>
           </View>
           <TouchableOpacity //Botón de cerrar por si no queremos hacer una ruta.
             onPress={() => setIsSelectingOrigin(false)}
@@ -1250,7 +1253,7 @@ useEffect(() => {
             {showFavoritesFilter && (
               <View style={styles.filterRow}>
                 <MaterialIcons name="favorite" size={18} color={sem.favorite} />
-                <Text style={styles.activeFiltersText}>Favoritos</Text>
+                <Text style={styles.activeFiltersText}>{t('home.favoritesChip')}</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: '' })}
                   hitSlop={8}
@@ -1360,7 +1363,7 @@ useEffect(() => {
                   key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
                   coordinate={selectedLocation}
                   pinColor={sem.mapCustomLocation}
-                  title={selectedLocationLabel || 'Ubicación seleccionada'}
+                  title={selectedLocationLabel || t('home.selectedLocationTitle')}
                 />
             )}
 
@@ -1368,7 +1371,7 @@ useEffect(() => {
                 {isNavigating && routeDestination && (
                   <Marker
                     coordinate={routeDestination}
-                    title="Ubicación seleccionada"
+                    title={t('home.selectedLocationTitle')}
                     pinColor={sem.mapRouteDestination}
                   />
             )}
@@ -1397,7 +1400,7 @@ useEffect(() => {
                   }
                 }}
                 onError={(errorMessage) => {
-                  Alert.alert("Error de ruta", "No se ha podido calcular la ruta");
+                  Alert.alert(t('navigation.routeErrorTitle'), t('navigation.routeErrorBody'));
                   console.log(errorMessage);
                 }}
               />
@@ -1421,7 +1424,9 @@ useEffect(() => {
               <View style={styles.navPanel}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.navTextBold} numberOfLines={1}>
-                    Hacia {selectedStation ? selectedStation.nom : 'tu destino'}
+                    {t('home.navTowards', {
+                      name: selectedStation ? selectedStation.nom : t('home.navDestination'),
+                    })}
                   </Text>
                   <Text style={styles.navText}>
                     {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
@@ -1435,7 +1440,7 @@ useEffect(() => {
                     onPress={() => setIsDrivingMode(true)}
                   >
                     <MaterialIcons name="navigation" size={20} color="#fff" />
-                    <Text style={styles.startDrivingText}>Iniciar</Text>
+                    <Text style={styles.startDrivingText}>{t('home.startDriving')}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -1503,7 +1508,7 @@ useEffect(() => {
             <View style={styles.infoTitleRow}>
               <MaterialIcons name="place" size={24} color={sem.mapCustomLocation} />
               <Text style={styles.infoTitle} numberOfLines={2}>
-                {selectedLocationLabel || 'Ubicación seleccionada'}
+                {selectedLocationLabel || t('home.selectedLocationTitle')}
               </Text>
 
               <TouchableOpacity
@@ -1530,7 +1535,7 @@ useEffect(() => {
               activeOpacity={0.8}
               onPress={() => handleStartNavigation(selectedLocation)}
             >
-              <Text style={styles.routeButtonText}>Cómo llegar</Text>
+              <Text style={styles.routeButtonText}>{t('home.howToArrive')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1561,11 +1566,11 @@ useEffect(() => {
       >
         <View style={styles.reportModalBackdrop}>
           <View style={styles.reportModalCard}>
-            <Text style={styles.reportModalTitle}>Reportar incidencia</Text>
-            <Text style={styles.reportLabel}>Comentario</Text>
+            <Text style={styles.reportModalTitle}>{t('home.reportModalTitle')}</Text>
+            <Text style={styles.reportLabel}>{t('home.comment')}</Text>
             <TextInput
               style={styles.reportTextarea}
-              placeholder="Describe qué ha ocurrido"
+              placeholder={t('home.describePlaceholder')}
               placeholderTextColor="#9ca3af"
               multiline
               numberOfLines={4}
@@ -1573,9 +1578,9 @@ useEffect(() => {
               onChangeText={setIncidenciaComentario}
             />
 
-            <Text style={styles.reportLabel}>Tipo</Text>
+            <Text style={styles.reportLabel}>{t('home.type')}</Text>
             <View style={styles.reportTypeContainer}>
-              {INCIDENCIA_TYPES.map((type) => (
+              {INCIDENCIA_TYPE_KEYS.map((type) => (
                 <TouchableOpacity
                   key={type}
                   style={[styles.reportTypeChip, incidenciaTipo === type && styles.reportTypeChipActive]}
@@ -1583,13 +1588,13 @@ useEffect(() => {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.reportTypeChipText, incidenciaTipo === type && styles.reportTypeChipTextActive]}>
-                    {type}
+                    {t(`incident.types.${type}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={styles.reportLabel}>Archivo (imagen)</Text>
+            <Text style={styles.reportLabel}>{t('home.fileImage')}</Text>
             <TouchableOpacity
               style={styles.reportFileButton}
               onPress={handlePickIncidenciaFile}
@@ -1597,13 +1602,13 @@ useEffect(() => {
             >
               <MaterialIcons name="attach-file" size={18} color="#1f2937" />
               <Text style={styles.reportFileButtonText}>
-                {incidenciaArchivo ? incidenciaArchivo.name : 'Seleccionar imagen del dispositivo'}
+                {incidenciaArchivo ? incidenciaArchivo.name : t('home.pickImage')}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.reportActions}>
               <TouchableOpacity style={styles.reportBackButton} onPress={handleCloseIncidenciaForm} activeOpacity={0.8}>
-                <Text style={styles.reportBackButtonText}>Volver</Text>
+                <Text style={styles.reportBackButtonText}>{t('common.back')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.reportSubmitButton, incidenciaSubmitting && styles.reportSubmitButtonDisabled]}
@@ -1611,7 +1616,7 @@ useEffect(() => {
                 activeOpacity={0.8}
                 disabled={incidenciaSubmitting}
               >
-                <Text style={styles.reportSubmitButtonText}>{incidenciaSubmitting ? 'Enviando...' : 'Enviar'}</Text>
+                <Text style={styles.reportSubmitButtonText}>{incidenciaSubmitting ? t('home.sending') : t('common.send')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1627,7 +1632,7 @@ useEffect(() => {
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuDrawer} onPress={(e) => e.stopPropagation()}>
             <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>Ajustes</Text>
+              <Text style={styles.menuTitle}>{t('menu.settings')}</Text>
               <TouchableOpacity
                 onPress={() => setMenuOpen(false)}
                 style={styles.menuClose}
@@ -1649,7 +1654,7 @@ useEffect(() => {
               activeOpacity={0.7}
             >
               <MaterialIcons name="person" size={22} color={isDark ? '#fff' : '#1f2937'} />
-              <Text style={styles.menuItemText}>Mi perfil</Text>
+              <Text style={styles.menuItemText}>{t('menu.myProfile')}</Text>
             </TouchableOpacity>
 
             {/*Boton para añadir filtros*/}
@@ -1671,7 +1676,7 @@ useEffect(() => {
               activeOpacity={0.7}
             >
               <MaterialIcons name="filter-list" size={22} color={isDark ? '#fff' : '#1f2937'} />
-              <Text style={styles.menuItemText}>Añadir Filtros</Text>
+              <Text style={styles.menuItemText}>{t('menu.addFilters')}</Text>
             </TouchableOpacity>
 
             {/* Botón para ver estaciones favoritas */}
@@ -1684,7 +1689,7 @@ useEffect(() => {
               activeOpacity={0.7}
             >
               <MaterialIcons name="favorite" size={22} color={sem.favorite} />
-              <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
+              <Text style={styles.menuItemText}>{t('menu.myStations')}</Text>
             </TouchableOpacity>
 
               {/* Botón para ir al asistente IA (De tu rama chatbot) */}
@@ -1696,16 +1701,16 @@ useEffect(() => {
               }}
             >
               <MaterialIcons name="support-agent" size={24} color="#10b981" />
-              <Text style={styles.menuItemText}>Asistente Virtual</Text>
+              <Text style={styles.menuItemText}>{t('menu.virtualAssistant')}</Text>
             </TouchableOpacity>
 
             {/* Opciones de Accesibilidad y Tema (De la rama development) */}
             <View style={styles.themeSection}>
-              <Text style={styles.themeSectionTitle}>Daltonismo</Text>
+              <Text style={styles.themeSectionTitle}>{t('menu.colorblindSection')}</Text>
               <View style={styles.dyslexiaRow}>
                 <View style={styles.dyslexiaTexts}>
-                  <Text style={styles.dyslexiaTitle}>Modo accesible</Text>
-                  <Text style={styles.dyslexiaHint}>Colores del mapa y acentos más distinguibles</Text>
+                  <Text style={styles.dyslexiaTitle}>{t('menu.accessibleMode')}</Text>
+                  <Text style={styles.dyslexiaHint}>{t('menu.accessibleHint')}</Text>
                 </View>
                 <Switch
                   testID="colorblind-friendly-switch"
@@ -1718,24 +1723,26 @@ useEffect(() => {
             </View>
 
             <View style={styles.themeSection}>
-              <Text style={styles.themeSectionTitle}>Tema</Text>
+              <Text style={styles.themeSectionTitle}>{t('menu.theme')}</Text>
               <View style={styles.themeSegment}>
                 <TouchableOpacity
                   style={[styles.themeOption, preference === 'light' && styles.themeOptionActive]}
                   onPress={() => setPreference('light')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.themeOptionText, preference === 'light' && styles.themeOptionTextActive]}>Claro</Text>
+                  <Text style={[styles.themeOptionText, preference === 'light' && styles.themeOptionTextActive]}>{t('menu.themeLight')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.themeOption, preference === 'dark' && styles.themeOptionActive]}
                   onPress={() => setPreference('dark')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.themeOptionText, preference === 'dark' && styles.themeOptionTextActive]}>Oscuro</Text>
+                  <Text style={[styles.themeOptionText, preference === 'dark' && styles.themeOptionTextActive]}>{t('menu.themeDark')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
+
+            <LanguageMenuSelector isDark={isDark} accent={sem.accent} />
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -1751,7 +1758,7 @@ useEffect(() => {
               activeOpacity={0.7}
             >
               <MaterialIcons name="logout" size={22} color={isDark ? '#fff' : '#1f2937'} />
-              <Text style={styles.menuItemText}>Cerrar Sesión</Text>
+              <Text style={styles.menuItemText}>{t('menu.logout')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>

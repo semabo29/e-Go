@@ -1,6 +1,9 @@
 // Layout raíz: tema, tabs (Home, Explorar) y pantalla de login
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import '@/i18n/i18n';
+import i18n from '@/i18n/i18n';
+import { I18nextProvider } from 'react-i18next';
+import { I18nLocaleHydrator } from '@/i18n/I18nLocaleHydrator';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,11 +31,15 @@ export default function RootLayout() {
     // Afegim style={{ flex: 1 }} al GestureHandler perquè ocupi tota la pantalla correctament
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemePreferenceProvider>
-          <ColorblindPreferenceProvider>
-            <RootLayoutContent />
-          </ColorblindPreferenceProvider>
-        </ThemePreferenceProvider>
+        <I18nextProvider i18n={i18n}>
+          <I18nLocaleHydrator>
+            <ThemePreferenceProvider>
+              <ColorblindPreferenceProvider>
+                <RootLayoutContent />
+              </ColorblindPreferenceProvider>
+            </ThemePreferenceProvider>
+          </I18nLocaleHydrator>
+        </I18nextProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

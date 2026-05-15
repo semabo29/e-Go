@@ -1,6 +1,26 @@
 import '@testing-library/jest-native/extend-expect';
 import { jest } from '@jest/globals';
 
+jest.mock('expo-localization', () => ({
+  getLocales: () => [{ languageCode: 'es', regionCode: 'ES' }],
+}));
+
+import '@/i18n/i18n';
+
+// Debe ir antes de reanimated/bottom-sheet: evita cargar worklets nativos en Jest.
+jest.mock('@gorhom/bottom-sheet', () => {
+  const React = require('react');
+  const { View, ScrollView } = require('react-native');
+  const BottomSheet = React.forwardRef((props: { children?: React.ReactNode }, _ref: unknown) =>
+    React.createElement(View, { testID: 'mock-bottom-sheet' }, props.children)
+  );
+  return {
+    __esModule: true,
+    default: BottomSheet,
+    BottomSheetScrollView: ScrollView,
+  };
+});
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );

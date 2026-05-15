@@ -1,7 +1,9 @@
+/** @type {import('jest').Config} */
 module.exports = {
   testEnvironment: 'node',
+  testMatch: ['**/tests/**/*.test.js'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/tests/'],
 
-  // Cobertura: quins fitxers s'han d'instrumentar
   collectCoverageFrom: [
     'controllers/**/*.{js,jsx}',
     'services/**/*.{js,jsx}',
@@ -18,16 +20,15 @@ module.exports = {
     '!index.jsx',
   ],
 
-  // Reports que es generen quan es passa --coverage
   coverageReporters: ['text', 'lcov', 'html'],
   coverageDirectory: 'coverage',
 
-  // Llindars mínims: si no s'arriben, jest --coverage falla
   coverageThreshold: {
     global: {
       branches: 75,
       lines: 80,
       statements: 80,
+      functions: 80,
     },
   },
 };

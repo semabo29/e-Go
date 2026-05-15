@@ -343,7 +343,7 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
 
     // Le damos clic al corazón vacío para hacerlo favorito
     fireEvent.press(getAllByText('favorite-border')[0]);
-    
+
     // Comprobamos que el marcador se vuelve rojo (favorito)
     await waitFor(() => {
       expect(getByTestId('favorite-station-marker')).toBeTruthy();

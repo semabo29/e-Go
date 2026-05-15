@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, Text, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -31,6 +33,7 @@ export default function TopBar({
   searchMode,
   onToggleSearchMode,
 }: TopBarProps) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { colorblindFriendly } = useColorblindPreference();
@@ -58,7 +61,7 @@ export default function TopBar({
           />
           <TextInput
             style={[styles.searchInput, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
-            placeholder={isAddressMode ? 'Dirección, calle…' : 'Buscar puntos de carga'}
+            placeholder={isAddressMode ? t('topBar.searchAddress') : t('topBar.searchStations')}
             placeholderTextColor={isDark ? '#94a3b8' : '#888'}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -79,8 +82,8 @@ export default function TopBar({
           accessibilityRole="button"
           accessibilityLabel={
             isAddressMode
-              ? 'Canviar a cerca de punts de recàrrega'
-              : "Canviar a cerca d'adreces al mapa"
+              ? t('topBar.a11yToggleStations')
+              : t('topBar.a11yToggleAddresses')
           }
         >
           <Ionicons
@@ -117,7 +120,7 @@ export default function TopBar({
                     {item.kind === 'station' ? (
                       <>
                         <Text style={styles.resultName} numberOfLines={1}>
-                          {item.station.nom || 'Punto de carga'}
+                          {item.station.nom || t('topBar.stationFallback')}
                         </Text>
                         <Text style={styles.resultAddress} numberOfLines={1}>
                           {item.station.adreca}, {item.station.municipi}
@@ -142,7 +145,7 @@ export default function TopBar({
           ) : (
             !isSearching && (
               <View style={styles.noResults}>
-                <Text style={styles.noResultsText}>No se han encontrado resultados</Text>
+                <Text style={styles.noResultsText}>{t('topBar.noResults')}</Text>
               </View>
             )
           )}

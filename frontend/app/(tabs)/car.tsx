@@ -19,6 +19,7 @@ import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 interface Vehicle {
   usuari: number;
@@ -30,6 +31,7 @@ interface Vehicle {
 
 
 export default function VehiclesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const { colorblindFriendly } = useColorblindPreference();
@@ -106,7 +108,7 @@ export default function VehiclesScreen() {
     setErrorMessage('');
     
     if ((nom === '') || (potencia === '') || (connectorType === '') || (acDc === '')) {
-	setErrorMessage('Los vehículos deben estar completamente especificados (nombre, potencia, tipo de conector y de corriente)');
+	setErrorMessage(t('car.validationIncomplete'));
 	return;
     }
 	  
@@ -141,11 +143,11 @@ export default function VehiclesScreen() {
           console.error("Error cargando vehiculos:", error);
         }
       } else {
-        Alert.alert("Error", "No se ha podido guardar el vehículo");
+        Alert.alert(t('common.error'), t('car.saveError'));
       }
     } catch (e) {
       console.error('Error al guardar vehiculo', e);
-      Alert.alert("Error", "Error de conexión");
+      Alert.alert(t('common.error'), t('car.connectionError'));
     }
   };
 
@@ -173,11 +175,11 @@ export default function VehiclesScreen() {
           console.error("Error cargando vehiculos:", error);
         }
       } else {
-        Alert.alert("Error", "No se ha podido eliminar el vehículo");
+        Alert.alert(t('common.error'), t('car.deleteError'));
       }
     } catch (e) {
       console.error('Error al eliminar vehiculo', e);
-      Alert.alert("Error", "Error de conexión");
+      Alert.alert(t('common.error'), t('car.connectionError'));
     }
   };
 
@@ -186,7 +188,7 @@ export default function VehiclesScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       {/* Capçalera */}
       <View style={styles.header}>
-        <Text style={styles.titleHeader}>Garaje</Text>
+        <Text style={styles.titleHeader}>{t('car.garage')}</Text>
       </View>
 
       <ScrollView
@@ -227,24 +229,24 @@ export default function VehiclesScreen() {
                 })}
                 activeOpacity={0.8}
               >
-                <Text style={styles.applyBtnText}>Buscar estaciones</Text>
+                <Text style={styles.applyBtnText}>{t('car.searchStations')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteBtn}
                 onPress={() => deleteCar(v.nom)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.deleteBtnText}>Eliminar vehículo</Text>
+                <Text style={styles.deleteBtnText}>{t('car.deleteVehicle')}</Text>
               </TouchableOpacity>
             </View>
           );
         })}
         <View style={styles.lastinfoPanel}>
-          <Text style={styles.titleNew}>Nuevo vehículo</Text>
+          <Text style={styles.titleNew}>{t('car.newVehicle')}</Text>
 
           {/* Input Nom */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre</Text>
+            <Text style={styles.label}>{t('car.name')}</Text>
             <TextInput
               style={[
                 styles.input, focusedInput === 'nom' && styles.inputFocused,
@@ -262,7 +264,7 @@ export default function VehiclesScreen() {
 
           {/* Input Màxim */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Potencia máxima (kW)</Text>
+            <Text style={styles.label}>{t('car.maxPower')}</Text>
             <TextInput
               style={[
                 styles.input, focusedInput === 'max' && styles.inputFocused,
@@ -281,7 +283,7 @@ export default function VehiclesScreen() {
 
           {/* Tipus de Corrent */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tipo de Corriente</Text>
+            <Text style={styles.label}>{t('car.currentType')}</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               {['AC', 'DC'].map((type) => (
                 <TouchableOpacity
@@ -306,7 +308,7 @@ export default function VehiclesScreen() {
 
           {/* Tipus de Connector */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tipo de Conector</Text>
+            <Text style={styles.label}>{t('car.connectorType')}</Text>
             <View style={styles.chipContainer}>
               {CONNECTOR_TYPES.map((type) => (
                 <TouchableOpacity
@@ -336,7 +338,7 @@ export default function VehiclesScreen() {
               onPress={saveCar}
               activeOpacity={0.8}
             >
-              <Text style={styles.applyBtnText}>Guardar vehículo</Text>
+              <Text style={styles.applyBtnText}>{t('car.saveVehicle')}</Text>
             </TouchableOpacity>
           </View>
         </View>
