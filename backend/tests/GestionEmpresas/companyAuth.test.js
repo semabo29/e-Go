@@ -205,6 +205,132 @@ describe('Company auth', () => {
     expect(res.body.company.nombre).toBe('Otro SL');
   });
 
+  test('GET /company/user -> 200 devuelve perfil', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, email: 'empresa@example.com', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 8,
+            user_id: 8,
+            email: 'empresa@example.com',
+            username: 'empresa',
+            nombre: 'ChargeCo',
+            created_at: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.company.nombre).toBe('ChargeCo');
+  });
+
+  test('GET /company/user -> 404 si empresa no existe', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('GET /company/user -> 400 si token sin user_id ni sub valido', async () => {
+    const token = jwt.sign(
+      { sub: 'x', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] });
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /company/profile -> 404 si empresa no encontrada', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'X' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('GET /company/user -> 500 si falla la consulta', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockRejectedValueOnce(new Error('db fail'));
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /company/profile -> 500 si falla la actualizacion', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] });
+    jest.spyOn(userModel, 'updateCompanyNombre').mockRejectedValue(new Error('db fail'));
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Fallo' });
+
+    expect(res.status).toBe(500);
+    jest.restoreAllMocks();
+  });
+
+  test('PATCH /company/profile -> 400 si token invalido para empresa', async () => {
+    const token = jwt.sign({ sub: 'bad', role: 'company' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'X' });
+
+    expect(res.status).toBe(400);
+  });
+
   test('PATCH /company/profile -> 200 prioriza user_id del JWT frente a sub', async () => {
     const token = jwt.sign(
       { sub: 5, user_id: 8, email: 'empresa@example.com', role: 'company' },

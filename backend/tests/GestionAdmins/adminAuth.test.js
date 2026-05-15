@@ -145,6 +145,80 @@ describe('Admin auth', () => {
     expect(res.status).toBe(401);
   });
 
+  test('GET /admin/user -> 200 devuelve usuario', async () => {
+    const token = jwt.sign(
+      { sub: 1, email: 'admin@example.com', role: 'admin' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            email: 'admin@example.com',
+            username: 'admin',
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-02T00:00:00.000Z',
+          },
+        ],
+      });
+
+    const res = await request(app)
+      .get('/admin/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.email).toBe('admin@example.com');
+  });
+
+  test('GET /admin/user -> 404 si usuario no existe', async () => {
+    const token = jwt.sign(
+      { sub: 99, role: 'admin' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 99, is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app)
+      .get('/admin/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('GET /admin/user -> 500 si falla la consulta', async () => {
+    const token = jwt.sign(
+      { sub: 1, role: 'admin' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] })
+      .mockRejectedValueOnce(new Error('db fail'));
+
+    const res = await request(app)
+      .get('/admin/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /admin/me -> 403 si token es de company', async () => {
+    const token = jwt.sign(
+      { sub: 5, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    const res = await request(app)
+      .get('/admin/me')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
   test('GET /admin/me -> 200 con token valido', async () => {
     const token = jwt.sign(
       { sub: 1, email: 'admin@example.com', role: 'admin' },

@@ -71,6 +71,54 @@ describe('Admin users moderation', () => {
     expect(res.body.subscription_stripe).toEqual({ ok: true, reason: 'cancel_at_period_end_set' });
   });
 
+  test('GET /admin/users -> 500 si el modelo falla', async () => {
+    userModel.listAllUsersForAdmin.mockRejectedValue(new Error('db fail'));
+    const res = await request(app).get('/admin/users').set(authHeader());
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 400 si id invalido', async () => {
+    const res = await request(app)
+      .patch('/admin/users/0/ban')
+      .set(authHeader())
+      .send({ is_banned: true });
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 400 si is_banned no es boolean', async () => {
+    const res = await request(app)
+      .patch('/admin/users/12/ban')
+      .set(authHeader())
+      .send({ is_banned: 'yes' });
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 400 si reason no es string', async () => {
+    const res = await request(app)
+      .patch('/admin/users/12/ban')
+      .set(authHeader())
+      .send({ is_banned: true, reason: 123 });
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 404 si usuario no existe', async () => {
+    userModel.setUserBanStatus.mockResolvedValue(null);
+    const res = await request(app)
+      .patch('/admin/users/99/ban')
+      .set(authHeader())
+      .send({ is_banned: true, reason: 'x' });
+    expect(res.status).toBe(404);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 500 si el modelo falla', async () => {
+    userModel.setUserBanStatus.mockRejectedValue(new Error('db fail'));
+    const res = await request(app)
+      .patch('/admin/users/12/ban')
+      .set(authHeader())
+      .send({ is_banned: false });
+    expect(res.status).toBe(500);
+  });
+
   test('PATCH /admin/users/:id/ban -> 200 desbanea usuario', async () => {
     userModel.setUserBanStatus.mockResolvedValue({
       id: 12,

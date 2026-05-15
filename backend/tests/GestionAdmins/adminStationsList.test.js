@@ -53,6 +53,12 @@ describe('Admin stations list', () => {
     expect(res.body.length).toBe(2);
   });
 
+  test('GET /admin/stations/mine -> 500 si falla el modelo', async () => {
+    stationModel.getManualStationsByAdmin.mockRejectedValue(new Error('db fail'));
+    const res = await request(app).get('/admin/stations/mine').set(authHeader());
+    expect(res.status).toBe(500);
+  });
+
   test('GET /admin/stations/mine -> 403 si admin esta baneado', async () => {
     userModel.findByIdWithBanStatus.mockResolvedValue({ id: 42, is_banned: true });
     const res = await request(app)

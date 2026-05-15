@@ -19,6 +19,14 @@ import { GeoSuggestion, reverseGeoAddress, searchGeoAddress } from '@/services/g
 
 const CATALUNYA_MUNICIPALITIES_BY_PROVINCE = require('@/constants/catalunyaMunicipalities.json') as Record<string, string[]>;
 const CATALUNYA_PROVINCES = Object.keys(CATALUNYA_MUNICIPALITIES_BY_PROVINCE);
+
+/** Centre geogràfic aproximat de Catalunya quan encara no hi ha coordenades vàlides al formulari. */
+const CATALUNYA_DEFAULT_MAP_REGION = {
+  latitude: 41.72,
+  longitude: 1.78,
+  latitudeDelta: 0.55,
+  longitudeDelta: 0.55,
+};
 const AC_DC_OPTIONS = ['AC', 'DC'] as const;
 const TIPUS_CONNEXIO_OPTIONS = ['TESLA', 'MENNEKES.M', 'MENNEKES.F', 'ChadeMO', 'CCS Combo2', 'Shuko'] as const;
 const TIPUS_VELOCITAT_OPTIONS = ['RAPID', 'superRAPID', 'semiRAPID', 'NORMAL'] as const;
@@ -92,11 +100,20 @@ export function ManualStationForm(props: Props) {
   }, []);
 
   useEffect(() => {
-    const lat = Number(form.latitud);
-    const lng = Number(form.longitud);
-    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-      setPicked({ lat, lng });
+    const latStr = form.latitud.trim();
+    const lngStr = form.longitud.trim();
+    // Number('') === 0: sense aquesta comprovació el mapa es centraria a (0,0).
+    if (!latStr || !lngStr) {
+      setPicked(null);
+      return;
     }
+    const lat = Number(latStr);
+    const lng = Number(lngStr);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setPicked(null);
+      return;
+    }
+    setPicked({ lat, lng });
   }, [form.latitud, form.longitud]);
 
   useEffect(() => {
@@ -297,7 +314,11 @@ export function ManualStationForm(props: Props) {
           <View style={styles.mapContainer}>
             <MapView
               style={StyleSheet.absoluteFillObject}
-              initialRegion={{ latitude: picked?.lat ?? 41.3879, longitude: picked?.lng ?? 2.16992, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+              initialRegion={
+                picked
+                  ? { latitude: picked.lat, longitude: picked.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+                  : CATALUNYA_DEFAULT_MAP_REGION
+              }
               onPress={(e: any) => setPicked({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
             >
               {picked ? <Marker coordinate={{ latitude: picked.lat, longitude: picked.lng }} /> : null}
