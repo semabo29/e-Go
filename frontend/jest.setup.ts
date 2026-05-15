@@ -1,6 +1,9 @@
 import '@testing-library/jest-native/extend-expect';
 import { jest } from '@jest/globals';
 
+// Margen extra en CI y al instrumentar cobertura (login.integration tiene muchos waitFor).
+jest.setTimeout(process.env.CI === 'true' ? 45_000 : 30_000);
+
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'es', regionCode: 'ES' }],
 }));

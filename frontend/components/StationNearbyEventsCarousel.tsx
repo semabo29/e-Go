@@ -26,6 +26,9 @@ const ARROW_SLOT = 32;
 const CARD_WIDTH_FRACTION = 0.72;
 const CARD_GAP = 12;
 
+type CarouselStyles = ReturnType<typeof createStyles>;
+type CarouselPhase = 'loading' | 'token' | 'error' | 'empty' | 'content';
+
 interface StationNearbyEventsCarouselProps {
   stationLat: number;
   stationLon: number;
@@ -40,14 +43,242 @@ interface StationNearbyEventsCarouselProps {
   ) => void;
 }
 
+async function loadNearbyEvents(
+  stationLat: number,
+  stationLon: number
+): Promise<{ events: EventoExterno[]; error: string | null }> {
+  if (!Number.isFinite(stationLat) || !Number.isFinite(stationLon)) {
+    return { events: [], error: null };
+  }
+  if (!getEventosApiToken()) {
+    return { events: [], error: 'token' };
+  }
+  try {
+    const data = await fetchEventosCercaDeEstacion(stationLat, stationLon, EVENTOS_RADIO_KM_DEFAULT);
+    return { events: Array.isArray(data.results) ? data.results : [], error: null };
+  } catch (e) {
+    return { events: [], error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
+function resolveCarouselPhase(
+  loading: boolean,
+  error: string | null,
+  eventCount: number
+): CarouselPhase {
+  if (loading) return 'loading';
+  if (error === 'token') return 'token';
+  if (error) return 'error';
+  if (eventCount === 0) return 'empty';
+  return 'content';
+}
+
+function getArrowIconColor(disabled: boolean, isDark: boolean): string {
+  if (disabled) return isDark ? '#475569' : '#cbd5e1';
+  return isDark ? '#e2e8f0' : '#334155';
+}
+
+function CarouselPhaseView({
+  phase,
+  styles,
+  error,
+  isDark,
+}: Readonly<{
+  phase: Exclude<CarouselPhase, 'content'>;
+  styles: CarouselStyles;
+  error: string | null;
+  isDark: boolean;
+}>) {
+  if (phase === 'loading') {
+    return (
+      <View style={styles.root}>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={isDark ? '#34d399' : '#10b981'} />
+        </View>
+      </View>
+    );
+  }
+  if (phase === 'token') {
+    return (
+      <View style={styles.root}>
+        <Text style={styles.hint}>
+          Configura EXPO_PUBLIC_EVENTOS_API_TOKEN en el .env del frontend y reinicia Metro.
+        </Text>
+      </View>
+    );
+  }
+  if (phase === 'error') {
+    return (
+      <View style={styles.root}>
+        <Text style={styles.errorSmall}>{error}</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.root}>
+      <Text style={styles.hint}>
+        No hay eventos en un radio de {formatRadioKmForUi(EVENTOS_RADIO_KM_DEFAULT)}.
+      </Text>
+    </View>
+  );
+}
+
+function EventSlideCard({
+  item,
+  cardWidth,
+  styles,
+  isDark,
+  mapFocusEnabled,
+  onPress,
+}: Readonly<{
+  item: EventoExterno;
+  cardWidth: number;
+  styles: CarouselStyles;
+  isDark: boolean;
+  mapFocusEnabled: boolean;
+  onPress: () => void;
+}>) {
+  return (
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={0.85}
+      disabled={!mapFocusEnabled}
+      onPress={onPress}
+      style={[styles.slideCard, { width: cardWidth, marginRight: CARD_GAP }]}
+    >
+      {item.imagen_url ? (
+        <Image source={{ uri: item.imagen_url }} style={styles.slideImage} contentFit="cover" />
+      ) : (
+        <View style={[styles.slideImage, styles.slideImagePlaceholder]}>
+          <MaterialIcons name="event" size={40} color={isDark ? '#64748b' : '#94a3b8'} />
+        </View>
+      )}
+      <Text style={styles.eventTitle} numberOfLines={3}>
+        {item.titulo}
+      </Text>
+      <Text style={styles.eventDistance}>
+        {typeof item.distancia_km === 'number' ? `${item.distancia_km.toFixed(2)} km` : '—'}
+      </Text>
+      {mapFocusEnabled ? <Text style={styles.tapHint}>Toca para ver en el mapa</Text> : null}
+    </TouchableOpacity>
+  );
+}
+
+function EventsCarouselPanel({
+  events,
+  styles,
+  isDark,
+  viewportWidth,
+  cardWidth,
+  snapInterval,
+  activeIndex,
+  scrollRef,
+  onViewportLayout,
+  onScrollEnd,
+  onPrev,
+  onNext,
+  onEventPress,
+  mapFocusEnabled,
+}: Readonly<{
+  events: EventoExterno[];
+  styles: CarouselStyles;
+  isDark: boolean;
+  viewportWidth: number;
+  cardWidth: number;
+  snapInterval: number;
+  activeIndex: number;
+  scrollRef: React.RefObject<ScrollView | null>;
+  onViewportLayout: (width: number) => void;
+  onScrollEnd: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onEventPress: (item: EventoExterno) => void;
+  mapFocusEnabled: boolean;
+}>) {
+  const atStart = activeIndex === 0;
+  const atEnd = activeIndex >= events.length - 1;
+  const showTrack = viewportWidth > 0 && cardWidth > 0;
+
+  return (
+    <View style={styles.root}>
+      <View style={styles.panel}>
+        <View style={styles.carouselRow}>
+          <TouchableOpacity
+            style={[styles.arrowBtn, atStart && styles.arrowBtnDisabled]}
+            onPress={onPrev}
+            disabled={atStart}
+            accessibilityLabel="Evento anterior"
+          >
+            <MaterialIcons name="chevron-left" size={28} color={getArrowIconColor(atStart, isDark)} />
+          </TouchableOpacity>
+
+          <View
+            testID="eventos-carousel-viewport"
+            style={styles.slideColumn}
+            onLayout={(e) => onViewportLayout(Math.floor(e.nativeEvent.layout.width))}
+          >
+            {showTrack ? (
+              <ScrollView
+                testID="eventos-carousel-scroll"
+                ref={scrollRef}
+                horizontal
+                pagingEnabled={false}
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled
+                decelerationRate="fast"
+                snapToInterval={snapInterval}
+                snapToAlignment="start"
+                disableIntervalMomentum
+                onMomentumScrollEnd={onScrollEnd}
+                scrollEventThrottle={16}
+                style={{ width: viewportWidth }}
+                contentContainerStyle={{
+                  paddingRight: Math.max(CARD_GAP, viewportWidth - cardWidth),
+                }}
+              >
+                {events.map((item) => (
+                  <EventSlideCard
+                    key={item.id}
+                    item={item}
+                    cardWidth={cardWidth}
+                    styles={styles}
+                    isDark={isDark}
+                    mapFocusEnabled={mapFocusEnabled}
+                    onPress={() => onEventPress(item)}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.slideMeasurePlaceholder} />
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.arrowBtn, atEnd && styles.arrowBtnDisabled]}
+            onPress={onNext}
+            disabled={atEnd}
+            accessibilityLabel="Siguiente evento"
+          >
+            <MaterialIcons name="chevron-right" size={28} color={getArrowIconColor(atEnd, isDark)} />
+          </TouchableOpacity>
+        </View>
+        {events.length > 1 ? (
+          <Text style={styles.pageHint}>
+            Desliza para ver más · {activeIndex + 1} / {events.length}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export function StationNearbyEventsCarousel({
   stationLat,
   stationLon,
   isDark,
   onFocusEventOnMap,
-}: StationNearbyEventsCarouselProps) {
+}: Readonly<StationNearbyEventsCarouselProps>) {
   const scrollRef = useRef<ScrollView>(null);
-  /** Amplada del contenidor del ScrollView (entre fletxes). */
   const [viewportWidth, setViewportWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [events, setEvents] = useState<EventoExterno[]>([]);
@@ -57,37 +288,16 @@ export function StationNearbyEventsCarousel({
   const cardWidth =
     viewportWidth > 0 ? Math.max(160, Math.floor(viewportWidth * CARD_WIDTH_FRACTION)) : 0;
   const snapInterval = cardWidth > 0 ? cardWidth + CARD_GAP : 0;
-
   const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const phase = resolveCarouselPhase(loading, error, events.length);
 
   const load = useCallback(async () => {
-    if (!Number.isFinite(stationLat) || !Number.isFinite(stationLon)) {
-      setEvents([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    if (!getEventosApiToken()) {
-      setError('token');
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError(null);
-    try {
-      const data = await fetchEventosCercaDeEstacion(
-        stationLat,
-        stationLon,
-        EVENTOS_RADIO_KM_DEFAULT
-      );
-      setEvents(Array.isArray(data.results) ? data.results : []);
-    } catch (e) {
-      setEvents([]);
-      setError(e instanceof Error ? e.message : 'Error');
-    } finally {
-      setLoading(false);
-    }
+    const result = await loadNearbyEvents(stationLat, stationLon);
+    setEvents(result.events);
+    setError(result.error);
+    setLoading(false);
   }, [stationLat, stationLon]);
 
   useEffect(() => {
@@ -113,181 +323,59 @@ export function StationNearbyEventsCarousel({
     [snapInterval, events.length]
   );
 
-  const goPrev = () => {
-    if (activeIndex <= 0 || snapInterval <= 0) return;
-    const next = activeIndex - 1;
-    scrollRef.current?.scrollTo({ x: next * snapInterval, animated: true });
-    setActiveIndex(next);
-  };
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      if (snapInterval <= 0) return;
+      scrollRef.current?.scrollTo({ x: index * snapInterval, animated: true });
+      setActiveIndex(index);
+    },
+    [snapInterval]
+  );
 
-  const goNext = () => {
-    if (activeIndex >= events.length - 1 || snapInterval <= 0) return;
-    const next = activeIndex + 1;
-    scrollRef.current?.scrollTo({ x: next * snapInterval, animated: true });
-    setActiveIndex(next);
-  };
+  const goPrev = useCallback(() => {
+    if (activeIndex <= 0) return;
+    scrollToIndex(activeIndex - 1);
+  }, [activeIndex, scrollToIndex]);
 
-  const handleEventCardPress = (item: EventoExterno) => {
-    if (!onFocusEventOnMap) return;
-    const coords = getEventoMapCoordinates(item, stationLat, stationLon);
-    if (!coords) {
-      Alert.alert('Evento', 'No hay coordenadas para este evento en el mapa.');
-      return;
-    }
-    onFocusEventOnMap(
-      coords.latitude,
-      coords.longitude,
-      item.titulo,
-      stationLat,
-      stationLon
-    );
-  };
+  const goNext = useCallback(() => {
+    if (activeIndex >= events.length - 1) return;
+    scrollToIndex(activeIndex + 1);
+  }, [activeIndex, events.length, scrollToIndex]);
 
-  if (loading) {
-    return (
-      <View style={styles.root}>
-        <View style={styles.loadingBox}>
-          <ActivityIndicator color={isDark ? '#34d399' : '#10b981'} />
-        </View>
-      </View>
-    );
-  }
+  const handleEventCardPress = useCallback(
+    (item: EventoExterno) => {
+      if (!onFocusEventOnMap) return;
+      const coords = getEventoMapCoordinates(item, stationLat, stationLon);
+      if (!coords) {
+        Alert.alert('Evento', 'No hay coordenadas para este evento en el mapa.');
+        return;
+      }
+      onFocusEventOnMap(coords.latitude, coords.longitude, item.titulo, stationLat, stationLon);
+    },
+    [onFocusEventOnMap, stationLat, stationLon]
+  );
 
-  if (error === 'token') {
-    return (
-      <View style={styles.root}>
-        <Text style={styles.hint}>
-          Configura EXPO_PUBLIC_EVENTOS_API_TOKEN en el .env del frontend y reinicia Metro.
-        </Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.root}>
-        <Text style={styles.errorSmall}>{error}</Text>
-      </View>
-    );
-  }
-
-  if (events.length === 0) {
-    return (
-      <View style={styles.root}>
-        <Text style={styles.hint}>
-          No hay eventos en un radio de {formatRadioKmForUi(EVENTOS_RADIO_KM_DEFAULT)}.
-        </Text>
-      </View>
-    );
+  if (phase !== 'content') {
+    return <CarouselPhaseView phase={phase} styles={styles} error={error} isDark={isDark} />;
   }
 
   return (
-    <View style={styles.root}>
-      <View style={styles.panel}>
-        <View style={styles.carouselRow}>
-          <TouchableOpacity
-            style={[styles.arrowBtn, activeIndex === 0 && styles.arrowBtnDisabled]}
-            onPress={goPrev}
-            disabled={activeIndex === 0}
-            accessibilityLabel="Evento anterior"
-          >
-            <MaterialIcons
-              name="chevron-left"
-              size={28}
-              color={activeIndex === 0 ? (isDark ? '#475569' : '#cbd5e1') : isDark ? '#e2e8f0' : '#334155'}
-            />
-          </TouchableOpacity>
-
-          <View
-            testID="eventos-carousel-viewport"
-            style={styles.slideColumn}
-            onLayout={(e) => setViewportWidth(Math.floor(e.nativeEvent.layout.width))}
-          >
-            {viewportWidth > 0 && cardWidth > 0 ? (
-              <ScrollView
-                testID="eventos-carousel-scroll"
-                ref={scrollRef}
-                horizontal
-                pagingEnabled={false}
-                showsHorizontalScrollIndicator={false}
-                nestedScrollEnabled
-                decelerationRate="fast"
-                snapToInterval={snapInterval}
-                snapToAlignment="start"
-                disableIntervalMomentum
-                onMomentumScrollEnd={onScrollEnd}
-                scrollEventThrottle={16}
-                style={{ width: viewportWidth }}
-                contentContainerStyle={{
-                  paddingRight: Math.max(CARD_GAP, viewportWidth - cardWidth),
-                }}
-              >
-                {events.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    activeOpacity={0.85}
-                    disabled={!onFocusEventOnMap}
-                    onPress={() => handleEventCardPress(item)}
-                    style={[styles.slideCard, { width: cardWidth, marginRight: CARD_GAP }]}
-                  >
-                    {item.imagen_url ? (
-                      <Image
-                        source={{ uri: item.imagen_url }}
-                        style={styles.slideImage}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View style={[styles.slideImage, styles.slideImagePlaceholder]}>
-                        <MaterialIcons name="event" size={40} color={isDark ? '#64748b' : '#94a3b8'} />
-                      </View>
-                    )}
-                    <Text style={styles.eventTitle} numberOfLines={3}>
-                      {item.titulo}
-                    </Text>
-                    <Text style={styles.eventDistance}>
-                      {typeof item.distancia_km === 'number'
-                        ? `${item.distancia_km.toFixed(2)} km`
-                        : '—'}
-                    </Text>
-                    {onFocusEventOnMap ? (
-                      <Text style={styles.tapHint}>Toca para ver en el mapa</Text>
-                    ) : null}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.slideMeasurePlaceholder} />
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.arrowBtn, activeIndex >= events.length - 1 && styles.arrowBtnDisabled]}
-            onPress={goNext}
-            disabled={activeIndex >= events.length - 1}
-            accessibilityLabel="Siguiente evento"
-          >
-            <MaterialIcons
-              name="chevron-right"
-              size={28}
-              color={
-                activeIndex >= events.length - 1
-                  ? isDark
-                    ? '#475569'
-                    : '#cbd5e1'
-                  : isDark
-                    ? '#e2e8f0'
-                    : '#334155'
-              }
-            />
-          </TouchableOpacity>
-        </View>
-        {events.length > 1 ? (
-          <Text style={styles.pageHint}>
-            Desliza para ver más · {activeIndex + 1} / {events.length}
-          </Text>
-        ) : null}
-      </View>
-    </View>
+    <EventsCarouselPanel
+      events={events}
+      styles={styles}
+      isDark={isDark}
+      viewportWidth={viewportWidth}
+      cardWidth={cardWidth}
+      snapInterval={snapInterval}
+      activeIndex={activeIndex}
+      scrollRef={scrollRef}
+      onViewportLayout={setViewportWidth}
+      onScrollEnd={onScrollEnd}
+      onPrev={goPrev}
+      onNext={goNext}
+      onEventPress={handleEventCardPress}
+      mapFocusEnabled={!!onFocusEventOnMap}
+    />
   );
 }
 

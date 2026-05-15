@@ -1,15 +1,18 @@
 import { buildEventosNearbyUrl, getEventosApiToken, EVENTOS_RADIO_KM_DEFAULT } from '@/constants/eventosApi';
 
+/** Valor de coordenada tal com pot arribar de l’API externa (string, número o buit). */
+export type EventoCoordValue = string | number | null;
+
 export interface EventoExterno {
   id: number;
   titulo: string;
   imagen_url: string | null;
   distancia_km: number;
   /** API pot enviar lat/lon, o latitud/longitud, etc. */
-  lat?: string | number | null;
-  lon?: string | number | null;
-  latitud?: string | number | null;
-  longitud?: string | number | null;
+  lat?: EventoCoordValue;
+  lon?: EventoCoordValue;
+  latitud?: EventoCoordValue;
+  longitud?: EventoCoordValue;
 }
 
 function parseCoord(v: unknown): number | null {
@@ -56,9 +59,9 @@ export function getEventoMapCoordinates(
   stationLon: number
 ): { latitude: number; longitude: number } | null {
   const extra = item as EventoExterno & {
-    latitude?: number | string | null;
-    longitude?: number | string | null;
-    lng?: number | string | null;
+    latitude?: EventoCoordValue;
+    longitude?: EventoCoordValue;
+    lng?: EventoCoordValue;
   };
   const lat =
     parseCoord(item.lat) ??

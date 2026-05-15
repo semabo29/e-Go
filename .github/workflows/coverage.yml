@@ -101,10 +101,14 @@ jobs:
 
       - name: Tests amb cobertura (Vitest)
         working-directory: ./frontend
+        env:
+          CI: true
         run: npx vitest run --coverage
 
       - name: Tests amb cobertura (Jest)
         working-directory: ./frontend
+        env:
+          CI: true
         run: npx jest --runInBand --coverage tests/integration tests/unit
 
       - name: Pujar artifacts de cobertura frontend
