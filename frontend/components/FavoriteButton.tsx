@@ -53,7 +53,12 @@ export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Pr
   };
 
   return (
-    <TouchableOpacity onPress={toggleFavorite} disabled={loading} style={{ padding: 8 }}>
+    <TouchableOpacity
+      testID="favorite-button"
+      onPress={toggleFavorite}
+      disabled={loading}
+      style={{ padding: 8 }}
+    >
       {loading ? (
         <ActivityIndicator size="small" color={sem.favorite} />
       ) : (

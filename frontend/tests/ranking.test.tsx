@@ -3,37 +3,57 @@ import { render, waitFor } from '@testing-library/react-native';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import RankingScreen from '@/app/(tabs)/ranking';
 
-// Mockeamos la constante de la API para que no dé errores al importar
 jest.mock('@/constants/api', () => ({
   getApiUrl: () => 'http://localhost:3000',
 }));
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+  }),
   useLocalSearchParams: () => ({}),
 }));
+
+jest.mock('@/hooks/use-color-scheme', () => ({
+  useColorScheme: () => 'light',
+}));
+
+jest.mock('@/contexts/ColorblindPreferenceContext', () => ({
+  useColorblindPreference: () => ({
+    colorblindFriendly: false,
+    isLoaded: true,
+    setColorblindFriendly: jest.fn(),
+  }),
+}));
+
+jest.mock('@expo/vector-icons/MaterialIcons', () => {
+  const { createElement } = require('react');
+  const { Text } = require('react-native');
+  return ({ name }: { name: string }) => createElement(Text, null, name);
+});
 
 describe('RankingScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
+  // Fetch pendiente: debe mostrarse el indicador de carga.
   it('muestra el estado de carga inicialmente', () => {
-    // Simulamos un fetch que se queda "pensando" para poder ver el loading
     global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
 
     const { getByText } = render(<RankingScreen />);
-    
-    // Comprobamos que sale el texto del ActivityIndicator
+
     expect(getByText('Cargando líderes...')).toBeTruthy();
   });
 
+  // Respuesta OK del backend: lista usuarios y puntos.
   it('renderiza la lista del ranking correctamente cuando llegan los datos', async () => {
-    // Simulamos la respuesta de la base de datos
     const mockData = [
-      { username: 'EcoDriver_BCN', punts: 850 },
-      { username: 'VoltMaster', punts: 720 },
-      { username: 'ChargeKing', punts: 500 }
+      { id: 1, username: 'EcoDriver_BCN', punts: 850 },
+      { id: 2, username: 'VoltMaster', punts: 720 },
+      { id: 3, username: 'ChargeKing', punts: 500 },
     ];
 
     global.fetch = jest.fn(() =>
@@ -44,9 +64,7 @@ describe('RankingScreen', () => {
 
     const { getByText } = render(<RankingScreen />);
 
-    // Esperamos a que el fetch termine y se pinte la pantalla
     await waitFor(() => {
-      // Comprobamos que los usuarios y puntos aparecen en pantalla
       expect(getByText('EcoDriver_BCN')).toBeTruthy();
       expect(getByText('850')).toBeTruthy();
       expect(getByText('VoltMaster')).toBeTruthy();
@@ -54,8 +72,8 @@ describe('RankingScreen', () => {
     });
   });
 
+  // Array vacío: mensaje de ranking sin datos.
   it('muestra un mensaje de vacío si no hay puntuaciones', async () => {
-    // Simulamos que el backend devuelve un array vacío
     global.fetch = jest.fn(() =>
       Promise.resolve({
         json: () => Promise.resolve([]),
@@ -69,15 +87,13 @@ describe('RankingScreen', () => {
     });
   });
 
+  // Error de red: no crashea y muestra el estado vacío.
   it('gestiona los errores de red sin "crashear"', async () => {
-    // Simulamos que el servidor está caído
     global.fetch = jest.fn(() => Promise.reject(new Error('Network Error'))) as unknown as typeof fetch;
 
     const { getByText } = render(<RankingScreen />);
 
-    // Esperamos a que pase el loading
     await waitFor(() => {
-      // Al fallar, el estado se queda vacío, por lo que debería mostrar el mensaje por defecto
       expect(getByText('Aún no hay puntuaciones.')).toBeTruthy();
     });
   });

@@ -4,7 +4,7 @@ describe('Geocode routes', () => {
   const originalKey = process.env.GOOGLE_MAPS_API_KEY;
   let app;
 
-  // sin API key, error de configuración.
+  // Clau no buida (espai) para que dotenv no bloquee los happy path; CONFIG se prueba vaciando la env en cada test.
   beforeAll(() => {
     process.env.GOOGLE_MAPS_API_KEY = ' ';
     jest.isolateModules(() => {
@@ -98,5 +98,59 @@ describe('Geocode routes', () => {
     const res = await request(app).get('/geocode/autocomplete?input=Barcelona');
     expect(res.status).toBe(502);
     expect(res.body.error).toBeTruthy();
+  });
+
+  // Tras trim en servicio/controlador, espacios no cuentan como búsqueda válida.
+  test('GET /geocode/autocomplete devuelve [] si input solo espacios', async () => {
+    const res = await request(app).get('/geocode/autocomplete?input=%20%20');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  // Place Details con status distinto de OK → GOOGLE_ERROR en servicio → 502 en controlador.
+  test('GET /geocode/place devuelve 502 si Google responde error', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      json: async () => ({
+        status: 'INVALID_REQUEST',
+        error_message: 'bad place',
+      }),
+    });
+
+    const res = await request(app).get('/geocode/place?placeId=pid1');
+    expect(res.status).toBe(502);
+    expect(res.body.error).toMatch(/ubicació/i);
+  });
+
+  // placeId solo espacios: el controlador responde 400 antes de llamar a Google.
+  test('GET /geocode/place sin placeId util devuelve 400', async () => {
+    const res = await request(app).get('/geocode/place?placeId=%20%20');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('placeId és obligatori');
+  });
+
+  // Vaciamos la env en runtime (dotenv ya cargó .env al arrancar la app).
+  test('GET /geocode/autocomplete devuelve 503 si falta API key', async () => {
+    const saved = process.env.GOOGLE_MAPS_API_KEY;
+    process.env.GOOGLE_MAPS_API_KEY = '';
+    try {
+      const res = await request(app).get('/geocode/autocomplete?input=Barcelona');
+      expect(res.status).toBe(503);
+      expect(res.body.error).toMatch(/configuració/i);
+    } finally {
+      process.env.GOOGLE_MAPS_API_KEY = saved;
+    }
+  });
+
+  // Misma comprobación CONFIG que autocomplete, ruta /place.
+  test('GET /geocode/place devuelve 503 si falta API key', async () => {
+    const saved = process.env.GOOGLE_MAPS_API_KEY;
+    process.env.GOOGLE_MAPS_API_KEY = '';
+    try {
+      const res = await request(app).get('/geocode/place?placeId=pid1');
+      expect(res.status).toBe(503);
+      expect(res.body.error).toMatch(/configuració/i);
+    } finally {
+      process.env.GOOGLE_MAPS_API_KEY = saved;
+    }
   });
 });

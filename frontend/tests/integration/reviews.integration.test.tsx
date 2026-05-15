@@ -282,4 +282,329 @@ describe('StationBottomSheet - Integració de Ressenyes', () => {
       expect.objectContaining({ method: 'POST' })
     );
   });
+
+  // si no hay reseñas se muestra un mensaje de que aún no hay valoraciones y no se muestra la media
+  test('TC8: sin reseñas muestra texto de lista vacía y no muestra media', async () => {
+    globalThis.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => [],
+    })) as unknown as typeof fetch;
+
+    const { getByText, queryByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(getByText('Aún no hay valoraciones. ¡Sé el primero!')).toBeTruthy();
+      expect(queryByText('4.0')).toBeNull();
+    });
+  });
+
+  // si falla la carga de reseñas no se rompe el panel
+  test('TC9: fallo al cargar reseñas no rompe el panel', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    globalThis.fetch = jest.fn(async () => {
+      throw new Error('red');
+    }) as unknown as typeof fetch;
+
+    const { getByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(getByText('Valoraciones')).toBeTruthy();
+    });
+    errorSpy.mockRestore();
+  });
+
+  // si falla la publicación de una reseña se muestra un mensaje de error
+  test('TC10: error al publicar muestra alert', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/reviews') && (!options || options.method === 'GET')) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (options?.method === 'POST') {
+        return { ok: false, json: async () => ({}) } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const { getByText, getAllByText, getByPlaceholderText } = render(
+      <StationBottomSheet {...defaultProps} />
+    );
+
+    await waitFor(() => expect(getByText('add')).toBeTruthy());
+    fireEvent.press(getByText('add'));
+    fireEvent.press(getAllByText('star-border')[4]);
+    fireEvent.changeText(getByPlaceholderText('Escribe tu comentario...'), 'Fallo');
+    fireEvent.press(getByText('Publicar'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Error', 'Ha habido un problema guardando la valoración.');
+    });
+    alertSpy.mockRestore();
+  });
+
+  // si falla la eliminación de una reseña se muestra un mensaje de error
+  test('TC11: error al eliminar muestra alert', async () => {
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/reviews') && (!options || options.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => [{ id: 50, puntuacio: 4, usuari_id: 1, username: 'Tester', likes_count: 0 }],
+        } as Response;
+      }
+      if (options?.method === 'DELETE') {
+        return { ok: false, json: async () => ({}) } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const { getByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => expect(getByText('Eliminar')).toBeTruthy());
+    fireEvent.press(getByText('Eliminar'));
+    const deleteBtn = alertSpy.mock.calls[0][2]?.find((b) => b.text === 'Eliminar');
+    await act(async () => {
+      if (deleteBtn?.onPress) await deleteBtn.onPress();
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Error', 'No se ha podido eliminar.');
+    });
+    alertSpy.mockRestore();
+  });
+
+  // si no hay usuario logueado se muestra un mensaje de que debe iniciar sesión para valorar
+  test('TC12: like sin usuario muestra alert de inicio de sesión', async () => {
+    (useAuth as jest.Mock).mockReturnValue({ user: null });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { getByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => expect(getByText('favorite-border')).toBeTruthy());
+    const fetchMock = jest.mocked(globalThis.fetch);
+    const callsBefore = fetchMock.mock.calls.length;
+    fireEvent.press(getByText('favorite-border'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Inicia sesión',
+      'Debes iniciar sesión para valorar los comentarios.'
+    );
+    expect(fetchMock.mock.calls.length).toBe(callsBefore);
+    alertSpy.mockRestore();
+  });
+
+  // quitar like (user_has_liked true) decrementa likes_count
+  test('TC13b: quitar like decrementa el contador optimista', async () => {
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/reviews') && (!options || options.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              puntuacio: 4,
+              comentari: 'Ok',
+              data_publicacio: '2026-01-01',
+              data_actualitzacio: '2026-01-01',
+              usuari_id: 2,
+              username: 'Otro',
+              likes_count: 6,
+              user_has_liked: true,
+            },
+          ],
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const { getByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(getByText('6')).toBeTruthy();
+      expect(getByText('favorite')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('favorite'));
+
+    await waitFor(() => {
+      expect(getByText('5')).toBeTruthy();
+      expect(getByText('favorite-border')).toBeTruthy();
+    });
+  });
+
+  //los likes de las reseñas no se afectan entre sí
+  test('TC13c: like en una reseña deja intacta la otra', async () => {
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/reviews') && (!options || options.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              puntuacio: 5,
+              comentari: 'A',
+              data_publicacio: '2026-01-01',
+              data_actualitzacio: '2026-01-01',
+              usuari_id: 2,
+              username: 'UserA',
+              likes_count: 2,
+              user_has_liked: false,
+            },
+            {
+              id: 2,
+              puntuacio: 3,
+              comentari: 'B',
+              data_publicacio: '2026-01-02',
+              data_actualitzacio: '2026-01-02',
+              usuari_id: 3,
+              username: 'UserB',
+              likes_count: 10,
+              user_has_liked: false,
+            },
+          ],
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const { getByText, getAllByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(getByText('UserA')).toBeTruthy();
+      expect(getByText('UserB')).toBeTruthy();
+    });
+
+    const likeButtons = getAllByText('favorite-border');
+    fireEvent.press(likeButtons[1]);
+
+    await waitFor(() => {
+      expect(getByText('11')).toBeTruthy();
+      expect(getByText('2')).toBeTruthy();
+    });
+  });
+
+  // si la reseña no tiene comentario no se muestra el texto de la opinión
+  test('TC13d: reseña sin comentario no muestra texto de opinión', async () => {
+    globalThis.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => [
+        {
+          id: 8,
+          puntuacio: 4,
+          comentari: '',
+          data_publicacio: '2026-01-01',
+          data_actualitzacio: '2026-01-01',
+          usuari_id: 2,
+          username: 'SinTexto',
+          likes_count: 0,
+          user_has_liked: false,
+        },
+      ],
+    })) as unknown as typeof fetch;
+
+    const { getByText, queryByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => expect(getByText('SinTexto')).toBeTruthy());
+    expect(queryByText('Molt bon lloc!')).toBeNull();
+  });
+
+  // si falla el like se revierte el contador de likes
+  test('TC13: fallo en like revierte el contador de likes', async () => {
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/like') && options?.method === 'POST') {
+        throw new Error('network');
+      }
+      if (url.includes('/reviews')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              puntuacio: 4,
+              comentari: 'Ok',
+              data_publicacio: '2026-01-01',
+              data_actualitzacio: '2026-01-01',
+              usuari_id: 2,
+              username: 'Otro',
+              likes_count: 5,
+              user_has_liked: false,
+            },
+          ],
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const { getByText, queryByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => expect(getByText('5')).toBeTruthy());
+    fireEvent.press(getByText('favorite-border'));
+
+    await waitFor(() => {
+      expect(getByText('5')).toBeTruthy();
+      expect(queryByText('6')).toBeNull();
+    });
+  });
+
+  // al pulsar el botón de cancelar se limpia el formulario y se ocultan los campos
+  test('TC14: cancelar formulario oculta el form y limpia campos', async () => {
+    const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
+      <StationBottomSheet {...defaultProps} />
+    );
+
+    await waitFor(() => expect(getByText('add')).toBeTruthy());
+    fireEvent.press(getByText('add'));
+    fireEvent.changeText(getByPlaceholderText('Escribe tu comentario...'), 'Borrar esto');
+    fireEvent.press(getByText('Cancelar'));
+
+    await waitFor(() => {
+      expect(queryByPlaceholderText('Escribe tu comentario...')).toBeNull();
+    });
+  });
+
+  // si se edita una reseña se muestra el indicador (Editado) en la fecha
+  test('TC15: reseña editada muestra indicador (Editado) en la fecha', async () => {
+    globalThis.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => [
+        {
+          id: 3,
+          puntuacio: 5,
+          comentari: 'Actualizada',
+          data_publicacio: '2026-01-01T10:00:00.000Z',
+          data_actualitzacio: '2026-02-01T12:00:00.000Z',
+          usuari_id: 2,
+          username: 'User',
+          likes_count: 0,
+          user_has_liked: false,
+        },
+      ],
+    })) as unknown as typeof fetch;
+
+    const { getByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => expect(getByText(/\(Editado\)/)).toBeTruthy());
+  });
+
+  // al cambiar de estación se vuelve a pedir la lista de reseñas
+  test('TC16: cambiar estación recarga reseñas con nuevo id', async () => {
+    const fetchMock = jest.fn(async (url: string) => ({
+      ok: true,
+      json: async () => [],
+    })) as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
+
+    const stationB = { ...mockStation, id: 77 };
+    const { rerender } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/stations/10/reviews'))
+    );
+
+    rerender(<StationBottomSheet {...defaultProps} station={stationB} />);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/stations/77/reviews'))
+    );
+  });
 });

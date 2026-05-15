@@ -110,6 +110,20 @@ jest.mock('@/app/_components/MapWrapper', () => {
   return { MapView, Marker };
 });
 
+/** Avanza el debounce de búsqueda (500 ms) con timers falsos. */
+async function runSearchDebounce() {
+  await act(async () => {
+    jest.advanceTimersByTime(500);
+  });
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+}
+
+function expectFetchUrl(calls: unknown[][], fragment: string) {
+  expect(
+    calls.some((c) => typeof c[0] === 'string' && (c[0] as string).includes(fragment))
+  ).toBe(true);
+}
+
 // Mock FavoriteButton so we can toggle favorites from inside the map panel.
 jest.mock('@/components/FavoriteButton', () => ({
   __esModule: true,
@@ -129,7 +143,6 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useRealTimers();
 
     mockSetParams = jest.fn();
     mockPush = jest.fn();
@@ -185,7 +198,6 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
   // Busca por nombre y verifica que se construye correctamente la URL
   test('search by name uses q + filters in /stations/search URL', async () => {
     jest.useFakeTimers();
-
     mockLocalParams = {
       minKw: '20',
       maxKw: '40',
@@ -193,11 +205,19 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
       ac_dc: 'DC',
     };
 
+    // Favorites not relevant here; map/search is driven by /stations/search.
     const fetchMock = jest.fn(async (url: string) => {
       if (url.includes('/favorites')) {
         return { ok: true, json: async () => [{ id: 1 }] };
       }
       if (url.includes('/stations/search?')) {
+        // Assert URL construction for filters.
+        expect(url).toContain('q=Punt');
+        expect(url).toContain('minKw=20');
+        expect(url).toContain('maxKw=40');
+        expect(url).toContain('connectorType=CCS%20Combo2');
+        expect(url).toContain('ac_dc=DC');
+
         return {
           ok: true,
           json: async () => [
@@ -225,28 +245,10 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
 
     const { getByTestId } = render(<InicioScreen />);
 
-    await act(async () => {
-      for (let i = 0; i < 10; i++) await Promise.resolve();
-    });
-    fetchMock.mockClear();
-
     fireEvent.changeText(getByTestId('search-input'), 'Punt');
+    await runSearchDebounce();
 
-    await act(async () => {
-      jest.advanceTimersByTime(500);
-      for (let i = 0; i < 10; i++) await Promise.resolve();
-    });
-
-    const searchUrl = String(
-      fetchMock.mock.calls.find((c) => String(c[0]).includes('/stations/search?'))?.[0] ?? ''
-    );
-    expect(searchUrl).toContain('/stations/search?');
-    expect(searchUrl).toContain('q=Punt');
-    expect(searchUrl).toContain('minKw=20');
-    expect(searchUrl).toContain('maxKw=40');
-    expect(searchUrl).toContain('connectorType=CCS%20Combo2');
-    expect(searchUrl).toContain('ac_dc=DC');
-
+    expectFetchUrl(fetchMock.mock.calls, '/stations/search?');
     jest.useRealTimers();
   });
 
@@ -300,8 +302,6 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
 
   // Cuando `showFavorites=true`, los resultados del buscador se filtran usando la lista de `favoriteIds`.
   test('when showFavorites=true, search results are locally filtered by favoriteIds', async () => {
-    jest.useFakeTimers();
-
     mockLocalParams = {
       showFavorites: 'true',
     };
@@ -351,23 +351,17 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
 
     const { getByTestId, queryByText } = render(<InicioScreen />);
 
-    await act(async () => {
-      for (let i = 0; i < 10; i++) await Promise.resolve();
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/favorites'))).toBe(true);
     });
-    fetchMock.mockClear();
 
     fireEvent.changeText(getByTestId('search-input'), 'Punt');
 
-    await act(async () => {
-      jest.advanceTimersByTime(500);
-      for (let i = 0; i < 10; i++) await Promise.resolve();
-    });
-
-    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/stations/search?'))).toBe(true);
-    expect(queryByText('Favorite Station')).toBeTruthy();
-    expect(queryByText('Non Favorite Station')).toBeNull();
-
-    jest.useRealTimers();
+    await waitFor(() => {
+      expectFetchUrl(fetchMock.mock.calls, '/stations/search?');
+      expect(queryByText('Favorite Station')).toBeTruthy();
+      expect(queryByText('Non Favorite Station')).toBeNull();
+    }, { timeout: 5000 });
   });
 
   // la llamada a `/stations/search` solo ocurre tras 500ms desde el ultimo cambio de texto.

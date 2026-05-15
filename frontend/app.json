@@ -12,10 +12,18 @@
       "bundleIdentifier": "com.anonymous.frontend",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para mostrarte las estaciones de carga cercanas y centrar el mapa."
+        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para mostrarte las estaciones de carga cercanas y centrar el mapa.",
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "13.38.238.95": {
+              "NSTemporaryExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
       }
     },
     "android": {
+      "usesCleartextTraffic": true,
       "package": "com.ego2.app",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {

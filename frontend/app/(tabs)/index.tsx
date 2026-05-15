@@ -1,5 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { MapView, Marker } from '../_components/MapWrapper';
 import TopBar, { MapSearchListItem } from '../../components/TopBar';
 
@@ -31,7 +31,6 @@ import { appFetch } from '@/services/appFetch';
 import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
 import { ChargingActionCard } from '../../components/ChargingActionCard';
 import { ChargingResultModal } from '../../components/ChargingResultModal';
-import { StartChargingButton } from '../../components/StartChargingButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useThemePreference } from '@/contexts/ThemePreferenceContext';
@@ -44,25 +43,28 @@ import {
   getCurrentLocation,
   calculateDistanceInMeters
 } from '@/services/chargingLocationService';
-import {
-  startChargingSession as apiStartCharging,
-  endChargingSession as apiEndCharging
-} from '@/services/chargingApiService';
-
-//Importamos el boton de favoritos
-import { FavoriteButton } from '../../components/FavoriteButton';
+import { startChargingSession as apiStartCharging } from '@/services/chargingApiService';
 
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
 import { Polyline } from 'react-native-maps';
 import {StationBottomSheet} from "@/components/StationBottomSheet"; //Para pintar el trazado de la ruta
+import {
+  buildClearEventLocationPatch,
+  buildEventFocusMapPatch,
+  getFitCoordinatesForEventFocus,
+  resolveNavigationOrigin,
+} from '@/utils/eventMapFocus';
 import { useTranslation } from 'react-i18next';
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
 try {
   ImagePickerModule = require('expo-image-picker');
-} catch (_e) {
+} catch (error) {
+  if (__DEV__) {
+    console.warn('expo-image-picker unavailable:', error);
+  }
   ImagePickerModule = null;
 }
 
@@ -231,16 +233,56 @@ export default function InicioScreen() {
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
   //Estado para saber el punto  marcado por el usuario (lo uso para cunado un conductor quiere ir a un sitio que no es un punto de carga y lo selecciona en el mapa)
   const [selectedLocation, setSelectedLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  /** Si ve d’un event: ruta “Cómo llegar” amb origen a l’estació (no demanar GPS). */
+  const [routeOriginPreset, setRouteOriginPreset] = useState<{latitude: number; longitude: number} | null>(null);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState<string | null>(null);
   //Estado para saber las coordenadas que ocupan la ruta
   const [routeCoords, setRouteCoords] = useState<{latitude: number, longitude: number}[]>([]);
   //Estado para saber si estamos seleccionando nosotros mismos el origen de la ruta
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
+
+  const handleFocusEventOnMap = useCallback(
+    (
+      eventLat: number,
+      eventLon: number,
+      title: string,
+      originLat: number,
+      originLon: number
+    ) => {
+      const patch = buildEventFocusMapPatch(eventLat, eventLon, title, originLat, originLon);
+      setRouteOriginPreset(patch.routeOriginPreset);
+      setSelectedLocation(patch.selectedLocation);
+      setSelectedLocationLabel(patch.selectedLocationLabel);
+      setSelectedStation(null);
+      setIsNavigating(false);
+      setRouteCoords([]);
+      setRouteDestination(null);
+      setRouteInfo(null);
+      requestAnimationFrame(() => {
+        if (mapRef.current && typeof mapRef.current.fitToCoordinates === 'function') {
+          mapRef.current.fitToCoordinates(
+            getFitCoordinatesForEventFocus(originLat, originLon, eventLat, eventLon),
+            { edgePadding: { top: 100, right: 50, bottom: 280, left: 50 }, animated: true }
+          );
+        }
+      });
+    },
+    []
+  );
 
   //Funcion para empezar la navegacion
   const handleStartNavigation = (coordenadas: {latitude: number, longitude: number}) => {
       setRouteCoords([]);
       setRouteInfo(null);
       setRouteDestination(coordenadas);
+      const originResolution = resolveNavigationOrigin(routeOriginPreset);
+      if (originResolution.type === 'preset') {
+        setRouteOrigin(originResolution.origin);
+        setRouteOriginPreset(null);
+        setSelectedLocationLabel(null);
+        setIsNavigating(true);
+        return;
+      }
       //Preguntamos al usuario el origen
       Alert.alert(
         t('navigation.startRouteTitle'),
@@ -1265,6 +1307,8 @@ useEffect(() => {
                 latitude: e.nativeEvent.coordinate.latitude,
                 longitude: e.nativeEvent.coordinate.longitude,
               });
+              setRouteOriginPreset(null);
+              setSelectedLocationLabel(null);
               //Limpiamos la ruta
               setIsNavigating(false);
               setRouteCoords([]);
@@ -1304,6 +1348,8 @@ useEffect(() => {
 
                 setSelectedStation(est);
                 setSelectedLocation(null); //Limpiamos el punto manual si seleccionan una estación
+                setRouteOriginPreset(null);
+                setSelectedLocationLabel(null);
                 setRouteCoords([]);
                 setIsNavigating(false);
                 setRouteInfo(null);
@@ -1317,7 +1363,7 @@ useEffect(() => {
                   key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
                   coordinate={selectedLocation}
                   pinColor={sem.mapCustomLocation}
-                  title={t('home.selectedLocationTitle')}
+                  title={selectedLocationLabel || t('home.selectedLocationTitle')}
                 />
             )}
 
@@ -1407,8 +1453,11 @@ useEffect(() => {
                     setRouteDestination(null);
                     setRouteInfo(null);
                     setRouteCoords([]);
-                    setSelectedLocation(null);
                     setSelectedStation(null);
+                    const cleared = buildClearEventLocationPatch();
+                    setSelectedLocation(cleared.selectedLocation);
+                    setRouteOriginPreset(cleared.routeOriginPreset);
+                    setSelectedLocationLabel(cleared.selectedLocationLabel);
                   }}
                 >
                   <MaterialIcons name="close" size={24} color="#fff" />
@@ -1417,7 +1466,7 @@ useEffect(() => {
             )}
 
         {loadingEstaciones && (
-          <View style={styles.mapLoading}>
+          <View style={styles.mapLoading} testID="map-stations-loading">
             <ActivityIndicator size="small" color={sem.accent} />
           </View>
         )}
@@ -1447,6 +1496,7 @@ useEffect(() => {
             onStartNavigation={handleStartNavigation}
             onOpenIncidenciaForm={handleOpenIncidenciaForm}
             onSolvedIncidencia={handleSolvedIncidenciaSubmit}
+            onFocusEventOnMap={handleFocusEventOnMap}
           />
         )}
 
@@ -1457,12 +1507,17 @@ useEffect(() => {
 
             <View style={styles.infoTitleRow}>
               <MaterialIcons name="place" size={24} color={sem.mapCustomLocation} />
-              <Text style={styles.infoTitle} numberOfLines={1}>
-                {t('home.selectedLocationTitle')}
+              <Text style={styles.infoTitle} numberOfLines={2}>
+                {selectedLocationLabel || t('home.selectedLocationTitle')}
               </Text>
 
               <TouchableOpacity
-                onPress={() => setSelectedLocation(null)}
+                onPress={() => {
+                  const cleared = buildClearEventLocationPatch();
+                  setSelectedLocation(cleared.selectedLocation);
+                  setRouteOriginPreset(cleared.routeOriginPreset);
+                  setSelectedLocationLabel(cleared.selectedLocationLabel);
+                }}
                 style={styles.infoCloseBtn}
               >
                 <MaterialIcons name="close" size={20} color="#94a3b8" />
@@ -1712,10 +1767,98 @@ useEffect(() => {
   );
 }
 
-const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create({
+type InicioScreenTheme = {
+  screenBg: string;
+  mutedText: string;
+  cardBg: string;
+  titleText: string;
+  subtitleText: string;
+  border: string;
+  inputBorder: string;
+  textPrimary: string;
+  textEmphasis: string;
+  handle: string;
+  infoTitle: string;
+  promotorText: string;
+  menuBackdrop: string;
+  themeSegmentBg: string;
+  themeOptionActiveBg: string;
+  themeOptionText: string;
+  themeOptionTextActive: string;
+  errorBannerBg: string;
+  reportBackdrop: string;
+  formBorder: string;
+  chipBg: string;
+  chipText: string;
+  secondaryButtonBg: string;
+  secondaryButtonText: string;
+  labelText: string;
+};
+
+const INICIO_SCREEN_THEME: Record<'dark' | 'light', InicioScreenTheme> = {
+  dark: {
+    screenBg: '#0f172a',
+    mutedText: '#94a3b8',
+    cardBg: '#1e293b',
+    titleText: '#f1f5f9',
+    subtitleText: '#94a3b8',
+    border: '#334155',
+    inputBorder: '#334155',
+    textPrimary: '#f1f5f9',
+    textEmphasis: '#e2e8f0',
+    handle: '#475569',
+    infoTitle: '#f1f5f9',
+    promotorText: '#cbd5e1',
+    menuBackdrop: 'rgba(0,0,0,0.55)',
+    themeSegmentBg: '#334155',
+    themeOptionActiveBg: '#0f172a',
+    themeOptionText: '#cbd5e1',
+    themeOptionTextActive: '#f1f5f9',
+    errorBannerBg: '#7f1d1d',
+    reportBackdrop: 'rgba(0,0,0,0.6)',
+    formBorder: '#475569',
+    chipBg: '#334155',
+    chipText: '#cbd5e1',
+    secondaryButtonBg: '#334155',
+    secondaryButtonText: '#e2e8f0',
+    labelText: '#cbd5e1',
+  },
+  light: {
+    screenBg: '#f5f5f5',
+    mutedText: '#64748b',
+    cardBg: '#fff',
+    titleText: '#1a1a1a',
+    subtitleText: '#6b7280',
+    border: '#e2e8f0',
+    inputBorder: '#e5e7eb',
+    textPrimary: '#1f2937',
+    textEmphasis: '#111827',
+    handle: '#e2e8f0',
+    infoTitle: '#1e293b',
+    promotorText: '#94a3b8',
+    menuBackdrop: 'rgba(0,0,0,0.4)',
+    themeSegmentBg: '#f1f5f9',
+    themeOptionActiveBg: '#ffffff',
+    themeOptionText: '#475569',
+    themeOptionTextActive: '#111827',
+    errorBannerBg: '#fee2e2',
+    reportBackdrop: 'rgba(0,0,0,0.45)',
+    formBorder: '#d1d5db',
+    chipBg: '#f8fafc',
+    chipText: '#4b5563',
+    secondaryButtonBg: '#f3f4f6',
+    secondaryButtonText: '#374151',
+    labelText: '#374151',
+  },
+};
+
+const createStyles = (isDark: boolean, sem: SemanticColors) => {
+  const t = INICIO_SCREEN_THEME[isDark ? 'dark' : 'light'];
+  const errorTextColor = isDark ? sem.errorTextDark : sem.errorTextLight;
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: isDark ? '#0f172a' : '#f5f5f5',
+    backgroundColor: t.screenBg,
   },
   centered: {
     justifyContent: 'center',
@@ -1723,7 +1866,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   loadingText: {
     fontSize: 16,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     marginTop: 10,
   },
   scroll: {
@@ -1736,7 +1879,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   card: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
@@ -1753,7 +1896,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   cardCompact: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 20,
@@ -1769,13 +1912,13 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1a1a1a',
+    color: t.titleText,
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: isDark ? '#94a3b8' : '#6b7280',
+    color: t.subtitleText,
     textAlign: 'center',
     marginBottom: 18,
   },
@@ -1788,9 +1931,9 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#e2e8f0',
+    borderColor: t.border,
   },
   googleIcon: {
     width: 22,
@@ -1799,7 +1942,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
   },
   authSeparatorText: {
     marginTop: 12,
@@ -1812,7 +1955,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     width: '100%',
     fontSize: 18,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -1825,19 +1968,19 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   adminLinkText: {
     fontSize: 14,
-    color: isDark ? '#e2e8f0' : '#111827',
+    color: t.textEmphasis,
     fontWeight: '600',
   },
   welcomeUsernameTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   welcomeUsernameSubtitle: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#6b7280',
+    color: t.subtitleText,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -1847,8 +1990,8 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#e5e7eb',
-    color: isDark ? '#e2e8f0' : '#111827',
+    borderColor: t.inputBorder,
+    color: t.textEmphasis,
     borderRadius: 10,
     marginBottom: 16,
   },
@@ -1880,7 +2023,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   welcomeBackLinkText: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     fontWeight: '500',
   },
   centerMapButton: {
@@ -1890,7 +2033,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     zIndex: 10,
     width: 48,
     height: 48,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1904,7 +2047,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     position: 'absolute',
     top: 24,
     left: 24,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     padding: 8,
     borderRadius: 20,
     elevation: 3,
@@ -1915,7 +2058,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     bottom: 30,
     left: 20,
     right: 20,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
@@ -1924,7 +2067,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   infoHandle: {
     width: 40,
     height: 4,
-    backgroundColor: isDark ? '#475569' : '#e2e8f0',
+    backgroundColor: t.handle,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 16,
@@ -1939,7 +2082,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   infoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1e293b',
+    color: t.infoTitle,
     flex: 1,
   },
   infoCloseBtn: {
@@ -1956,7 +2099,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   infoText: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     flex: 1,
   },
   infoBadgeRow: {
@@ -1978,7 +2121,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   infoPromotor: {
     fontSize: 12,
-    color: isDark ? '#cbd5e1' : '#94a3b8',
+    color: t.promotorText,
     fontStyle: 'italic',
   },
   routeButton: {
@@ -2018,7 +2161,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.4)',
+    backgroundColor: t.menuBackdrop,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
@@ -2026,7 +2169,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     width: '75%',
     maxWidth: 320,
     height: '100%',
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     paddingTop: 48,
     paddingHorizontal: 20,
   },
@@ -2039,7 +2182,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   menuTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
   },
   menuClose: {
     padding: 4,
@@ -2054,7 +2197,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   menuItemText: {
     fontSize: 16,
     fontWeight: '500',
-    color: isDark ? '#e2e8f0' : '#1f2937',
+    color: t.textPrimary,
   },
   themeSection: {
     marginTop: 10,
@@ -2064,7 +2207,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   themeSectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -2072,7 +2215,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   themeSegment: {
     flexDirection: 'row',
     borderRadius: 10,
-    backgroundColor: isDark ? '#334155' : '#f1f5f9',
+    backgroundColor: t.themeSegmentBg,
     padding: 4,
     gap: 4,
   },
@@ -2084,15 +2227,15 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     justifyContent: 'center',
   },
   themeOptionActive: {
-    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+    backgroundColor: t.themeOptionActiveBg,
   },
   themeOptionText: {
-    color: isDark ? '#cbd5e1' : '#475569',
+    color: t.themeOptionText,
     fontSize: 13,
     fontWeight: '600',
   },
   themeOptionTextActive: {
-    color: isDark ? '#f1f5f9' : '#111827',
+    color: t.themeOptionTextActive,
     fontWeight: '700',
   },
   dyslexiaRow: {
@@ -2110,12 +2253,12 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   dyslexiaTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: isDark ? '#f1f5f9' : '#111827',
+    color: t.themeOptionTextActive,
   },
   dyslexiaHint: {
     marginTop: 2,
     fontSize: 12,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
   },
   userDot: {
     width: 18,
@@ -2130,38 +2273,47 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   activeFiltersBadge: {
     position: 'absolute',
     bottom: 20,
+    left: 12,
     right: 12,
     zIndex: 10,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
-    flexDirection: 'row', // La columna de text a l'esquerra, la X a la dreta
-    alignItems: 'center',
+    backgroundColor: t.cardBg,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 16,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
     elevation: 4,
     borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#e2e8f0',
+    borderColor: t.border,
   },
   filtersColumn: {
     flexDirection: 'column',
-    gap: 6, // Espai vertical entre el llamp i el connector
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
   },
   filterRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6, // Espai horitzontal entre la icona i el text
+    alignItems: 'flex-start',
+    gap: 6,
   },
 activeFiltersText: {
     fontSize: 14,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   clearFilterButton: {
     marginLeft: 12,
     paddingLeft: 12,
-    borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
-    borderLeftColor: isDark ? '#334155' : '#e2e8f0',
+    borderLeftWidth: 1,
+    borderLeftColor: t.border,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    paddingTop: 2,
   },
 
   // --- Estilos de los componentes de rutas de navegacion ---
@@ -2170,7 +2322,7 @@ activeFiltersText: {
     top: 50, // Ajusta según tu TopBar
     left: 20,
     right: 20,
-    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+    backgroundColor: t.cardBg,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -2187,12 +2339,12 @@ activeFiltersText: {
   navTextBold: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
     marginBottom: 4,
   },
   navText: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#6b7280',
+    color: t.subtitleText,
   },
   cancelRouteBtn: {
     backgroundColor: sem.error,
@@ -2236,7 +2388,7 @@ activeFiltersText: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 999, // Para que esté por encima de todo
+    zIndex: 999, // Para que esté al principio
     elevation: 5, // Sombra en Android
     shadowColor: '#000', // Sombra en iOS
     shadowOffset: { width: 0, height: 2 },
@@ -2267,25 +2419,25 @@ activeFiltersText: {
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
+    backgroundColor: t.errorBannerBg,
     padding: 12,
     borderRadius: 8,
     marginTop: 16,
     gap: 8,
   },
   errorText: {
-    color: isDark ? sem.errorTextDark : sem.errorTextLight,
+    color: errorTextColor,
     fontSize: 14,
     flex: 1,
   },
   reportModalBackdrop: {
     flex: 1,
-    backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.45)',
+    backgroundColor: t.reportBackdrop,
     justifyContent: 'center',
     padding: 18,
   },
   reportModalCard: {
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 16,
     padding: 18,
     gap: 10,
@@ -2293,27 +2445,27 @@ activeFiltersText: {
   reportModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#111827',
+    color: t.themeOptionTextActive,
     marginBottom: 4,
   },
   reportLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: isDark ? '#cbd5e1' : '#374151',
+    color: t.labelText,
   },
   reportTextarea: {
     borderWidth: 1,
-    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderColor: t.formBorder,
     borderRadius: 10,
     minHeight: 92,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: isDark ? '#e2e8f0' : '#111827',
+    color: t.textEmphasis,
     textAlignVertical: 'top',
   },
   reportFileButton: {
     borderWidth: 1,
-    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderColor: t.formBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2322,7 +2474,7 @@ activeFiltersText: {
     gap: 8,
   },
   reportFileButtonText: {
-    color: isDark ? '#e2e8f0' : '#1f2937',
+    color: t.textPrimary,
     fontSize: 14,
     fontWeight: '500',
     flexShrink: 1,
@@ -2334,11 +2486,11 @@ activeFiltersText: {
   },
   reportTypeChip: {
     borderWidth: 1,
-    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderColor: t.formBorder,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: isDark ? '#334155' : '#f8fafc',
+    backgroundColor: t.chipBg,
   },
   reportTypeChipActive: {
     borderColor: sem.accent,
@@ -2347,7 +2499,7 @@ activeFiltersText: {
   reportTypeChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: isDark ? '#cbd5e1' : '#4b5563',
+    color: t.chipText,
   },
   reportTypeChipTextActive: {
     color: sem.chipActiveText,
@@ -2360,12 +2512,12 @@ activeFiltersText: {
   reportBackButton: {
     flex: 1,
     borderRadius: 10,
-    backgroundColor: isDark ? '#334155' : '#f3f4f6',
+    backgroundColor: t.secondaryButtonBg,
     paddingVertical: 12,
     alignItems: 'center',
   },
   reportBackButtonText: {
-    color: isDark ? '#e2e8f0' : '#374151',
+    color: t.secondaryButtonText,
     fontWeight: '700',
     fontSize: 15,
   },
@@ -2398,4 +2550,5 @@ activeFiltersText: {
     fontWeight: 'bold',
     fontSize: 14,
   },
-});
+  });
+};
