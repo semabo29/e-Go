@@ -5,14 +5,13 @@ const stationService = require('../services/stationService');
 async function getStations(req, res) {
   try {
     // Agafem els possibles paràmetres de la URL
-    const { minKw, maxKw, connectorType, ac_dc, north, south, east, west } = req.query;
+    const { minKw, maxKw, connectorType, ac_dc } = req.query;
 
     if (minKw && maxKw && parseFloat(minKw) > parseFloat(maxKw)) {
       return res.status(400).json({ error: 'La potencia mínima no puede ser mayor que la máxima' });
     }
 
-    // Creem un objecte amb els filtres
-    const filters = { minKw, maxKw, connectorType, ac_dc, north, south, east, west};
+    const filters = { minKw, maxKw, connectorType, ac_dc };
 
     const stations = await stationService.getStations(filters);
     res.json(stations);
