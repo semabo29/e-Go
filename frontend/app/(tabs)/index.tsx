@@ -54,6 +54,12 @@ import { FavoriteButton } from '../../components/FavoriteButton';
 import MapViewDirections from 'react-native-maps-directions';
 import { Polyline } from 'react-native-maps';
 import {StationBottomSheet} from "@/components/StationBottomSheet"; //Para pintar el trazado de la ruta
+import {
+  buildClearEventLocationPatch,
+  buildEventFocusMapPatch,
+  getFitCoordinatesForEventFocus,
+  resolveNavigationOrigin,
+} from '@/utils/eventMapFocus';
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
@@ -243,9 +249,10 @@ export default function InicioScreen() {
       originLat: number,
       originLon: number
     ) => {
-      setRouteOriginPreset({ latitude: originLat, longitude: originLon });
-      setSelectedLocation({ latitude: eventLat, longitude: eventLon });
-      setSelectedLocationLabel(title);
+      const patch = buildEventFocusMapPatch(eventLat, eventLon, title, originLat, originLon);
+      setRouteOriginPreset(patch.routeOriginPreset);
+      setSelectedLocation(patch.selectedLocation);
+      setSelectedLocationLabel(patch.selectedLocationLabel);
       setSelectedStation(null);
       setIsNavigating(false);
       setRouteCoords([]);
@@ -254,10 +261,7 @@ export default function InicioScreen() {
       requestAnimationFrame(() => {
         if (mapRef.current && typeof mapRef.current.fitToCoordinates === 'function') {
           mapRef.current.fitToCoordinates(
-            [
-              { latitude: originLat, longitude: originLon },
-              { latitude: eventLat, longitude: eventLon },
-            ],
+            getFitCoordinatesForEventFocus(originLat, originLon, eventLat, eventLon),
             { edgePadding: { top: 100, right: 50, bottom: 280, left: 50 }, animated: true }
           );
         }
@@ -271,8 +275,9 @@ export default function InicioScreen() {
       setRouteCoords([]);
       setRouteInfo(null);
       setRouteDestination(coordenadas);
-      if (routeOriginPreset) {
-        setRouteOrigin(routeOriginPreset);
+      const originResolution = resolveNavigationOrigin(routeOriginPreset);
+      if (originResolution.type === 'preset') {
+        setRouteOrigin(originResolution.origin);
         setRouteOriginPreset(null);
         setSelectedLocationLabel(null);
         setIsNavigating(true);
@@ -1440,10 +1445,11 @@ useEffect(() => {
                     setRouteDestination(null);
                     setRouteInfo(null);
                     setRouteCoords([]);
-                    setSelectedLocation(null);
-                    setRouteOriginPreset(null);
-                    setSelectedLocationLabel(null);
                     setSelectedStation(null);
+                    const cleared = buildClearEventLocationPatch();
+                    setSelectedLocation(cleared.selectedLocation);
+                    setRouteOriginPreset(cleared.routeOriginPreset);
+                    setSelectedLocationLabel(cleared.selectedLocationLabel);
                   }}
                 >
                   <MaterialIcons name="close" size={24} color="#fff" />
@@ -1499,9 +1505,10 @@ useEffect(() => {
 
               <TouchableOpacity
                 onPress={() => {
-                  setSelectedLocation(null);
-                  setRouteOriginPreset(null);
-                  setSelectedLocationLabel(null);
+                  const cleared = buildClearEventLocationPatch();
+                  setSelectedLocation(cleared.selectedLocation);
+                  setRouteOriginPreset(cleared.routeOriginPreset);
+                  setSelectedLocationLabel(cleared.selectedLocationLabel);
                 }}
                 style={styles.infoCloseBtn}
               >
