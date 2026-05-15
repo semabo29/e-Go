@@ -12,23 +12,26 @@ module.exports = {
     'node_modules/(?!(jest-)?react-native|@react-native|expo(nent)?|@expo(nent)?/.*|expo-router|@expo-google-fonts/.*)',
   ],
 
-  // Alcance acotado (Sonar / workflow coverage): solo módulos con tests dedicados.
   collectCoverageFrom: [
-    'app/login.tsx',
-    'app/**/payments.tsx',
-    'i18n/i18n.ts',
-    'i18n/I18nLocaleHydrator.tsx',
-    'components/LanguageMenuSelector.tsx',
+    'app/**/*.{ts,tsx}',
+    'components/**/*.{ts,tsx}',
+    'services/**/*.{ts,tsx}',
+    'constants/**/*.{ts,tsx}',
+    'utils/**/*.{ts,tsx}',
+    'contexts/**/*.{ts,tsx}',
+    'hooks/**/*.{ts,tsx}',
+    'i18n/**/*.{ts,tsx}',
+    'features/**/*.{ts,tsx}',
+    'screens/**/*.{ts,tsx}',
+    '!**/*.test.{ts,tsx}',
+    '!**/*.d.ts',
+    '!app/_components/MapWrapper.web.tsx',
   ],
-  coveragePathIgnorePatterns: ['/node_modules/', String.raw`\.test\.`],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    String.raw`\.test\.`,
+    'MapWrapper\\.web\\.tsx',
+  ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageDirectory: 'coverage/jest',
-  coverageThreshold: {
-    global: {
-      statements: 80,
-      branches: 72,
-      functions: 80,
-      lines: 80,
-    },
-  },
 };

@@ -109,7 +109,7 @@ jobs:
         working-directory: ./frontend
         env:
           CI: true
-        run: npx jest --runInBand --coverage tests/integration tests/unit
+        run: npx jest --runInBand --coverage
 
       - name: Pujar artifacts de cobertura frontend
         uses: actions/upload-artifact@v4
