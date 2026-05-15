@@ -393,6 +393,121 @@ describe('StationBottomSheet - Integració de Ressenyes', () => {
     alertSpy.mockRestore();
   });
 
+  // quitar like (user_has_liked true) decrementa likes_count
+  test('TC13b: quitar like decrementa el contador optimista', async () => {
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/reviews') && (!options || options.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              puntuacio: 4,
+              comentari: 'Ok',
+              data_publicacio: '2026-01-01',
+              data_actualitzacio: '2026-01-01',
+              usuari_id: 2,
+              username: 'Otro',
+              likes_count: 6,
+              user_has_liked: true,
+            },
+          ],
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const { getByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(getByText('6')).toBeTruthy();
+      expect(getByText('favorite')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('favorite'));
+
+    await waitFor(() => {
+      expect(getByText('5')).toBeTruthy();
+      expect(getByText('favorite-border')).toBeTruthy();
+    });
+  });
+
+  //los likes de las reseñas no se afectan entre sí
+  test('TC13c: like en una reseña deja intacta la otra', async () => {
+    globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/reviews') && (!options || options.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              puntuacio: 5,
+              comentari: 'A',
+              data_publicacio: '2026-01-01',
+              data_actualitzacio: '2026-01-01',
+              usuari_id: 2,
+              username: 'UserA',
+              likes_count: 2,
+              user_has_liked: false,
+            },
+            {
+              id: 2,
+              puntuacio: 3,
+              comentari: 'B',
+              data_publicacio: '2026-01-02',
+              data_actualitzacio: '2026-01-02',
+              usuari_id: 3,
+              username: 'UserB',
+              likes_count: 10,
+              user_has_liked: false,
+            },
+          ],
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+
+    const { getByText, getAllByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(getByText('UserA')).toBeTruthy();
+      expect(getByText('UserB')).toBeTruthy();
+    });
+
+    const likeButtons = getAllByText('favorite-border');
+    fireEvent.press(likeButtons[1]);
+
+    await waitFor(() => {
+      expect(getByText('11')).toBeTruthy();
+      expect(getByText('2')).toBeTruthy();
+    });
+  });
+
+  // si la reseña no tiene comentario no se muestra el texto de la opinión
+  test('TC13d: reseña sin comentario no muestra texto de opinión', async () => {
+    globalThis.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => [
+        {
+          id: 8,
+          puntuacio: 4,
+          comentari: '',
+          data_publicacio: '2026-01-01',
+          data_actualitzacio: '2026-01-01',
+          usuari_id: 2,
+          username: 'SinTexto',
+          likes_count: 0,
+          user_has_liked: false,
+        },
+      ],
+    })) as unknown as typeof fetch;
+
+    const { getByText, queryByText } = render(<StationBottomSheet {...defaultProps} />);
+
+    await waitFor(() => expect(getByText('SinTexto')).toBeTruthy());
+    expect(queryByText('Molt bon lloc!')).toBeNull();
+  });
+
   // si falla el like se revierte el contador de likes
   test('TC13: fallo en like revierte el contador de likes', async () => {
     globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {

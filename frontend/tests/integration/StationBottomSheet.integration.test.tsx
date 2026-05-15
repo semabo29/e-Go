@@ -10,6 +10,11 @@ jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+const mockUseColorScheme = jest.fn<() => 'light' | 'dark'>(() => 'light');
+jest.mock('@/hooks/use-color-scheme', () => ({
+  useColorScheme: () => mockUseColorScheme(),
+}));
+
 jest.mock('@/constants/api', () => ({
   getApiUrl: () => 'http://localhost:3000',
 }));
@@ -95,6 +100,7 @@ function mockReviewsFetch() {
 describe('StationBottomSheet — acciones, carga y favoritos', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseColorScheme.mockReturnValue('light');
     mockReviewsFetch();
     (useAuth as jest.Mock).mockReturnValue({
       user: { id: 1, email: 'u@test.com', username: 'Tester', token: 'tok' },
@@ -299,5 +305,81 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
       expect(queryByText('Reportar incidencia')).toBeNull();
       expect(queryByText('Cómo llegar')).toBeNull();
     });
+  });
+
+  // en tema oscuro se muestran los botones y el formulario sin error
+  test('tema oscuro: renderiza acciones y valoraciones sin error', async () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    const { getByText } = render(<StationBottomSheet {...buildDefaultProps()} />);
+
+    await waitFor(() => {
+      expect(getByText('Cómo llegar')).toBeTruthy();
+      expect(getByText('Valoraciones')).toBeTruthy();
+    });
+  });
+
+  // sin promotor: la rama station.promotor && no pinta el gestor
+  test('sin promotor no muestra línea de gestor', async () => {
+    const { promotor: _removed, ...stationSinPromotor } = mockStation;
+    const { queryByText, getByText } = render(
+      <StationBottomSheet {...buildDefaultProps({ station: stationSinPromotor })} />
+    );
+
+    await waitFor(() => expect(getByText('Cómo llegar')).toBeTruthy());
+    expect(queryByText(/Gestor:/)).toBeNull();
+  });
+
+  // si no hay userLocation se muestra el botón de carga con coordenadas 0,0
+  test('sin userLocation sigue mostrando Cargar Vehículo', async () => {
+    const { getByText } = render(
+      <StationBottomSheet {...buildDefaultProps({ userLocation: null })} />
+    );
+
+    await waitFor(() => expect(getByText('Cargar Vehículo')).toBeTruthy());
+  });
+
+  // fallo al iniciar carga: dispara onError del StartChargingButton (setChargingError + Alert)
+  test('error en onStartCharging muestra alert y llama setChargingError', async () => {
+    const setChargingError = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const onStartCharging = jest.fn(async () => {
+      throw new Error('Fallo GPS');
+    });
+
+    const { getByText } = render(
+      <StationBottomSheet
+        {...buildDefaultProps({ onStartCharging, setChargingError })}
+      />
+    );
+
+    await waitFor(() => expect(getByText('Cargar Vehículo')).toBeTruthy());
+    fireEvent.press(getByText('Cargar Vehículo'));
+
+    await waitFor(() => {
+      expect(setChargingError).toHaveBeenCalledWith('Fallo GPS');
+      expect(alertSpy).toHaveBeenCalledWith('Error', 'Fallo GPS');
+    });
+    alertSpy.mockRestore();
+  });
+
+  // si operatiu es undefined se trata como operativa (botón naranja de incidencia, no solucionada)
+  test('operatiu undefined muestra Reportar incidencia estándar', async () => {
+    const { operatiu: _op, ...station } = mockStation;
+    const { getByText, queryByText } = render(
+      <StationBottomSheet {...buildDefaultProps({ station })} />
+    );
+
+    await waitFor(() => expect(getByText('Reportar incidencia')).toBeTruthy());
+    expect(queryByText('Reportar incidencia solucionada')).toBeNull();
+  });
+
+  // si no hay chargingError no se muestra el banner de error
+  test('sin chargingError no muestra banner de error', async () => {
+    const { queryByText, getByText } = render(
+      <StationBottomSheet {...buildDefaultProps({ chargingError: '' })} />
+    );
+
+    await waitFor(() => expect(getByText('Cómo llegar')).toBeTruthy());
+    expect(queryByText('error-outline')).toBeNull();
   });
 });
