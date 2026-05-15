@@ -101,7 +101,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     });
   });
 
-  // El botón de ruta debe delegar las coordenadas parseadas al mapa padre.
+  // El botón de ruta debe delegar las coordenadas parseadas al mapa 
   test('Cómo llegar llama a onStartNavigation con lat/lon de la estación', async () => {
     const onStartNavigation = jest.fn();
     const { getByText } = render(
@@ -117,7 +117,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     });
   });
 
-  // Estación operativa: el botón naranja abre el formulario de incidencia en index.
+  // si la estación está operativa el botón naranja abre el formulario de incidencia en index
   test('estación operativa: Reportar incidencia llama a onOpenIncidenciaForm', async () => {
     const onOpenIncidenciaForm = jest.fn();
     const { getByText } = render(
@@ -129,7 +129,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     expect(onOpenIncidenciaForm).toHaveBeenCalledTimes(1);
   });
 
-  // Estación no operativa: se ofrece marcar incidencia como solucionada.
+  // si la estación no está operativa se ofrece marcar incidencia como solucionada
   test('estación no operativa: botón solucionada llama a onSolvedIncidencia', async () => {
     const onSolvedIncidencia = jest.fn();
     const station = { ...mockStation, operatiu: false };
@@ -145,7 +145,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     expect(onSolvedIncidencia).toHaveBeenCalledTimes(1);
   });
 
-  // Iniciar carga desde el botón real (sin mock) propaga al callback del padre.
+  // al pulsar el botón de cargar vehículo se llama a onStartCharging
   test('Cargar Vehículo llama a onStartCharging', async () => {
     const onStartCharging = jest.fn(async () => true);
     const { getByText } = render(
@@ -158,7 +158,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     await waitFor(() => expect(onStartCharging).toHaveBeenCalled());
   });
 
-  // Si el padre pasa chargingError, el panel lo muestra al usuario.
+  // si el padre pasa chargingError se muestra el mensaje al usuario
   test('muestra el mensaje chargingError cuando viene del padre', async () => {
     const { getByText } = render(
       <StationBottomSheet
@@ -169,7 +169,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     await waitFor(() => expect(getByText('Demasiado lejos para cargar')).toBeTruthy());
   });
 
-  // Con sesión activa se renderizan timer y acciones de finalizar/cancelar.
+  // si la sesión está activa se muestran el timer y los botones de finalizar/cancelar
   test('isCharging true: muestra timer y botones de carga activa', async () => {
     const { getByText } = render(
       <StationBottomSheet
@@ -188,7 +188,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     });
   });
 
-  // Cancelar durante la carga delega en el handler del padre (index muestra confirmación).
+  // al pulsar el botón de cancelar durante la carga se llama a onCancelCharging
   test('Cancelar durante carga llama a onCancelCharging', async () => {
     const onCancelCharging = jest.fn();
     const { getByText } = render(
@@ -206,7 +206,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     expect(onCancelCharging).toHaveBeenCalledTimes(1);
   });
 
-  // Tras al menos 1 minuto, Finalizar abre el modal de confirmación del componente hijo.
+  // si el tiempo de carga es suficiente se muestra el modal de confirmación
   test('Finalizar Carga con tiempo suficiente abre modal de confirmación', async () => {
     const { getByText } = render(
       <StationBottomSheet
@@ -222,7 +222,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     expect(getByText('¿Finalizar carga?')).toBeTruthy();
   });
 
-  // El gesto de cerrar el sheet debe notificar al padre vía onClose.
+  // al pulsar el botón de cerrar el sheet se llama a onClose
   test('cerrar el bottom sheet llama a onClose', async () => {
     const onClose = jest.fn();
     const { getByTestId } = render(
@@ -233,7 +233,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  // Datos de la estación: promotor y potencia en badges.
+  // Datos de la estación se muestran en los badges
   test('muestra promotor y badges de potencia y conector', async () => {
     const { getByText } = render(<StationBottomSheet {...buildDefaultProps()} />);
 
@@ -245,7 +245,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     });
   });
 
-  // Potencia 0 se muestra como n/a para no confundir al usuario.
+  // si la potencia es 0 se muestra como n/a 
   test('kw 0 muestra n/a en el badge de potencia', async () => {
     const station = { ...mockStation, kw: '0' };
     const { getByText } = render(
@@ -255,15 +255,15 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     await waitFor(() => expect(getByText('n/a kW')).toBeTruthy());
   });
 
-  // Sin usuario logueado no debe aparecer el botón de favoritos.
-  test('sin usuario no muestra FavoriteButton', async () => {
+  // si no hay usuario logueado no debe aparecer el botón de favoritos
+  test('sin usuario logueado no muestra el botón de favoritos', async () => {
     (useAuth as jest.Mock).mockReturnValue({ user: null });
     const { queryByTestId } = render(<StationBottomSheet {...buildDefaultProps()} />);
 
     await waitFor(() => expect(queryByTestId('favorite-button')).toBeNull());
   });
 
-  // Con usuario, añadir favorito hace POST y notifica al padre.
+  // al pulsar el botón de favoritos se llama a onToggleFavorite
   test('FavoriteButton: añadir favorito llama POST y onToggleFavorite(true)', async () => {
     const onToggleFavorite = jest.fn();
     globalThis.fetch = jest.fn(async (url: string, options?: RequestInit) => {
@@ -289,7 +289,7 @@ describe('StationBottomSheet — acciones, carga y favoritos', () => {
     });
   });
 
-  // Durante la carga no deben mostrarse botones de incidencia ni de ruta.
+  // durante la carga no deben mostrarse botones de incidencia ni de ruta
   test('isCharging oculta incidencias y Cómo llegar', async () => {
     const { queryByText } = render(
       <StationBottomSheet {...buildDefaultProps({ isCharging: true, elapsedSeconds: 30 })} />
