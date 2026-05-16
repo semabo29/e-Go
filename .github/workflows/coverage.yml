@@ -64,10 +64,11 @@ jobs:
           DB_PASSWORD: test_password
           DB_NAME: test_db
           DB_SCHEMA: ego
-          DB_TABLE_USUARIOS: usuarios
+          DB_TABLE_USUARIOS: usuari
           GOOGLE_CLIENT_ID: test_client_id
           GOOGLE_CLIENT_SECRET: test_client_secret
           PENDING_SECRET: test_pending_secret
+          JWT_SECRET: test-secret
         run: npx jest --runInBand --coverage
 
       - name: Pujar artifact de cobertura backend
