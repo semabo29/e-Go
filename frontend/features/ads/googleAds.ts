@@ -137,7 +137,7 @@ export const showInterstitialAd = showFullscreenAd;
 
 /** Solo tests: reinicia estado del módulo entre casos. */
 export function resetGoogleAdsModuleForTests(): void {
-  if (typeof jest === 'undefined') return;
+  if (process.env.NODE_ENV === 'production') return;
   initialized = false;
   interstitial = null;
   interstitialLoaded = false;
