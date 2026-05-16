@@ -11,6 +11,9 @@ module.exports = {
     '<rootDir>/i18n/i18n.ts',
     '<rootDir>/i18n/I18nLocaleHydrator.tsx',
     '<rootDir>/components/LanguageMenuSelector.tsx',
+    '<rootDir>/constants/ads.ts',
+    '<rootDir>/features/ads/**/*.ts',
+    '<rootDir>/components/ads/**/*.{tsx,ts}',
   ],
   coveragePathIgnorePatterns: ['/node_modules/', '\\.test\\.'],
   coverageThreshold: {

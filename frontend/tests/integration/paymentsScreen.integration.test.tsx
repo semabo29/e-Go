@@ -23,8 +23,11 @@ jest.mock('@/components/WelcomePremiumModal', () => {
   };
 });
 
+jest.unmock('@/contexts/SubscriptionContext');
+
 import PaymentsScreen from '@/app/(tabs)/payments';
 import { useAuth } from '@/contexts/AuthContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert } from 'react-native';
 
@@ -35,6 +38,14 @@ jest.mock('@/contexts/AuthContext', () => ({
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
 }));
+
+function renderPayments() {
+  return render(
+    <SubscriptionProvider>
+      <PaymentsScreen />
+    </SubscriptionProvider>
+  );
+}
 
 describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
   const userId = 7;
@@ -87,7 +98,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
   test('shows FREE plan and can start checkout', async () => {
     const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync');
 
-    const { getByText } = render(<PaymentsScreen />);
+    const { getByText } = renderPayments();
 
     // Esperamos que se cargue el estado y aparezca el plan FREE
     await waitFor(() => {
@@ -139,7 +150,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
 
     const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync');
 
-    const { getByText, queryByText } = render(<PaymentsScreen />);
+    const { getByText, queryByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Cancelar suscripción')).toBeTruthy();
@@ -187,7 +198,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
-    const { getByText, queryByText } = render(<PaymentsScreen />);
+    const { getByText, queryByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Reactivar suscripción')).toBeTruthy();
@@ -217,7 +228,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
-    const { getByText } = render(<PaymentsScreen />);
+    const { getByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Pasar a Premium')).toBeTruthy();
@@ -248,7 +259,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
-    const { getByText } = render(<PaymentsScreen />);
+    const { getByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Pasar a Premium')).toBeTruthy();
@@ -290,7 +301,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
     const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync');
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { getByText, queryByText } = render(<PaymentsScreen />);
+    const { getByText, queryByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Cancelar suscripción')).toBeTruthy();
@@ -339,7 +350,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
     const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync');
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { getByText, queryByText } = render(<PaymentsScreen />);
+    const { getByText, queryByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Reactivar suscripción')).toBeTruthy();
@@ -384,7 +395,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
     const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync');
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { getByText, queryByText } = render(<PaymentsScreen />);
+    const { getByText, queryByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Cancelar suscripción')).toBeTruthy();
@@ -428,7 +439,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
     const openSpy = jest.spyOn(WebBrowser, 'openBrowserAsync');
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { getByText, queryByText } = render(<PaymentsScreen />);
+    const { getByText, queryByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Reactivar suscripción')).toBeTruthy();
@@ -477,7 +488,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
-    const { getByText } = render(<PaymentsScreen />);
+    const { getByText } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Pasar a Premium')).toBeTruthy();
@@ -503,7 +514,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
     });
     const spy = jest.fn();
     globalThis.fetch = spy as unknown as typeof fetch;
-    render(<PaymentsScreen />);
+    renderPayments();
     await waitFor(() => {
       expect(spy).not.toHaveBeenCalled();
     });
@@ -544,7 +555,7 @@ describe('PaymentsScreen integration (mocked fetch/WebBrowser)', () => {
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
-    const { getByText, getByTestId, queryByTestId } = render(<PaymentsScreen />);
+    const { getByText, getByTestId, queryByTestId } = renderPayments();
 
     await waitFor(() => {
       expect(getByText('Pasar a Premium')).toBeTruthy();

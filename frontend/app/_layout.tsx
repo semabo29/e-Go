@@ -9,8 +9,10 @@ import { LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
+import { GoogleAdsBootstrap } from '@/components/ads/GoogleAdsBootstrap';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ChargingProvider } from '@/contexts/ChargingContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ColorblindPreferenceProvider } from '@/contexts/ColorblindPreferenceContext';
 import { ThemePreferenceProvider } from '@/contexts/ThemePreferenceContext';
@@ -51,9 +53,11 @@ function RootLayoutContent() {
 
   return (
     <AuthProvider>
-      <ChargingProvider>
-        <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-          <Stack>
+      <SubscriptionProvider>
+        <GoogleAdsBootstrap />
+        <ChargingProvider>
+          <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+            <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="my-favorite-stations" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -65,10 +69,11 @@ function RootLayoutContent() {
             <Stack.Screen name="admin-requests" options={{ headerShown: false }} />
             <Stack.Screen name="admin-station-new" options={{ headerShown: false }} />
             <Stack.Screen name="company-station-new" options={{ headerShown: false }} />
-          </Stack>
-          <StatusBar style={isDark ? 'light' : 'dark'} />
-        </ThemeProvider>
-      </ChargingProvider>
+            </Stack>
+            <StatusBar style={isDark ? 'light' : 'dark'} />
+          </ThemeProvider>
+        </ChargingProvider>
+      </SubscriptionProvider>
     </AuthProvider>
   );
 }

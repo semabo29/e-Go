@@ -16,7 +16,7 @@
       }
     },
     "android": {
-      "package": "com.ego2.app",
+      "package": "com.ego.app",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

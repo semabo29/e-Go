@@ -1,8 +1,31 @@
 module.exports = ({ config }) => {
   const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const androidAdmobAppId =
+    process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID?.trim() ||
+    'ca-app-pub-3940256099942544~3347511713';
+  const iosAdmobAppId =
+    process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID?.trim() ||
+    'ca-app-pub-3940256099942544~1458002511';
+
+  const plugins = [...(config.plugins ?? [])];
+  const hasAdmobPlugin = plugins.some(
+    (entry) =>
+      entry === 'react-native-google-mobile-ads' ||
+      (Array.isArray(entry) && entry[0] === 'react-native-google-mobile-ads')
+  );
+  if (!hasAdmobPlugin) {
+    plugins.push([
+      'react-native-google-mobile-ads',
+      {
+        androidAppId: androidAdmobAppId,
+        iosAppId: iosAdmobAppId,
+      },
+    ]);
+  }
 
   return {
     ...config,
+    plugins,
     ios: {
       ...config.ios,
       config: {

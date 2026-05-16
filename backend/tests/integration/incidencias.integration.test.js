@@ -158,7 +158,7 @@ describe('Incidencias integration (real DB)', () => {
       expect(createRes.body.id).toBeDefined();
 
       const dbRes = await pool.query(
-        'SELECT id, tipus, comentari, conductor, estacio, validada, resolta, datainici, arxiu FROM ego.incidencia WHERE id = $1',
+        'SELECT id, tipus, comentari, conductor, estacio, validada, resolta, data_inici, arxiu FROM ego.incidencia WHERE id = $1',
         [createRes.body.id]
       );
 
@@ -175,7 +175,7 @@ describe('Incidencias integration (real DB)', () => {
           arxiu: null,
         })
       );
-      expect(dbRes.rows[0].datainici).toBeTruthy();
+      expect(dbRes.rows[0].data_inici).toBeTruthy();
     });
 
     test('POST /incidencias devuelve 400 si llega tipus "operatiu" en minúscula', async () => {

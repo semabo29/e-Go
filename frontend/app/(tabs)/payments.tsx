@@ -19,11 +19,8 @@ import { WelcomePremiumModal } from '@/components/WelcomePremiumModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useTranslation } from 'react-i18next';
-import {
-  buildFallbackStatus,
-  formatPeriodEnd,
-  type SubscriptionStatus,
-} from '@/features/subscription/subscriptionHelpers';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { formatPeriodEnd } from '@/features/subscription/subscriptionHelpers';
 
 const STRIPE_SUCCESS_URL = 'https://example.com/stripe/success';
 const STRIPE_CANCEL_URL = 'https://example.com/stripe/cancel';
@@ -40,6 +37,12 @@ export default function PaymentsScreen() {
     [colorblindFriendly, sem.accent]
   );
   const { user } = useAuth();
+  const {
+    subStatus,
+    isPremium,
+    isLoading: loadingStatus,
+    refreshSubscription: loadSubscriptionStatus,
+  } = useSubscription();
   const theme = {
     background: pick(['#f8fafc', '#0f172a']),
     title: pick(['#111827', '#f1f5f9']),
@@ -81,14 +84,11 @@ export default function PaymentsScreen() {
     activePlanBorder: sem.accent,
   };
   const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
-  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   const [showWelcomePremium, setShowWelcomePremium] = useState(false);
   const [welcomeMode, setWelcomeMode] = useState<'new' | 'reactivated'>('reactivated');
-  const isPremium = Boolean(subStatus?.isPremium);
   const premiumPulse = React.useRef(new Animated.Value(0)).current;
   const premiumScale = React.useRef(new Animated.Value(1)).current;
   const premiumChipScale = React.useRef(new Animated.Value(1)).current;
@@ -97,29 +97,6 @@ export default function PaymentsScreen() {
   const checkoutFlowRef = React.useRef(false);
 
   const sleep = useCallback((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)), []);
-
-  const loadSubscriptionStatus = useCallback(async () => {
-    if (!user?.id) {
-      setSubStatus(null);
-      return;
-    }
-    setLoadingStatus(true);
-    try {
-      const res = await appFetch(`/subscription/status?userId=${user.id}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as SubscriptionStatus;
-      setSubStatus(data);
-    } catch (err) {
-      console.warn('[payments] Error cargando suscripción:', err);
-      setSubStatus(buildFallbackStatus());
-    } finally {
-      setLoadingStatus(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadSubscriptionStatus();
-  }, [loadSubscriptionStatus]);
 
   useEffect(() => {
     if (!isPremium) {

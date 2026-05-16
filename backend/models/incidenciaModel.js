@@ -33,7 +33,7 @@ async function createIncidencia({ tipus, comentari, arxiu, conductor, estacio })
   const query = `
     INSERT INTO ego.incidencia (
       tipus,
-      dataInici,
+      data_inici,
       comentari,
       arxiu,
       validada,
