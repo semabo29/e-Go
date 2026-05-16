@@ -1,6 +1,9 @@
 import '@testing-library/jest-native/extend-expect';
 import { jest } from '@jest/globals';
 
+// Margen extra en CI y al instrumentar cobertura (login.integration tiene muchos waitFor).
+jest.setTimeout(process.env.CI === 'true' ? 45_000 : 30_000);
+
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'es', regionCode: 'ES' }],
 }));
@@ -55,7 +58,6 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
-// --- 2. Mock para el Bottom Sheet de tus compañeros ---
 jest.mock('@gorhom/bottom-sheet', () => {
   const reactNative = require('react-native');
   return {

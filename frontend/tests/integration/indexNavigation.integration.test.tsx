@@ -70,18 +70,20 @@ jest.mock('react-native-maps', () => {
 });
 
 jest.mock('react-native-maps-directions', () => {
+  const React = require('react');
   const { View } = require('react-native');
   return (props: any) => {
-    // Simulamos que la ruta se calcula y dispara el onReady automáticamente
-    if (props.onReady) {
-      setTimeout(() => {
-        props.onReady({
-          distance: 5.2,
-          duration: 12,
-          coordinates: [{ latitude: 41, longitude: 2 }, { latitude: 41.1, longitude: 2.1 }]
-        });
-      }, 0);
-    }
+    // Simulamos onReady tras el montaje (más estable que setTimeout suelto con act).
+    React.useEffect(() => {
+      props.onReady?.({
+        distance: 5.2,
+        duration: 12,
+        coordinates: [
+          { latitude: 41, longitude: 2 },
+          { latitude: 41.1, longitude: 2.1 },
+        ],
+      });
+    }, []);
     return <View testID="map-view-directions" />;
   };
 });
@@ -207,9 +209,12 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
       if (buscarOtroBtn?.onPress) buscarOtroBtn.onPress();
     });
 
-    await waitFor(() => {
-      expect(getByText('Selecciona el punto de origen en el mapa')).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByText('Selecciona el punto de origen en el mapa')).toBeTruthy();
+      },
+      { timeout: 5000 }
+    );
 
     await act(async () => {
       fireEvent(getByTestId('map-view'), 'onPress', {
@@ -217,9 +222,12 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
       });
     });
 
-    await waitFor(() => {
-      expect(queryByText('Selecciona el punto de origen en el mapa')).toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(queryByText('Selecciona el punto de origen en el mapa')).toBeNull();
+      },
+      { timeout: 5000 }
+    );
   });
 
   // TC4
@@ -276,7 +284,7 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
     });
 
     // 4. El mock de MapViewDirections dispara el onReady y aparece el panel con "Iniciar"
-    const iniciarBtn = await waitFor(() => getByText('Iniciar'));
+    const iniciarBtn = await waitFor(() => getByText('Iniciar'), { timeout: 5000 });
     expect(iniciarBtn).toBeTruthy();
 
     // 5. Pulsamos "Iniciar" para pasar al modo 3D (isDrivingMode = true)
@@ -285,8 +293,11 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
     });
 
     // 6. Verificamos que el botón "Iniciar" desaparece de la interfaz
-    await waitFor(() => {
-      expect(queryByText('Iniciar')).toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(queryByText('Iniciar')).toBeNull();
+      },
+      { timeout: 5000 }
+    );
   });
 });

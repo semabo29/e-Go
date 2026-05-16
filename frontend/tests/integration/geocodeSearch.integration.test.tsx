@@ -9,6 +9,10 @@ import { useCharging } from '@/contexts/ChargingContext';
 let mockLocalParams: Record<string, unknown> = {};
 const mockSetParams = jest.fn();
 const mockPush = jest.fn();
+const mockMapViewRef = {
+  animateToRegion: jest.fn(),
+  fitToCoordinates: jest.fn(),
+};
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
@@ -98,9 +102,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
   const { View, TouchableOpacity } = require('react-native');
 
   const MapView = React.forwardRef(({ children, onPress }: any, ref: any) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
-    }));
+    React.useImperativeHandle(ref, () => mockMapViewRef);
     return (
       <TouchableOpacity testID="map-view" onPress={onPress}>
         <View>{children}</View>
@@ -144,6 +146,7 @@ describe('geocodeSearch integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockMapViewRef.animateToRegion.mockClear();
     mockLocalParams = {};
 
     mockUseAuth.mockReturnValue({
@@ -263,5 +266,49 @@ describe('geocodeSearch integration', () => {
         fetchMock.mock.calls.some((c) => typeof c[0] === 'string' && (c[0] as string).includes('/geocode/place?'))
       ).toBe(true);
     });
+
+    await waitFor(() => {
+      expect(mockMapViewRef.animateToRegion).toHaveBeenCalledWith(
+        expect.objectContaining({ latitude: 41.387, longitude: 2.17 }),
+        1000
+      );
+    });
+  });
+
+  test('alternar modo de búsqueda limpia texto y resultados', async () => {
+    const fetchMock = globalThis.fetch as jest.Mock;
+    fetchMock.mockImplementation(async (input: unknown) => {
+      const u = fetchUrlString(input);
+      if (u.includes('/favorites')) return { ok: true, json: async () => [] };
+      if (u.includes('/stations') && !u.includes('/search')) return { ok: true, json: async () => [] };
+      if (u.includes('/stations/search?')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: 1,
+              nom: 'Estació Nord',
+              latitud: '41.39',
+              longitud: '2.15',
+              municipi: 'Barcelona',
+              adreca: 'Carrer Nord',
+              kw: '50',
+            },
+          ],
+        };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    });
+
+    const { getByTestId, queryByTestId } = render(<InicioScreen />);
+
+    fireEvent.changeText(getByTestId('search-input'), 'Est');
+    await waitFor(() => expect(getByTestId('result-station-1')).toBeTruthy(), { timeout: 4000 });
+
+    fireEvent.press(getByTestId('search-mode-toggle'));
+    await waitFor(() => expect(getByTestId('search-mode-value').props.children).toBe('addresses'));
+
+    expect(getByTestId('search-input').props.value).toBe('');
+    expect(queryByTestId('result-station-1')).toBeNull();
   });
 });

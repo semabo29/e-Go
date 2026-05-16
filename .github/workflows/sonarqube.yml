@@ -1,0 +1,33 @@
+# Anàlisi estàtic (bugs, smells, seguretat). La cobertura va al workflow "Coverage".
+name: SonarQube Analysis
+
+on:
+  push:
+    branches: ["development", "main"]
+  pull_request:
+    branches: ["development", "main"]
+  workflow_dispatch:
+
+jobs:
+  sonarqube:
+    name: Analitzar amb SonarCloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del codi
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Anàlisi amb SonarCloud
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.javascript.lcov.reportPaths=
+            -Dsonar.typescript.lcov.reportPaths=
+            -Dsonar.coverage.exclusions=**/*
+            -Dsonar.qualitygate.wait=false

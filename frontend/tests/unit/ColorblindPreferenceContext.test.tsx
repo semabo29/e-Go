@@ -1,7 +1,3 @@
-/**
- * Pruebas unitarias del modo accesible (daltonismo): lectura/escritura en AsyncStorage
- * y comportamiento del provider, alineadas con ThemePreferenceContext.
- */
 import React from 'react';
 import { Pressable, Text } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
@@ -39,7 +35,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     await AsyncStorage.clear();
   });
 
-  // Por defecto el modo accesible está desactivado hasta leer almacenamiento.
+  // Por defecto el modo accesible está desactivado
   test('sin valor guardado: tras cargar, colorblindFriendly es false y isLoaded pasa a true', async () => {
     const { getByTestId } = render(
       <ColorblindPreferenceProvider>
@@ -54,7 +50,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     expect(getByTestId('colorblind').props.children).toBe('no');
   });
 
-  // Solo el valor guardado "1" activa el modo; es el contrato con setItem del contexto.
+  // Solo el valor guardado "1" activa el modo
   test('valor "1" en AsyncStorage: tras cargar, colorblindFriendly es true', async () => {
     await AsyncStorage.setItem(STORAGE_KEY, '1');
 
@@ -71,7 +67,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     expect(getByTestId('colorblind').props.children).toBe('yes');
   });
 
-  // Explícitamente desactivado en disco: debe reflejarse como false.
+  // desactivado en disco
   test('valor "0" en AsyncStorage: tras cargar, colorblindFriendly es false', async () => {
     await AsyncStorage.setItem(STORAGE_KEY, '0');
 
@@ -88,7 +84,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     expect(getByTestId('colorblind').props.children).toBe('no');
   });
 
-  // Cualquier otro texto no debe interpretarse como activado (evita estados ambiguos).
+  // Cualquier otro texto no debe interpretarse como activado
   test('valor distinto de "1": no activa el modo accesible', async () => {
     await AsyncStorage.setItem(STORAGE_KEY, 'invalid');
 
@@ -105,7 +101,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     expect(getByTestId('colorblind').props.children).toBe('no');
   });
 
-  // setColorblindFriendly(true) debe persistir de inmediato en AsyncStorage.
+  // setColorblindFriendly(true) debe persistir de inmediato
   test('al activar modo accesible: actualiza estado y guarda "1" en AsyncStorage', async () => {
     const { getByTestId } = render(
       <ColorblindPreferenceProvider>
@@ -128,7 +124,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     });
   });
 
-  // Al desactivar desde estado activo, se escribe "0" para la próxima sesión.
+  // Al desactivar desde estado activo, se escribe "0"
   test('al desactivar modo accesible: estado false y AsyncStorage guarda "0"', async () => {
     await AsyncStorage.setItem(STORAGE_KEY, '1');
 
@@ -153,7 +149,7 @@ describe('ColorblindPreferenceContext (modo accesible / daltonismo)', () => {
     });
   });
 
-  // Pantallas fuera del provider no deben romper: fallback seguro y setter inerte.
+  // Pantallas fuera del provider no deben romper
   test('useColorblindPreference sin Provider: false, isLoaded true y set no-op', () => {
     const { getByTestId } = render(<ColorblindProbe />);
 

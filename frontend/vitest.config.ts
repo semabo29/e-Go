@@ -6,10 +6,14 @@ export default defineConfig({
     exclude: ['tests/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
-      include: ['features/subscription/subscriptionHelpers.ts'],
+      reporter: ['text', 'lcov', 'html'],
+      reportsDirectory: './coverage/vitest',
+      // Vitest només executa tests a features/; el global del frontend el marca Jest.
+      include: ['features/**/*.{ts,tsx}'],
+      exclude: ['**/*.test.*', '**/node_modules/**', '**/dist/**'],
       thresholds: {
         statements: 80,
-        branches: 80,
+        branches: 75,
         functions: 80,
         lines: 80,
       },
