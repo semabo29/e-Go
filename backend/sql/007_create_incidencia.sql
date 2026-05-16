@@ -25,7 +25,7 @@ $$;
 CREATE TABLE IF NOT EXISTS ego.incidencia (
     id         SERIAL PRIMARY KEY,
     tipus      ego.tipus_incidencia NOT NULL,
-    dataInici  TIMESTAMPTZ NOT NULL,
+    data_inici TIMESTAMPTZ NOT NULL,
     comentari  VARCHAR(255) NOT NULL,
     arxiu      VARCHAR(255) DEFAULT NULL,
     validada   BOOLEAN NOT NULL DEFAULT FALSE,

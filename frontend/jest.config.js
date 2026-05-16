@@ -25,6 +25,7 @@ module.exports = {
     'screens/**/*.{ts,tsx}',
     '!**/*.test.{ts,tsx}',
     '!**/*.d.ts',
+    '!i18n/locales/**',
     '!app/_components/MapWrapper.web.tsx',
   ],
   coveragePathIgnorePatterns: [
