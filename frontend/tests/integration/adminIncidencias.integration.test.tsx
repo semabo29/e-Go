@@ -12,6 +12,7 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/services/incidenciaAdminService', () => ({
   listPendingIncidencias: jest.fn(),
+  listHistoryIncidencias: jest.fn(),
   validateIncidencia: jest.fn(),
   rejectIncidencia: jest.fn(),
   resolveIncidencia: jest.fn(),
