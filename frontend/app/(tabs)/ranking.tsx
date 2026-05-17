@@ -7,6 +7,7 @@ import { getApiUrl } from '@/constants/api';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 interface RankingUser {
@@ -19,11 +20,13 @@ export default function RankingScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { colorblindFriendly } = useColorblindPreference();
+  const { user } = useAuth();
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const themeIndex = colorScheme === 'dark' ? 1 : 0;
   const pick = (values: [string, string]) => values[themeIndex];
   const router = useRouter();
   const [ranking, setRanking] = useState<RankingUser[]>([]);
+  const [isGlobalRanking, setIsGlobalRanking] = useState(true);
   const [loading, setLoading] = useState(true);
   const theme = {
     background: pick(['#f8fafc', '#0f172a']),
@@ -47,16 +50,40 @@ export default function RankingScreen() {
   const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
 
   useEffect(() => {
-    fetchRanking();
-  }, []);
+    if (isGlobalRanking) {
+      fetchGlobalRanking();
+    } else {
+      fetchFriendsRanking();
+    }
+  }, [isGlobalRanking]);
 
-  const fetchRanking = async () => {
+  const fetchGlobalRanking = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${getApiUrl()}/ranking`);
       const data = await response.json();
       setRanking(data);
     } catch (error) {
-      console.error('Error cargando ranking:', error);
+      console.error('Error cargando ranking global:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFriendsRanking = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/ranking/friends?usuari_id=${user.id}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setRanking(data);
+      } else {
+        setRanking([]);
+      }
+    } catch (error) {
+      console.error('Error cargando ranking de amigos:', error);
+      setRanking([]);
     } finally {
       setLoading(false);
     }
@@ -81,9 +108,30 @@ export default function RankingScreen() {
   return (
     <SafeAreaView style={styles.container} testID="ranking-screen-root">
       <View style={styles.header}>
-        <MaterialIcons name="emoji-events" size={32} color={sem.accent} />
-        <Text style={styles.title}>{t('ranking.title')}</Text>
-        <Text style={styles.subtitle}>{t('ranking.subtitle')}</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.titleContainer}>
+            <MaterialIcons name="emoji-events" size={32} color={sem.accent} />
+            <View style={styles.titleText}>
+              <Text style={styles.title}>{t('ranking.title')}</Text>
+              <Text style={styles.subtitle}>
+                {isGlobalRanking ? 'Los conductores más sostenibles' : 'Tus amigos'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.tabButton, isGlobalRanking && styles.tabButtonActive]}
+            onPress={() => setIsGlobalRanking(!isGlobalRanking)}
+          >
+            <MaterialIcons
+              name={isGlobalRanking ? 'public' : 'group'}
+              size={20}
+              color={isGlobalRanking ? '#fff' : theme.title}
+            />
+            <Text style={[styles.tabButtonText, isGlobalRanking && styles.tabButtonTextActive]}>
+              {isGlobalRanking ? 'Global' : 'Amigos'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -115,7 +163,9 @@ export default function RankingScreen() {
           </View>
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{t('ranking.empty')}</Text>
+          <Text style={styles.emptyText}>
+            {isGlobalRanking ? 'Aún no hay puntuaciones.' : 'No tienes amigos aún o no hay puntuaciones entre tus amigos.'}
+          </Text>
         }
       />
     </SafeAreaView>
@@ -153,23 +203,55 @@ const createStyles = (theme: {
     fontSize: 16,
   },
   header: {
-    padding: 24,
-    alignItems: 'center',
     backgroundColor: theme.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
     marginBottom: 8,
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 24,
+    paddingRight: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  titleText: {
+    marginLeft: 12,
+  },
   title: {
     fontSize: 24,
     fontWeight: '800',
     color: theme.title,
-    marginTop: 8,
   },
   subtitle: {
     fontSize: 14,
     color: theme.subtitle,
     marginTop: 4,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: theme.border,
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: '#2563eb',
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.title,
+  },
+  tabButtonTextActive: {
+    color: '#fff',
   },
   listContainer: {
     padding: 16,

@@ -200,3 +200,15 @@ jest.mock('@/contexts/ChargingContext', () => ({
     clearAutoStopResult: jest.fn(),
   }),
 }));
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    back: jest.fn(),
+    replace: jest.fn(),
+    navigate: jest.fn(),
+  }),
+  useLocalSearchParams: () => ({}),
+  Stack: { Screen: jest.fn(), Navigator: jest.fn() },
+  Tabs: { Screen: jest.fn(), Navigator: jest.fn() },
+}));

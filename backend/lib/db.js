@@ -23,12 +23,14 @@ const pool = new Pool({
 // Tabla de usuarios y admins (ej. schema ego, tabla usuari)
 const DB_SCHEMA = normalizeIdentifier(process.env.DB_SCHEMA, 'public');
 const DB_TABLE_USUARIOS = normalizeIdentifier(process.env.DB_TABLE_USUARIOS, 'usuari');
+const DB_TABLE_AMIGOS = normalizeIdentifier(process.env.DB_TABLE_AMIGOS, 'amics');
 const DB_TABLE_CONDUCTORES = normalizeIdentifier(process.env.DB_TABLE_CONDUCTORES, 'conductor');
 const DB_TABLE_ADMINS = normalizeIdentifier(process.env.DB_TABLE_ADMINS, 'admins');
 const DB_TABLE_EMPRESAS = normalizeIdentifier(process.env.DB_TABLE_EMPRESAS, 'empresas');
 const DB_TABLE_STATION_REQUESTS = normalizeIdentifier(process.env.DB_TABLE_STATION_REQUESTS, 'station_requests');
 const DB_TABLE_SUBSCRIPTIONS = normalizeIdentifier(process.env.DB_TABLE_SUBSCRIPTIONS, 'subscription');
 const USUARIOS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_USUARIOS}"`;
+const AMIGOS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_AMIGOS}"`;
 const CONDUCTORES_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_CONDUCTORES}"`;
 const ADMINS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_ADMINS}"`;
 const EMPRESAS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_EMPRESAS}"`;
@@ -38,6 +40,7 @@ const SUBSCRIPTIONS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_SUBSCRIPTIONS}"`;
 module.exports = {
   pool,
   USUARIOS_TABLE,
+  AMIGOS_TABLE,
   CONDUCTORES_TABLE,
   ADMINS_TABLE,
   EMPRESAS_TABLE,

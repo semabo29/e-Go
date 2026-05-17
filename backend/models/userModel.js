@@ -151,28 +151,18 @@ async function getInfoUser(userId) {
   return user.rows[0];
 }
 
-async function updateUser(userId, username, email) {
+async function updateUser(userId, username) {
   const updates = [];
-  const values = [userId];
 
-  if (username) {
-    values.push(username);
-    updates.push(`username = $${values.length}`);
-  }
-  if (email) {
-    values.push(email);
-    updates.push(`email = $${values.length}`);
-  }
-
-  if (updates.length === 0) {
-    throw new Error('No fields to update');
+  if (!username) {
+    throw new Error('Falta el campo username');
   }
 
   const query = `UPDATE ${USUARIOS_TABLE}
-       SET ${updates.join(', ')}, updated_at = NOW()
+       SET username = $2, updated_at = NOW()
        WHERE id = $1
        RETURNING id, email, username, created_at, updated_at`;
-  const result = await pool.query(query, values);
+  const result = await pool.query(query, [userId, username]);
   return result.rows[0] || null;
 }
 
