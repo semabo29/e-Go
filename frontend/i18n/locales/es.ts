@@ -144,6 +144,8 @@ export default {
     sentBody: 'La incidencia se ha registrado correctamente.',
     sendError: 'Error al enviar la incidencia',
     registerError: 'No se pudo registrar la incidencia',
+    alreadyReportedTitle: 'Incidencia ya reportada',
+    alreadyReported: 'Ya has reportado esta incidencia para esta estación.',
     reportedTitle: 'Incidencia reportada',
     reportedBody: 'Se ha marcado la estación como operativa.',
     solvedRegisterError: 'No se pudo registrar la incidencia solucionada',

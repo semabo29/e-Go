@@ -8,6 +8,7 @@ jest.mock('../../models/incidenciaModel', () => ({
   getIncidenciaTypes: jest.fn(),
   conductorExists: jest.fn(),
   stationExists: jest.fn(),
+  hasOpenIncidenciaForConductorAndStation: jest.fn().mockResolvedValue(false),
   createIncidencia: jest.fn(),
   countDistinctPendingReporters: jest.fn().mockResolvedValue(0),
   listPendingByStationAndType: jest.fn().mockResolvedValue([]),
@@ -48,6 +49,7 @@ describe('incidenciaService', () => {
     mockClient.query.mockResolvedValue({});
     userPointsModel.addPoints.mockResolvedValue();
     subscriptionModel.findByUserId.mockResolvedValue(null);
+    incidenciaModel.hasOpenIncidenciaForConductorAndStation.mockResolvedValue(false);
   });
 
   // ─── listIncidenciaTypes ────────────────────────────────────────────────────
@@ -123,6 +125,56 @@ describe('incidenciaService', () => {
       await expect(
         incidenciaService.createIncidencia(validData)
       ).rejects.toMatchObject({ code: 'NOT_FOUND', message: expect.stringContaining('estaci') });
+    });
+
+    test('falla si el conductor ya tiene una incidencia abierta del mismo carril', async () => {
+      incidenciaModel.getIncidenciaTypes.mockResolvedValue(['Operatiu', 'Altres', 'Avariat']);
+      incidenciaModel.conductorExists.mockResolvedValue(true);
+      incidenciaModel.stationExists.mockResolvedValue(true);
+      incidenciaModel.hasOpenIncidenciaForConductorAndStation.mockResolvedValue(true);
+
+      const avariatData = { ...validData, tipus: 'Avariat' };
+
+      await expect(
+        incidenciaService.createIncidencia(avariatData)
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: 'Ya has reportado esta incidencia para esta estación',
+      });
+
+      expect(incidenciaModel.hasOpenIncidenciaForConductorAndStation).toHaveBeenCalledWith(
+        18,
+        2440207,
+        'Avariat',
+        mockClient
+      );
+      expect(incidenciaModel.createIncidencia).not.toHaveBeenCalled();
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
+    test('falla si tipus Operatiu ya tiene otra incidencia Operatiu abierta', async () => {
+      incidenciaModel.getIncidenciaTypes.mockResolvedValue(['Operatiu', 'Altres']);
+      incidenciaModel.conductorExists.mockResolvedValue(true);
+      incidenciaModel.stationExists.mockResolvedValue(true);
+      incidenciaModel.hasOpenIncidenciaForConductorAndStation.mockResolvedValue(true);
+
+      await expect(
+        incidenciaService.createIncidencia({
+          ...validData,
+          comentari: 'La Incidencia esta solucionada',
+          tipus: 'Operatiu',
+        })
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: 'Ya has reportado esta incidencia para esta estación',
+      });
+
+      expect(incidenciaModel.hasOpenIncidenciaForConductorAndStation).toHaveBeenCalledWith(
+        18,
+        2440207,
+        'Operatiu',
+        mockClient
+      );
     });
 
     test('falla con mime no permitido', async () => {

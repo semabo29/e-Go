@@ -147,6 +147,8 @@ export default {
     sentBody: 'La segnalazione è stata registrata correttamente.',
     sendError: 'Impossibile inviare la segnalazione',
     registerError: 'Impossibile registrare la segnalazione',
+    alreadyReportedTitle: 'Segnalazione già inviata',
+    alreadyReported: 'Hai già segnalato questa incidenza per questa stazione.',
     reportedTitle: 'Segnalazione registrata',
     reportedBody: 'La stazione è stata segnalata come operativa.',
     solvedRegisterError: 'Impossibile registrare la segnalazione risolta',

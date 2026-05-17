@@ -145,6 +145,8 @@ export default {
     sentBody: 'The issue was registered successfully.',
     sendError: 'Could not submit the issue',
     registerError: 'Could not register the issue',
+    alreadyReportedTitle: 'Issue already reported',
+    alreadyReported: 'You have already reported this issue for this station.',
     reportedTitle: 'Issue reported',
     reportedBody: 'The station was marked as operational.',
     solvedRegisterError: 'Could not register the resolved issue',

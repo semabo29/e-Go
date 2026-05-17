@@ -96,6 +96,11 @@ describe('Incidencias integration (real DB)', () => {
     );
   });
 
+  beforeEach(async () => {
+    const allUserIds = [validUserId, missingConductorUserId, ...triggerUserIds, premiumUserId, adminUserId];
+    await pool.query(`DELETE FROM ego.incidencia WHERE conductor = ANY($1::int[])`, [allUserIds]);
+  });
+
   afterAll(async () => {
     const allUserIds = [validUserId, missingConductorUserId, ...triggerUserIds, premiumUserId, adminUserId];
     const allStationIds = [validStationId, triggerStationId, premiumStationId];
@@ -157,6 +162,117 @@ describe('Incidencias integration (real DB)', () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('El conductor no existe');
+  });
+
+  test('POST /incidencias devuelve 409 si el conductor ya tiene otra incidencia abierta del mismo carril', async () => {
+    const first = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-dup-1`)
+      .field('tipus', 'Avariat')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-dup-2`)
+      .field('tipus', 'Altres')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+
+    expect(second.status).toBe(409);
+    expect(second.body.error).toBe('Ya has reportado esta incidencia para esta estación');
+  });
+
+  test('POST /incidencias permite Operatiu si ya hay otra incidencia no-Operatiu abierta', async () => {
+    const first = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-coexist-1`)
+      .field('tipus', 'Avariat')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post('/incidencias')
+      .field('comentari', 'La Incidencia está solucionada')
+      .field('tipus', 'Operatiu')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+
+    expect(second.status).toBe(201);
+  });
+
+  test('POST /incidencias devuelve 409 si ya hay otra incidencia Operatiu abierta', async () => {
+    const first = await request(app)
+      .post('/incidencias')
+      .field('comentari', 'La Incidencia está solucionada')
+      .field('tipus', 'Operatiu')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post('/incidencias')
+      .field('comentari', 'La Incidencia está solucionada otra vez')
+      .field('tipus', 'Operatiu')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+
+    expect(second.status).toBe(409);
+    expect(second.body.error).toBe('Ya has reportado esta incidencia para esta estación');
+  });
+
+  test('POST /incidencias permite nuevo reporte tras resolver la incidencia abierta', async () => {
+    const createRes = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-resolved-flow`)
+      .field('tipus', 'Avariat')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+    expect(createRes.status).toBe(201);
+
+    await pool.query(
+      `UPDATE ego.incidencia
+       SET validada = TRUE, resolta = TRUE, rebutjada = FALSE
+       WHERE id = $1`,
+      [createRes.body.id]
+    );
+
+    const retryRes = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-after-resolved`)
+      .field('tipus', 'Operatiu')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+
+    expect(retryRes.status).toBe(201);
+  });
+
+  test('POST /incidencias permite nuevo reporte tras rechazar la incidencia abierta', async () => {
+    const createRes = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-rejected-flow`)
+      .field('tipus', 'Avariat')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+    expect(createRes.status).toBe(201);
+
+    await pool.query(
+      `UPDATE ego.incidencia
+       SET rebutjada = TRUE, resolta = FALSE, validada = FALSE
+       WHERE id = $1`,
+      [createRes.body.id]
+    );
+
+    const retryRes = await request(app)
+      .post('/incidencias')
+      .field('comentari', `${testCommentPrefix}-after-rejected`)
+      .field('tipus', 'Operatiu')
+      .field('conductor', String(validUserId))
+      .field('estacio', String(validStationId));
+
+    expect(retryRes.status).toBe(201);
   });
 
   test('POST /incidencias devuelve 404 si estación no existe', async () => {

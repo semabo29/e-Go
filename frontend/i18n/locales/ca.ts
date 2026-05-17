@@ -145,6 +145,8 @@ export default {
     sentBody: 'La incidència s’ha registrat correctament.',
     sendError: 'Error en enviar la incidència',
     registerError: 'No s’ha pogut registrar la incidència',
+    alreadyReportedTitle: 'Incidència ja reportada',
+    alreadyReported: 'Ja has reportat aquesta incidència per a aquesta estació.',
     reportedTitle: 'Incidència reportada',
     reportedBody: 'S’ha marcat l’estació com a operativa.',
     solvedRegisterError: 'No s’ha pogut registrar la incidència solucionada',

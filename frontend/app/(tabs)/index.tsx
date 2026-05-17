@@ -990,6 +990,10 @@ useEffect(() => {
       });
 
       const data = await response.json();
+      if (response.status === 409) {
+        Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
+        return;
+      }
       if (!response.ok) {
         throw new Error(data?.error || t('incident.registerError'));
       }
@@ -1020,6 +1024,10 @@ useEffect(() => {
       });
 
       const data = await response.json();
+      if (response.status === 409) {
+        Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
+        return;
+      }
       if (!response.ok) {
         throw new Error(data?.error || t('incident.solvedRegisterError'));
       }
