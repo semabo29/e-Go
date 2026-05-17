@@ -2,6 +2,8 @@ const request = require('supertest');
 const app = require('../../index.jsx');
 const { pool } = require('../../lib/db');
 
+jest.setTimeout(30000);
+
 describe('Incidencias integration (real DB)', () => {
   // Creamos ids altos de prueba que no puedan ser conflictivos con datos reales.
   const validUserId = 99100001;
