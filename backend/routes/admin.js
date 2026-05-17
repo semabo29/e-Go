@@ -3,6 +3,7 @@ const { requireAdmin } = require('../middleware/requireAdmin');
 const adminStationController = require('../controllers/adminStationController');
 const adminCompanyRequestController = require('../controllers/adminCompanyRequestController');
 const adminUserController = require('../controllers/adminUserController');
+const adminIncidenciaController = require('../controllers/adminIncidenciaController');
 const { pool, USUARIOS_TABLE } = require('../lib/db');
 
 const router = express.Router();
@@ -38,5 +39,13 @@ router.post('/station-requests/:id/approve', requireAdmin, adminCompanyRequestCo
 router.post('/station-requests/:id/reject', requireAdmin, adminCompanyRequestController.rejectRequest);
 router.get('/users', requireAdmin, adminUserController.listUsers);
 router.patch('/users/:id/ban', requireAdmin, adminUserController.setUserBan);
+
+// Gestión de incidencias
+router.get('/incidencias/pending', requireAdmin, adminIncidenciaController.listPending);
+router.get('/incidencias/history', requireAdmin, adminIncidenciaController.listHistory);
+router.get('/incidencias/:id', requireAdmin, adminIncidenciaController.getById);
+router.post('/incidencias/:id/validate', requireAdmin, adminIncidenciaController.validate);
+router.post('/incidencias/:id/reject', requireAdmin, adminIncidenciaController.reject);
+router.post('/incidencias/:id/resolve', requireAdmin, adminIncidenciaController.resolve);
 
 module.exports = router;

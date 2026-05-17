@@ -147,6 +147,22 @@ export default function AdminHomeScreen() {
               <Text style={styles.primaryButtonAltText}>Moderacion de usuarios</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-incidencias' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Incidencias pendientes"
+            >
+              <Text style={styles.primaryButtonAltText}>Incidencias pendientes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-incidencias-history' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Historico de incidencias"
+            >
+              <Text style={styles.primaryButtonAltText}>Historico de incidencias</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => {
                 (async () => {

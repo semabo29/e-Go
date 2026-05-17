@@ -72,4 +72,5 @@ jobs:
           GOOGLE_CLIENT_ID: test_client_id
           GOOGLE_CLIENT_SECRET: test_client_secret
           PENDING_SECRET: test_pending_secret
+          JWT_SECRET: test-secret
         run: npm test
