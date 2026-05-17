@@ -18,7 +18,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import { Href, useRouter, useLocalSearchParams } from 'expo-router';
+import { Href, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
@@ -107,7 +107,12 @@ export default function InicioScreen() {
   const autoSelectStationId = params.autoSelectStationId as string | undefined;
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
   const [activeSkinAsset, setActiveSkinAsset] = useState<string>('cotxe_basic');
-
+  const [trackMarker, setTrackMarker] = useState(true);
+  useEffect(() => {
+    if (activeSkinAsset) {
+      setTrackMarker(true);
+    }
+  }, [activeSkinAsset]);
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
   const {
     isCharging,
@@ -596,24 +601,48 @@ export default function InicioScreen() {
 
     }
   };
-  // CARGAR LA SKIN QUE TIENE EQUIPADA EL USUARIO
-  useEffect(() => {
+  const [markerRefreshKey, setMarkerRefreshKey] = useState(Date.now());
+
+  // --- CARGA DE LA SKIN DEL USUARIO ---
+  const fetchEquippedSkin = useCallback(async () => {
     if (!user?.id) return;
-    const fetchEquippedSkin = async () => {
-      try {
-        const res = await appFetch(`/skins/conductor/${user.id}`);
-        const data = await res.json();
-        const miInventario = data.inventari || [];
-        const equippedSkin = miInventario.find((item: any) => item.equipada === true);
-        if (equippedSkin) {
-          setActiveSkinAsset(equippedSkin.arxiu_asset);
+    try {
+      const res = await appFetch(`/skins/conductor/${user.id}?_t=${Date.now()}`, {
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      });
+      const data = await res.json();
+      const miInventario = data.inventari || [];
+      
+      // 🔴 FILTRAMOS TODOS LOS QUE ESTÉN EN TRUE
+      const equippedSkins = miInventario.filter((item: any) => 
+        item.equipada === true || item.equipada === 'true' || item.equipada === 1 || item.equipada === '1'
+      );
+      
+      // 🔴 COGEMOS EL ÚLTIMO (Por si el backend no ha puesto los antiguos en false)
+      const equippedSkin = equippedSkins.length > 0 ? equippedSkins[equippedSkins.length - 1] : null;
+      
+      const newSkin = equippedSkin?.arxiu_asset ? equippedSkin.arxiu_asset : 'cotxe_basic';
+      
+      setActiveSkinAsset((prev) => {
+        if (prev !== newSkin) {
+          setTrackMarker(true);
+          setMarkerRefreshKey(Date.now()); // Forzamos al marcador a recrearse
+          return newSkin;
         }
-      } catch (e) {
-        console.log("No s'ha pogut carregar la skin pel mapa", e);
-      }
-    };
-    fetchEquippedSkin();
-  }, [user]);
+        return prev;
+      });
+
+    } catch (e) {
+      console.log("No s'ha pogut carregar la skin pel mapa", e);
+      setActiveSkinAsset('cotxe_basic');
+    }
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchEquippedSkin();
+    }, [fetchEquippedSkin])
+  );
 
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
@@ -1324,28 +1353,33 @@ useEffect(() => {
           key={`map-${displayedStations.length}-${isNavigating}`} 
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
-          showsUserLocation={true} 
-          showsMyLocationButton={true} 
+          showsUserLocation={false} 
+          showsMyLocationButton={false} 
           showsUserHeading={true}
+          //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
           onPress={(e: any) => {
-            if (isSelectingOrigin) {
-                  setRouteOrigin(e.nativeEvent.coordinate);
-                  setIsSelectingOrigin(false);
-                  setIsNavigating(true);
-                  return;
+            if (isSelectingOrigin) {//Si estamos seleccionando un punto de origen para la ruta solo hacemos el cuerpo del if
+                  setRouteOrigin(e.nativeEvent.coordinate); //Guardamos donde ha tocado como origen
+                  setIsSelectingOrigin(false); //Salimos del modo selección
+                  setIsNavigating(true); //Iniciamos la navegación
+                  return; //Cortamos la ejecución aquí
             }
-            if (isNavigating) {
+            if (isNavigating) {//Esto permite que si clicamos a un punto del mapa cuando estamos navegando en una ruta esto sea ignorado (para salir de la navegación hay un boton especifico)
                 return
             }
 
+            //Verificamos que el toque provenga del mapa y tenga coordenadas
             if (e.nativeEvent.coordinate) {
+              //Limpiamos cualquier estación seleccionada previamente
               setSelectedStation(null);
+              //Guardamos la nueva ubicación libre
               setSelectedLocation({
                 latitude: e.nativeEvent.coordinate.latitude,
                 longitude: e.nativeEvent.coordinate.longitude,
               });
               setRouteOriginPreset(null);
               setSelectedLocationLabel(null);
+              //Limpiamos la ruta
               setIsNavigating(false);
               setRouteCoords([]);
               setRouteDestination(null);
@@ -1369,7 +1403,9 @@ useEffect(() => {
                     : sem.mapOk
               }
               onPress={(e: any) => {
-                e.stopPropagation(); 
+                e.stopPropagation(); //Evita que el toque pase al mapa y cierre el panel
+
+                //Si estamos eligiendo origen, interceptamos el clic en la estación
                 if (isSelectingOrigin) {
                   setRouteOrigin({
                     latitude: parseFloat(est.latitud),
@@ -1377,11 +1413,11 @@ useEffect(() => {
                   });
                   setIsSelectingOrigin(false);
                   setIsNavigating(true);
-                  return;
+                  return; //Cortamos aquí
                 }
 
                 setSelectedStation(est);
-                setSelectedLocation(null); 
+                setSelectedLocation(null); //Limpiamos el punto manual si seleccionan una estación
                 setRouteOriginPreset(null);
                 setSelectedLocationLabel(null);
                 setRouteCoords([]);
@@ -1391,138 +1427,155 @@ useEffect(() => {
             />
           ))}
 
-          {/*Marcador de la ubicacion clicada por el usuario con un clic manualmente */}
-          {!isNavigating && selectedLocation && !selectedStation && (
-            <Marker
-              key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} 
-              coordinate={selectedLocation}
-              pinColor={sem.mapCustomLocation}
-              title={selectedLocationLabel || t('home.selectedLocationTitle')}
-            />
-          )}
+            {/*Marcador de la ubicacion clicada por el usuario con un clic manualmente */}
+              {!isNavigating && selectedLocation && !selectedStation && (
+                <Marker
+                  key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
+                  coordinate={selectedLocation}
+                  pinColor={sem.mapCustomLocation}
+                  title={selectedLocationLabel || t('home.selectedLocationTitle')}
+                />
+            )}
 
-          {/*EL DESTINO de la ruta: Para que se vea a dónde vamos cuando se ocultan los demás */}
-          {isNavigating && routeDestination && (
-            <Marker
-              coordinate={routeDestination}
-              title={t('home.selectedLocationTitle')}
-              pinColor={sem.mapRouteDestination}
-            />
-          )}
+            {/*EL DESTINO de la ruta: Para que se vea a dónde vamos cuando se ocultan los demás */}
+                {isNavigating && routeDestination && (
+                  <Marker
+                    coordinate={routeDestination}
+                    title={t('home.selectedLocationTitle')}
+                    pinColor={sem.mapRouteDestination}
+                  />
+            )}
 
-          {/* Trazado de la ruta (Solo visible si estamos navegando) */}
-          {isNavigating && routeOrigin && routeDestination && (
-            <MapViewDirections
-              origin={routeOrigin}
-              destination={routeDestination}
-              apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
-              strokeWidth={0}
-              strokeColor={sem.routeLine}
-              mode="DRIVING"
-              onReady={(result) => {
-                setRouteInfo({
-                  distance: result.distance,
-                  duration: result.duration
-                });
-                setRouteCoords(result.coordinates);
-
-                if (!isDrivingMode && mapRef.current) {
-                  mapRef.current.fitToCoordinates(result.coordinates, {
-                    edgePadding: { top: 100, right: 50, bottom: 250, left: 50 },
-                    animated: true
+            {/* Trazado de la ruta (Solo visible si estamos navegando) */}
+            {isNavigating && routeOrigin && routeDestination && (
+              <MapViewDirections
+                origin={routeOrigin}
+                destination={routeDestination}
+                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                strokeWidth={0}
+                strokeColor={sem.routeLine}
+                mode="DRIVING"
+                onReady={(result) => {
+                  setRouteInfo({
+                    distance: result.distance,
+                    duration: result.duration
                   });
-                }
-              }}
-              onError={(errorMessage) => {
-                Alert.alert(t('navigation.routeErrorTitle'), t('navigation.routeErrorBody'));
-                console.log(errorMessage);
-              }}
-            />
-          )}
-          
-          {/*Nuestro propio trazado de la ruta (100% controlable) */}
-          {isNavigating && routeCoords.length > 0 && (
-            <Polyline
-              key={`polyline-${routeCoords.length}`}
-              coordinates={routeCoords}
-              strokeWidth={4}
-              strokeColor={sem.routeLine}
-              lineJoin="round"
-            />
-          )}
+                  setRouteCoords(result.coordinates);
 
-          {/* 🟢 MARCADOR DEL COCHE ARREGLADO */}
-          {userLocation?.coords && (
+                  if (!isDrivingMode && mapRef.current) {
+                    mapRef.current.fitToCoordinates(result.coordinates, {
+                      edgePadding: { top: 100, right: 50, bottom: 250, left: 50 },
+                      animated: true
+                    });
+                  }
+                }}
+                onError={(errorMessage) => {
+                  Alert.alert(t('navigation.routeErrorTitle'), t('navigation.routeErrorBody'));
+                  console.log(errorMessage);
+                }}
+              />
+            )}
+            {/*Nuestro propio trazado de la ruta (100% controlable) */}
+              {isNavigating && routeCoords.length > 0 && (
+                <Polyline
+                  key={`polyline-${routeCoords.length}`}
+                  coordinates={routeCoords}
+                  strokeWidth={4}
+                  strokeColor={sem.routeLine}
+                  lineJoin="round"
+                />
+            )}
+
+            {/* 🟢 MARCADOR DEL COCHE PERSISTENTE (Solución definitiva anti-bugs) */}
+          {userLocation?.coords && activeSkinAsset && (
             <Marker 
-              key={`user-skin-${activeSkinAsset}`}
+              // 🔴 La key ahora incluye markerRefreshKey para que se reconstruya al volver de la tienda
+              key={`user-skin-${activeSkinAsset}-${markerRefreshKey}`} 
               coordinate={{
                 latitude: userLocation.coords.latitude,
                 longitude: userLocation.coords.longitude
               }}
               anchor={{ x: 0.5, y: 0.5 }}
               flat={true}
-              zIndex={9999}
-              // 🔴 tracksViewChanges eliminado para evitar el bug de Android
+              zIndex={99999}
+              tracksViewChanges={trackMarker}
+              // @ts-ignore
+              cluster={false}
             >
-              <View style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+              <View style={{ width: 60, height: 60, justifyContent: 'center', alignItems: 'center' }}>
                 <Image 
                   source={getSkinImage(activeSkinAsset)} 
                   style={{ width: '100%', height: '100%' }} 
                   resizeMode="contain"
-                  fadeDuration={0} // Esto fuerza a Android a no hacer animaciones raras al cargar
+                  fadeDuration={0}
+                  onLoad={() => {
+                    setTimeout(() => {
+                      setTrackMarker(false);
+                    }, 500);
+                  }} 
                 />
               </View>
             </Marker>
           )}
         </MapView>
-          {/* ========================================================== */}
-          {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) para cuando hay ruta */}
-          {/* ========================================================== */}
-            {/* Panel de Información de Ruta Activa */}
-            {isNavigating && routeInfo && (
-              <View style={styles.navPanel}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.navTextBold} numberOfLines={1}>
-                    {t('home.navTowards', {
-                      name: selectedStation ? selectedStation.nom : t('home.navDestination'),
-                    })}
-                  </Text>
-                  <Text style={styles.navText}>
-                    {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
-                  </Text>
-                </View>
 
-                {/* BOTÓN PARA PASAR A MODO 3D */}
-                {!isDrivingMode && (
-                  <TouchableOpacity
-                    style={[styles.startDrivingBtn, { marginRight: 10 }]}
-                    onPress={() => setIsDrivingMode(true)}
-                  >
-                    <MaterialIcons name="navigation" size={20} color="#fff" />
-                    <Text style={styles.startDrivingText}>{t('home.startDriving')}</Text>
-                  </TouchableOpacity>
-                )}
+        {/* 🟢 BOTÓN DE CENTRAR UBICACIÓN MANUAL (Puesto tras el mapa para que flote por encima) */}
+        <TouchableOpacity 
+          style={styles.centerMapButton} 
+          onPress={centerMapOnUser}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="my-location" size={26} color={isDark ? '#fff' : '#1f2937'} />
+        </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.cancelRouteBtn}
-                  onPress={() => {
-                    setIsNavigating(false);
-                    setIsDrivingMode(false); // 🌟 También reseteamos el modo conducción
-                    setRouteOrigin(null);
-                    setRouteDestination(null);
-                    setRouteInfo(null);
-                    setRouteCoords([]);
-                    setSelectedStation(null);
-                    const cleared = buildClearEventLocationPatch();
-                    setSelectedLocation(cleared.selectedLocation);
-                    setRouteOriginPreset(cleared.routeOriginPreset);
-                    setSelectedLocationLabel(cleared.selectedLocationLabel);
-                  }}
-                >
-                  <MaterialIcons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
+        {/* ========================================================== */}
+        {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) para cuando hay ruta */}
+        {/* ========================================================== */}
+        {/* Panel de Información de Ruta Activa */}
+        {isNavigating && routeInfo && (
+          <View style={styles.navPanel}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.navTextBold} numberOfLines={1}>
+                {t('home.navTowards', {
+                  name: selectedStation ? selectedStation.nom : t('home.navDestination'),
+                })}
+              </Text>
+              <Text style={styles.navText}>
+                {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
+              </Text>
+            </View>
+
+            {/* BOTÓN PARA PASAR A MODO 3D */}
+            {!isDrivingMode && (
+              <TouchableOpacity
+                style={[styles.startDrivingBtn, { marginRight: 10 }]}
+                onPress={() => setIsDrivingMode(true)}
+              >
+                <MaterialIcons name="navigation" size={20} color="#fff" />
+                <Text style={styles.startDrivingText}>{t('home.startDriving')}</Text>
+              </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={styles.cancelRouteBtn}
+              onPress={() => {
+                setIsNavigating(false);
+                setIsDrivingMode(false); // 🌟 También reseteamos el modo conducción
+                setRouteOrigin(null);
+                setRouteDestination(null);
+                setRouteInfo(null);
+                setRouteCoords([]);
+                setSelectedStation(null);
+                const cleared = buildClearEventLocationPatch();
+                setSelectedLocation(cleared.selectedLocation);
+                setRouteOriginPreset(cleared.routeOriginPreset);
+                setSelectedLocationLabel(cleared.selectedLocationLabel);
+              }}
+            >
+              <MaterialIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {loadingEstaciones && (
           <View style={styles.mapLoading} testID="map-stations-loading">
