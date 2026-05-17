@@ -15,3 +15,5 @@
 **Sin cable / misma Wi‑Fi que el PC:** `npm start` y que el móvil esté en la misma red; si peta, probad `npm run start:tunnel`.
 
 **`.env` en `frontend`:** API keys / `EXPO_PUBLIC_*` como siempre; sin eso el login Google / mapas pueden fallar.
+
+**Google Sign-In (SHA-1 del equipo):** antes del primer `expo run:android` en un PC nuevo, en `frontend` → `npm run android:keystore` (copia `keystores/debug.keystore` a `~/.android`). SHA-1: `48:5D:FB:2C:91:EB:8C:35:4D:0E:53:8D:46:EF:F0:50:96:CC:AC:49` · package Android `com.ego.app`.

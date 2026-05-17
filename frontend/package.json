@@ -9,6 +9,7 @@
     "start:usb": "node ./scripts/expo-start.cjs --dev-client --localhost",
     "start:tunnel": "node ./scripts/expo-start.cjs --dev-client --tunnel",
     "adb:reverse": "node ./scripts/adb-reverse-range.cjs",
+    "android:keystore": "node ./scripts/sync-debug-keystore.cjs",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
