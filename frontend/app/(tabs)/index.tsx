@@ -29,6 +29,11 @@ import { useCharging } from '@/contexts/ChargingContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { showFullscreenAd } from '@/features/ads/googleAds';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import {
+  buildIncidenciaFormData,
+  submitIncidencia,
+  submitSolvedIncidencia,
+} from '@/services/incidenciaApiService';
 import { appFetch } from '@/services/appFetch';
 import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
 import { ChargingActionCard } from '../../components/ChargingActionCard';
@@ -970,11 +975,12 @@ useEffect(() => {
 
     setIncidenciaSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('comentari', incidenciaComentario.trim());
-      formData.append('tipus', incidenciaTipo);
-      formData.append('conductor', String(user.id));
-      formData.append('estacio', String(selectedStation.id));
+      const formData = buildIncidenciaFormData({
+        conductor: user.id,
+        estacio: selectedStation.id,
+        comentari: incidenciaComentario.trim(),
+        tipus: incidenciaTipo,
+      });
 
       if (incidenciaArchivo) {
         formData.append('arxiu', {
@@ -984,18 +990,13 @@ useEffect(() => {
         } as any);
       }
 
-      const response = await fetch(`${getApiUrl()}/incidencias`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (response.status === 409) {
+      const result = await submitIncidencia(formData);
+      if (!result.ok && result.conflict) {
         Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
         return;
       }
-      if (!response.ok) {
-        throw new Error(data?.error || t('incident.registerError'));
+      if (!result.ok) {
+        throw new Error(result.error || t('incident.registerError'));
       }
 
       Alert.alert(t('incident.sentTitle'), t('incident.sentBody'));
@@ -1012,24 +1013,13 @@ useEffect(() => {
     if (!user || !selectedStation) return;
 
     try {
-      const formData = new FormData();
-      formData.append('comentari', 'La Incidencia está solucionada');
-      formData.append('tipus', 'Operatiu');
-      formData.append('conductor', String(user.id));
-      formData.append('estacio', String(selectedStation.id));
-
-      const response = await fetch(`${getApiUrl()}/incidencias`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (response.status === 409) {
+      const result = await submitSolvedIncidencia(user.id, selectedStation.id);
+      if (!result.ok && result.conflict) {
         Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
         return;
       }
-      if (!response.ok) {
-        throw new Error(data?.error || t('incident.solvedRegisterError'));
+      if (!result.ok) {
+        throw new Error(result.error || t('incident.solvedRegisterError'));
       }
 
       Alert.alert(t('incident.reportedTitle'), t('incident.reportedBody'));
