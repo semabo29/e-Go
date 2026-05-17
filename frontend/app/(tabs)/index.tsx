@@ -26,6 +26,8 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useCharging } from '@/contexts/ChargingContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { showFullscreenAd } from '@/features/ads/googleAds';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { appFetch } from '@/services/appFetch';
 import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
@@ -88,6 +90,16 @@ interface Estacion {
   operatiu?: boolean;
 }
 
+type ChargingResultPayload = {
+  durationMinutes: number;
+  basePoints: number;
+  totalPoints: number;
+  multiplier: number;
+  isPremium: boolean;
+  sessionId: number;
+  reason: string;
+};
+
 export default function InicioScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -108,6 +120,7 @@ export default function InicioScreen() {
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
 
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
+  const { isPremium: accountIsPremium } = useSubscription();
   const {
     isCharging,
     session,
@@ -134,6 +147,29 @@ export default function InicioScreen() {
   } | null>(null);
   const [resultLoading, setResultLoading] = useState(false);
   const [chargingError, setChargingError] = useState('');
+
+  const presentChargingResult = useCallback(
+    async (payload: ChargingResultPayload) => {
+      const skipAds = accountIsPremium || payload.isPremium;
+      if (!skipAds) {
+        await showFullscreenAd();
+      }
+      setChargingResult(payload);
+      setShowResultModal(true);
+    },
+    [accountIsPremium]
+  );
+
+  /** Anuncio a pantalla completa antes de activar la ruta (usuarios free). */
+  const activateNavigation = useCallback(
+    async (start: () => void) => {
+      if (!accountIsPremium) {
+        await showFullscreenAd();
+      }
+      start();
+    },
+    [accountIsPremium]
+  );
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
@@ -292,15 +328,17 @@ export default function InicioScreen() {
             text: t('navigation.myLocation'),
             onPress: () => {
               if (userLocation && userLocation.coords) {
-                setRouteOrigin({
-                  latitude: userLocation.coords.latitude,
-                  longitude: userLocation.coords.longitude
+                void activateNavigation(() => {
+                  setRouteOrigin({
+                    latitude: userLocation.coords.latitude,
+                    longitude: userLocation.coords.longitude,
+                  });
+                  setIsNavigating(true);
                 });
-                setIsNavigating(true);
               } else {
                 Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
               }
-            }
+            },
           },
           {
             text: t('navigation.searchOtherOrigin'),
@@ -398,7 +436,7 @@ export default function InicioScreen() {
       if (autoStopResult) {
         const points = autoStopResult.apiResponse?.pointsGained || { basePoints: 0, totalPoints: 0, multiplier: 1 };
 
-        setChargingResult({
+        void presentChargingResult({
           durationMinutes: autoStopResult.durationMinutes,
           basePoints: points.basePoints,
           totalPoints: points.totalPoints,
@@ -408,10 +446,9 @@ export default function InicioScreen() {
           reason: autoStopResult.reason,
         });
 
-        setShowResultModal(true);
         clearAutoStopResult(); // Ho netegem perquè no es torni a obrir sol
       }
-    }, [autoStopResult]);
+    }, [autoStopResult, presentChargingResult, clearAutoStopResult]);
 
   // Función para finalizar la carga
     const handleFinishCharging = async () => {
@@ -426,7 +463,7 @@ export default function InicioScreen() {
           // Agafem els punts reals que ens retorna el backend
           const points = result.apiResponse.pointsGained;
 
-          setChargingResult({
+          await presentChargingResult({
             durationMinutes: result.durationMinutes,
             basePoints: points.basePoints,
             totalPoints: points.totalPoints,
@@ -435,8 +472,6 @@ export default function InicioScreen() {
             sessionId: result.session?.id || 0,
             reason: result.reason,
           });
-
-          setShowResultModal(true);
         }
       } catch (error) {
         console.error('Error al finalizar:', error);
@@ -1288,11 +1323,14 @@ useEffect(() => {
           showsUserHeading={true}
           //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
           onPress={(e: any) => {
-            if (isSelectingOrigin) {//Si estamos seleccionando un punto de origen para la ruta solo hacemos el cuerpo del if
-                  setRouteOrigin(e.nativeEvent.coordinate); //Guardamos donde ha tocado como origen
-                  setIsSelectingOrigin(false); //Salimos del modo selección
-                  setIsNavigating(true); //Iniciamos la navegación
-                  return; //Cortamos la ejecución aquí
+            if (isSelectingOrigin) {
+                  const origin = e.nativeEvent.coordinate;
+                  void activateNavigation(() => {
+                    setRouteOrigin(origin);
+                    setIsSelectingOrigin(false);
+                    setIsNavigating(true);
+                  });
+                  return;
             }
             if (isNavigating) {//Esto permite que si clicamos a un punto del mapa cuando estamos navegando en una ruta esto sea ignorado (para salir de la navegación hay un boton especifico)
                 return
@@ -1337,13 +1375,15 @@ useEffect(() => {
 
                 //Si estamos eligiendo origen, interceptamos el clic en la estación
                 if (isSelectingOrigin) {
-                  setRouteOrigin({
-                    latitude: parseFloat(est.latitud),
-                    longitude: parseFloat(est.longitud)
+                  void activateNavigation(() => {
+                    setRouteOrigin({
+                      latitude: parseFloat(est.latitud),
+                      longitude: parseFloat(est.longitud),
+                    });
+                    setIsSelectingOrigin(false);
+                    setIsNavigating(true);
                   });
-                  setIsSelectingOrigin(false);
-                  setIsNavigating(true);
-                  return; //Cortamos aquí
+                  return;
                 }
 
                 setSelectedStation(est);

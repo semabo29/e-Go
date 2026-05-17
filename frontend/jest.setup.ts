@@ -114,6 +114,78 @@ jest.mock('react-native-maps', () => {
   };
 });
 
+jest.mock('react-native-google-mobile-ads', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const mockCreateAd = (store: Record<string, Array<(...args: unknown[]) => void>>) => ({
+    load: jest.fn(),
+    show: jest.fn(),
+    addAdEventListener: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
+      (store[event] ||= []).push(handler);
+      return jest.fn(() => {
+        store[event] = (store[event] || []).filter((h) => h !== handler);
+      });
+    }),
+  });
+
+  const harness = {
+    interstitialStore: {} as Record<string, Array<(...args: unknown[]) => void>>,
+    rewardedStore: {} as Record<string, Array<(...args: unknown[]) => void>>,
+    interstitialAd: mockCreateAd({}),
+    rewardedAd: mockCreateAd({}),
+  };
+  harness.interstitialAd = mockCreateAd(harness.interstitialStore);
+  harness.rewardedAd = mockCreateAd(harness.rewardedStore);
+  globalThis.__adTestHarness = harness;
+
+  const mobileAdsInstance = {
+    initialize: jest.fn(async () => {}),
+    setRequestConfiguration: jest.fn(async () => {}),
+  };
+
+  return {
+    __esModule: true,
+    default: jest.fn(() => mobileAdsInstance),
+    BannerAd: () => React.createElement(View, { testID: 'mock-banner-ad' }),
+    BannerAdSize: { ANCHORED_ADAPTIVE_BANNER: 'ANCHORED_ADAPTIVE_BANNER' },
+    TestIds: {
+      BANNER: 'test-banner',
+      INTERSTITIAL: 'test-interstitial',
+      REWARDED: 'test-rewarded',
+    },
+    InterstitialAd: {
+      createForAdRequest: jest.fn(() => {
+        harness.interstitialAd = mockCreateAd(harness.interstitialStore);
+        return harness.interstitialAd;
+      }),
+    },
+    RewardedAd: {
+      createForAdRequest: jest.fn(() => {
+        harness.rewardedAd = mockCreateAd(harness.rewardedStore);
+        return harness.rewardedAd;
+      }),
+    },
+    RewardedAdEventType: { LOADED: 'rewarded_loaded', EARNED_REWARD: 'earned_reward' },
+    AdEventType: { LOADED: 'loaded', CLOSED: 'closed', ERROR: 'error' },
+  };
+});
+
+jest.mock('@/contexts/SubscriptionContext', () => ({
+  SubscriptionProvider: ({ children }: { children?: unknown }) => children,
+  useSubscription: () => ({
+    subStatus: {
+      status: 'inactive',
+      isPremium: false,
+      current_period_end: null,
+      cancel_at_period_end: false,
+    },
+    isPremium: false,
+    isLoading: false,
+    refreshSubscription: jest.fn(),
+  }),
+}));
+
 jest.mock('@/contexts/ChargingContext', () => ({
   useCharging: () => ({
     isCharging: false,

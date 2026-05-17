@@ -5,6 +5,10 @@ import * as Localization from 'expo-localization';
 import { render, waitFor } from '@testing-library/react-native';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
+import ca from '@/i18n/locales/ca';
+import en from '@/i18n/locales/en';
+import es from '@/i18n/locales/es';
+import it from '@/i18n/locales/it';
 import i18n, {
   APP_LOCALES,
   LOCALE_STORAGE_KEY,
@@ -27,6 +31,19 @@ describe('i18n', () => {
 
   test('APP_LOCALES incluye es, ca, en e it', () => {
     expect(APP_LOCALES).toEqual(['es', 'ca', 'en', 'it']);
+  });
+
+  test('archivos locale exportan objetos de traducción', () => {
+    for (const locale of [es, ca, en, it]) {
+      expect(locale.common).toBeDefined();
+      expect(locale.language?.menuTitle).toBeTruthy();
+    }
+  });
+
+  test('hydrateLocaleFromStorage usa es si el idioma del dispositivo no está mapeado', async () => {
+    setDeviceLanguage('de');
+    await hydrateLocaleFromStorage();
+    expect(i18n.language).toMatch(/^es/);
   });
 
   test('hydrateLocaleFromStorage aplica locale guardado válido', async () => {
