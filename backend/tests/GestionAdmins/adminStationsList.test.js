@@ -2,9 +2,14 @@ const request = require('supertest');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
+jest.mock('../../models/userModel', () => ({
+  findByIdWithBanStatus: jest.fn(),
+}));
+
 const { requireAdmin } = require('../../middleware/requireAdmin');
 const adminStationController = require('../../controllers/adminStationController');
 const stationModel = require('../../models/stationModel');
+const userModel = require('../../models/userModel');
 
 jest.mock('../../models/stationModel', () => ({
   getManualStationsByAdmin: jest.fn(),
@@ -18,6 +23,7 @@ describe('Admin stations list', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    userModel.findByIdWithBanStatus.mockResolvedValue({ id: 42, is_banned: false });
   });
 
   function authHeader() {
@@ -45,5 +51,19 @@ describe('Admin stations list', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(2);
+  });
+
+  test('GET /admin/stations/mine -> 500 si falla el modelo', async () => {
+    stationModel.getManualStationsByAdmin.mockRejectedValue(new Error('db fail'));
+    const res = await request(app).get('/admin/stations/mine').set(authHeader());
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /admin/stations/mine -> 403 si admin esta baneado', async () => {
+    userModel.findByIdWithBanStatus.mockResolvedValue({ id: 42, is_banned: true });
+    const res = await request(app)
+      .get('/admin/stations/mine')
+      .set(authHeader());
+    expect(res.status).toBe(403);
   });
 });

@@ -1,11 +1,12 @@
 const userService = require('../services/userService');
-
+const { respondIfBannedUserId } = require('../middleware/requireNotBanned');
 
 // informació del usuari
 async function getUser(req, res) {
   try {
     // Agafem els possibles paràmetres de la URL
     const { usuari_id } = req.query;
+    if (await respondIfBannedUserId(res, usuari_id)) return;
 
     const info = await userService.getUser(usuari_id);
 

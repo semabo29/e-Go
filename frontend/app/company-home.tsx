@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Href, useRouter } from 'expo-router';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { ManualStationCard } from '@/components/stations/ManualStationCard';
 import { ManualStation } from '@/components/stations/types';
+import {
+  fetchCompanyProfile,
+  mergeStoredCompanyUser,
+  type CompanyProfile,
+  updateCompanyNombreOnServer,
+} from '@/services/companyProfile';
 import { clearPrivilegedSession, getPrivilegedToken } from '@/services/privilegedAuth';
 import { listCompanyStations, requestDeleteCompanyStation } from '@/services/stationModeration';
 
@@ -14,6 +29,10 @@ export default function CompanyHomeScreen() {
   const [stations, setStations] = useState<ManualStation[]>([]);
   const [error, setError] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [editingNombre, setEditingNombre] = useState(false);
+  const [nombreDraft, setNombreDraft] = useState('');
+  const [savingNombre, setSavingNombre] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -23,8 +42,19 @@ export default function CompanyHomeScreen() {
         setLoading(false);
         return;
       }
-      await refreshStations();
-      setLoading(false);
+      try {
+        const [profile] = await Promise.all([fetchCompanyProfile(), refreshStations()]);
+        setCompanyProfile(profile);
+        setNombreDraft(profile.nombre?.trim() ?? '');
+      } catch (err) {
+        setError(
+          err instanceof Error && err.message === 'NO_SESSION'
+            ? 'No hay sesion de empresa'
+            : 'No se pudo cargar el perfil de empresa'
+        );
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -38,6 +68,21 @@ export default function CompanyHomeScreen() {
       setError(err instanceof Error && err.message === 'NO_SESSION' ? 'No hay sesion de empresa' : 'No se pudieron cargar las estaciones');
     } finally {
       setLoadingStations(false);
+    }
+  }
+
+  async function saveNombreEmpresa() {
+    setSavingNombre(true);
+    setError('');
+    try {
+      const updated = await updateCompanyNombreOnServer(nombreDraft);
+      setCompanyProfile(updated);
+      await mergeStoredCompanyUser({ nombre: updated.nombre });
+      setEditingNombre(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar el nombre');
+    } finally {
+      setSavingNombre(false);
     }
   }
 
@@ -81,6 +126,57 @@ export default function CompanyHomeScreen() {
           </>
         ) : (
           <>
+            <View style={styles.companyHeader}>
+              <Text style={styles.companyNameLabel}>Empresa</Text>
+              <Text style={styles.companyNameValue}>
+                {companyProfile?.nombre?.trim() ? companyProfile.nombre.trim() : 'Sin nombre'}
+              </Text>
+              {companyProfile?.email ? (
+                <Text style={styles.companyEmail}>{companyProfile.email}</Text>
+              ) : null}
+            </View>
+            {editingNombre ? (
+              <View style={styles.nombreEditBlock}>
+                <Text style={styles.nombreEditLabel}>Nombre de la empresa</Text>
+                <TextInput
+                  style={styles.nombreInput}
+                  value={nombreDraft}
+                  onChangeText={setNombreDraft}
+                  placeholder="Nombre comercial"
+                  placeholderTextColor="#9ca3af"
+                  editable={!savingNombre}
+                />
+                <View style={styles.nombreEditActions}>
+                  <TouchableOpacity
+                    style={styles.nombreCancelBtn}
+                    onPress={() => {
+                      setNombreDraft(companyProfile?.nombre?.trim() ?? '');
+                      setEditingNombre(false);
+                    }}
+                    disabled={savingNombre}
+                  >
+                    <Text style={styles.nombreCancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.nombreSaveBtn, savingNombre && styles.nombreSaveBtnDisabled]}
+                    onPress={saveNombreEmpresa}
+                    disabled={savingNombre || !nombreDraft.trim()}
+                  >
+                    <Text style={styles.nombreSaveBtnText}>{savingNombre ? 'Guardando…' : 'Guardar'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.outlineButton}
+                onPress={() => {
+                  setNombreDraft(companyProfile?.nombre?.trim() ?? '');
+                  setEditingNombre(true);
+                }}
+              >
+                <Text style={styles.outlineButtonText}>Cambiar nombre de empresa</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/company-station-new' as Href)}>
               <Text style={styles.primaryButtonText}>Nueva solicitud de estacion</Text>
             </TouchableOpacity>
@@ -144,7 +240,15 @@ export default function CompanyHomeScreen() {
               <TouchableOpacity style={styles.confirmCancel} onPress={() => setConfirmDeleteId(null)}>
                 <Text style={styles.confirmCancelText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmDelete} onPress={async () => { if (confirmDeleteId !== null) await requestDelete(confirmDeleteId); setConfirmDeleteId(null); }}>
+              <TouchableOpacity
+                style={styles.confirmDelete}
+                onPress={async () => {
+                  if (confirmDeleteId !== null) {
+                    await requestDelete(confirmDeleteId);
+                  }
+                  setConfirmDeleteId(null);
+                }}
+              >
                 <Text style={styles.confirmDeleteText}>Enviar</Text>
               </TouchableOpacity>
             </View>
@@ -158,6 +262,21 @@ export default function CompanyHomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f5f5f5' }, scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
   card: { width: '100%', maxWidth: 460, backgroundColor: '#fff', borderRadius: 16, padding: 24, elevation: 3 }, title: { fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 12 },
+  companyHeader: { marginBottom: 14, alignItems: 'center' },
+  companyNameLabel: { fontSize: 12, color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  companyNameValue: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4, textAlign: 'center' },
+  companyEmail: { fontSize: 14, color: '#6b7280', marginTop: 4 },
+  outlineButton: { marginBottom: 12, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center' },
+  outlineButtonText: { color: '#111827', fontWeight: '600', fontSize: 14 },
+  nombreEditBlock: { marginBottom: 14 },
+  nombreEditLabel: { fontSize: 13, color: '#374151', fontWeight: '600', marginBottom: 6 },
+  nombreInput: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: '#111827', marginBottom: 10 },
+  nombreEditActions: { flexDirection: 'row', gap: 10 },
+  nombreCancelBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' },
+  nombreCancelBtnText: { fontWeight: '600', color: '#111827' },
+  nombreSaveBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
+  nombreSaveBtnDisabled: { opacity: 0.55 },
+  nombreSaveBtnText: { fontWeight: '600', color: '#fff' },
   centered: { alignItems: 'center', gap: 10 }, muted: { fontSize: 14, color: '#6b7280' }, errorText: { color: '#dc2626', textAlign: 'center', marginBottom: 10 },
   primaryButton: { marginTop: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' }, primaryButtonText: { color: '#fff', fontWeight: '600' },
   secondaryButton: { marginTop: 10, paddingVertical: 12, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' }, secondaryButtonText: { color: '#111827', fontWeight: '600' },

@@ -1,5 +1,6 @@
 const chargingSessionModel = require('../models/chargingSessionModel');
 const chargingService = require('../services/chargingService');
+const { respondIfBannedUserId } = require('../middleware/requireNotBanned');
 
 /**
  * Inicia una sesión de carga
@@ -15,6 +16,8 @@ async function startCharging(req, res) {
         error: 'Parámetros inválidos: usuari_id, estacio_id, ubicacion_lat, ubicacion_lon requeridos'
       });
     }
+
+    if (await respondIfBannedUserId(res, usuari_id)) return;
 
     // Crear sesión
     const session = await chargingSessionModel.startSession(
@@ -51,6 +54,8 @@ async function endCharging(req, res) {
         error: 'Parámetros inválidos: session_id, usuari_id, duration_minutes requeridos'
       });
     }
+
+    if (await respondIfBannedUserId(res, usuari_id)) return;
 
     // Finalizar sesión y calcular puntos
     const result = await chargingService.endChargingSession(
@@ -89,6 +94,8 @@ async function getActiveSession(req, res) {
       });
     }
 
+    if (await respondIfBannedUserId(res, usuari_id)) return;
+
     const session = await chargingSessionModel.getUserActiveSession(usuari_id);
 
     return res.json({
@@ -118,6 +125,8 @@ async function getUserSessions(req, res) {
       });
     }
 
+    if (await respondIfBannedUserId(res, usuari_id)) return;
+
     const sessions = await chargingSessionModel.getUserSessions(usuari_id, parseInt(limit), parseInt(offset));
 
     return res.json({
@@ -146,6 +155,8 @@ async function getChargingStats(req, res) {
       });
     }
 
+    if (await respondIfBannedUserId(res, usuari_id)) return;
+
     const stats = await chargingService.getUserChargingStats(usuari_id);
 
     return res.json({
@@ -173,6 +184,9 @@ async function cancelCharging(req, res) {
         error: 'Parámetro requerido: session_id'
       });
     }
+
+    const existing = await chargingSessionModel.getSessionById(session_id);
+    if (existing && (await respondIfBannedUserId(res, existing.usuari_id))) return;
 
     const session = await chargingSessionModel.cancelSession(session_id, reason || 'manual');
 

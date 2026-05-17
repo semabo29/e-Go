@@ -14,9 +14,11 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { appFetch } from '@/services/appFetch';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { getApiUrl } from '@/constants/api';
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Station {
   id: number;
@@ -40,6 +42,9 @@ export default function MyFavoriteStationsScreen() {
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const styles = useMemo(() => createFavoriteStyles(sem), [sem]);
 
+  // Obtenim els marges de l'àrea segura del mòbil
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     if (user) {
       fetchFavorites();
@@ -50,7 +55,7 @@ export default function MyFavoriteStationsScreen() {
     if (!user) return;
     try {
       setLoading(true);
-      const response = await fetch(`${getApiUrl()}/favorites?usuari_id=${user.id}`, {
+      const response = await appFetch(`/favorites?usuari_id=${user.id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -111,7 +116,7 @@ export default function MyFavoriteStationsScreen() {
             setDeleting(true);
             try {
               const deletePromises = Array.from(selectedIds).map((estacio_id) =>
-                fetch(`${getApiUrl()}/favorites`, {
+                appFetch('/favorites', {
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ usuari_id: user!.id, estacio_id }),
@@ -229,17 +234,17 @@ export default function MyFavoriteStationsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={sem.accent} />
           <Text style={styles.loadingText}>Cargando estaciones...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -324,7 +329,7 @@ export default function MyFavoriteStationsScreen() {
           )}
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

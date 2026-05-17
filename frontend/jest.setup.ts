@@ -1,6 +1,29 @@
 import '@testing-library/jest-native/extend-expect';
 import { jest } from '@jest/globals';
 
+// Margen extra en CI y al instrumentar cobertura (login.integration tiene muchos waitFor).
+jest.setTimeout(process.env.CI === 'true' ? 45_000 : 30_000);
+
+jest.mock('expo-localization', () => ({
+  getLocales: () => [{ languageCode: 'es', regionCode: 'ES' }],
+}));
+
+import '@/i18n/i18n';
+
+// Debe ir antes de reanimated/bottom-sheet: evita cargar worklets nativos en Jest.
+jest.mock('@gorhom/bottom-sheet', () => {
+  const React = require('react');
+  const { View, ScrollView } = require('react-native');
+  const BottomSheet = React.forwardRef((props: { children?: React.ReactNode }, _ref: unknown) =>
+    React.createElement(View, { testID: 'mock-bottom-sheet' }, props.children)
+  );
+  return {
+    __esModule: true,
+    default: BottomSheet,
+    BottomSheetScrollView: ScrollView,
+  };
+});
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
@@ -19,7 +42,34 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+jest.mock('react-native-reanimated', () => {
+  const reactNative = require('react-native');
+  return {
+    __esModule: true,
+    default: reactNative.View,
+    useSharedValue: jest.fn(() => ({ value: 0 })),
+    useAnimatedStyle: jest.fn(() => ({})),
+    useAnimatedProps: jest.fn(() => ({})),
+    withTiming: jest.fn((v) => v),
+    withSpring: jest.fn((v) => v),
+    runOnUI: jest.fn((fn) => fn),
+    runOnJS: jest.fn((fn) => fn),
+    makeMutable: jest.fn(() => ({ value: 0 })),
+  };
+});
+
+jest.mock('@gorhom/bottom-sheet', () => {
+  const reactNative = require('react-native');
+  return {
+    __esModule: true,
+    default: reactNative.View,
+    BottomSheetView: reactNative.View,
+    BottomSheetScrollView: reactNative.ScrollView,
+    BottomSheetModal: reactNative.View,
+    BottomSheetModalProvider: reactNative.View,
+    BottomSheetTextInput: reactNative.TextInput,
+  };
+});
 // Mock global para módulos de mapas nativos en Jest (evita RNMapsAirModule errors).
 jest.mock('react-native-maps-directions', () => () => null);
 jest.mock('react-native-maps', () => {
@@ -63,6 +113,78 @@ jest.mock('react-native-maps', () => {
     Polyline: (props: any) => React.createElement(View, { testID: 'mock-polyline', ...props }),
   };
 });
+
+jest.mock('react-native-google-mobile-ads', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const mockCreateAd = (store: Record<string, Array<(...args: unknown[]) => void>>) => ({
+    load: jest.fn(),
+    show: jest.fn(),
+    addAdEventListener: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
+      (store[event] ||= []).push(handler);
+      return jest.fn(() => {
+        store[event] = (store[event] || []).filter((h) => h !== handler);
+      });
+    }),
+  });
+
+  const harness = {
+    interstitialStore: {} as Record<string, Array<(...args: unknown[]) => void>>,
+    rewardedStore: {} as Record<string, Array<(...args: unknown[]) => void>>,
+    interstitialAd: mockCreateAd({}),
+    rewardedAd: mockCreateAd({}),
+  };
+  harness.interstitialAd = mockCreateAd(harness.interstitialStore);
+  harness.rewardedAd = mockCreateAd(harness.rewardedStore);
+  globalThis.__adTestHarness = harness;
+
+  const mobileAdsInstance = {
+    initialize: jest.fn(async () => {}),
+    setRequestConfiguration: jest.fn(async () => {}),
+  };
+
+  return {
+    __esModule: true,
+    default: jest.fn(() => mobileAdsInstance),
+    BannerAd: () => React.createElement(View, { testID: 'mock-banner-ad' }),
+    BannerAdSize: { ANCHORED_ADAPTIVE_BANNER: 'ANCHORED_ADAPTIVE_BANNER' },
+    TestIds: {
+      BANNER: 'test-banner',
+      INTERSTITIAL: 'test-interstitial',
+      REWARDED: 'test-rewarded',
+    },
+    InterstitialAd: {
+      createForAdRequest: jest.fn(() => {
+        harness.interstitialAd = mockCreateAd(harness.interstitialStore);
+        return harness.interstitialAd;
+      }),
+    },
+    RewardedAd: {
+      createForAdRequest: jest.fn(() => {
+        harness.rewardedAd = mockCreateAd(harness.rewardedStore);
+        return harness.rewardedAd;
+      }),
+    },
+    RewardedAdEventType: { LOADED: 'rewarded_loaded', EARNED_REWARD: 'earned_reward' },
+    AdEventType: { LOADED: 'loaded', CLOSED: 'closed', ERROR: 'error' },
+  };
+});
+
+jest.mock('@/contexts/SubscriptionContext', () => ({
+  SubscriptionProvider: ({ children }: { children?: unknown }) => children,
+  useSubscription: () => ({
+    subStatus: {
+      status: 'inactive',
+      isPremium: false,
+      current_period_end: null,
+      cancel_at_period_end: false,
+    },
+    isPremium: false,
+    isLoading: false,
+    refreshSubscription: jest.fn(),
+  }),
+}));
 
 jest.mock('@/contexts/ChargingContext', () => ({
   useCharging: () => ({

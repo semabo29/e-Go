@@ -66,10 +66,11 @@ jobs:
           DB_PASSWORD: test_password
           DB_NAME: test_db
           DB_SCHEMA: ego
-          DB_TABLE_USUARIOS: usuarios
+          DB_TABLE_USUARIOS: usuari
 
           # Variables que llegeix backend/lib/authHelpers.js
           GOOGLE_CLIENT_ID: test_client_id
           GOOGLE_CLIENT_SECRET: test_client_secret
           PENDING_SECRET: test_pending_secret
+          JWT_SECRET: test-secret
         run: npm test

@@ -1,5 +1,5 @@
 // Inicio (primera pestaña). Sin sesión: bienvenida + Google. Con sesión: menú 3 barras + PANTALLA PRINCIPAL.
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { MapView, Marker } from '../_components/MapWrapper';
 import TopBar, { MapSearchListItem } from '../../components/TopBar';
 
@@ -26,39 +26,52 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useCharging } from '@/contexts/ChargingContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { showFullscreenAd } from '@/features/ads/googleAds';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import {
+  buildIncidenciaFormData,
+  submitIncidencia,
+  submitSolvedIncidencia,
+} from '@/services/incidenciaApiService';
+import { appFetch } from '@/services/appFetch';
 import { ChargingTimerDisplay } from '../../components/ChargingTimerDisplay';
 import { ChargingActionCard } from '../../components/ChargingActionCard';
 import { ChargingResultModal } from '../../components/ChargingResultModal';
-import { StartChargingButton } from '../../components/StartChargingButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useThemePreference } from '@/contexts/ThemePreferenceContext';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import type { SemanticColors } from '@/constants/accessibilityColors';
+import { LanguageMenuSelector } from '@/components/LanguageMenuSelector';
 import {
   requestLocationPermissions,
   isLocationServiceEnabled,
   getCurrentLocation,
   calculateDistanceInMeters
 } from '@/services/chargingLocationService';
-import {
-  startChargingSession as apiStartCharging,
-  endChargingSession as apiEndCharging
-} from '@/services/chargingApiService';
-
-//Importamos el boton de favoritos
-import { FavoriteButton } from '../../components/FavoriteButton';
+import { startChargingSession as apiStartCharging } from '@/services/chargingApiService';
 
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
-import { Polyline } from 'react-native-maps'; //Para pintar el trazado de la ruta
+import { Polyline } from 'react-native-maps';
+import {StationBottomSheet} from "@/components/StationBottomSheet"; //Para pintar el trazado de la ruta
+import {
+  buildClearEventLocationPatch,
+  buildEventFocusMapPatch,
+  getFitCoordinatesForEventFocus,
+  resolveNavigationOrigin,
+} from '@/utils/eventMapFocus';
+import { useTranslation } from 'react-i18next';
 
 const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
 try {
   ImagePickerModule = require('expo-image-picker');
-} catch (_e) {
+} catch (error) {
+  if (__DEV__) {
+    console.warn('expo-image-picker unavailable:', error);
+  }
   ImagePickerModule = null;
 }
 
@@ -82,7 +95,18 @@ interface Estacion {
   operatiu?: boolean;
 }
 
+type ChargingResultPayload = {
+  durationMinutes: number;
+  basePoints: number;
+  totalPoints: number;
+  multiplier: number;
+  isPremium: boolean;
+  sessionId: number;
+  reason: string;
+};
+
 export default function InicioScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preference, setPreference } = useThemePreference();
@@ -101,6 +125,7 @@ export default function InicioScreen() {
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
 
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
+  const { isPremium: accountIsPremium } = useSubscription();
   const {
     isCharging,
     session,
@@ -127,6 +152,29 @@ export default function InicioScreen() {
   } | null>(null);
   const [resultLoading, setResultLoading] = useState(false);
   const [chargingError, setChargingError] = useState('');
+
+  const presentChargingResult = useCallback(
+    async (payload: ChargingResultPayload) => {
+      const skipAds = accountIsPremium || payload.isPremium;
+      if (!skipAds) {
+        await showFullscreenAd();
+      }
+      setChargingResult(payload);
+      setShowResultModal(true);
+    },
+    [accountIsPremium]
+  );
+
+  /** Anuncio a pantalla completa antes de activar la ruta (usuarios free). */
+  const activateNavigation = useCallback(
+    async (start: () => void) => {
+      if (!accountIsPremium) {
+        await showFullscreenAd();
+      }
+      start();
+    },
+    [accountIsPremium]
+  );
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
@@ -168,7 +216,7 @@ export default function InicioScreen() {
   const [welcomePassword, setWelcomePassword] = useState('');
   const [authLoadingGoogle, setAuthLoadingGoogle] = useState(false);
   const [authError, setAuthError] = useState('');
-  const INCIDENCIA_TYPES = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres'];
+  const INCIDENCIA_TYPE_KEYS = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres'] as const;
 
   //Estados para la navegacion a un punto
   const [isNavigating, setIsNavigating] = useState(false);
@@ -226,50 +274,92 @@ export default function InicioScreen() {
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
   //Estado para saber el punto  marcado por el usuario (lo uso para cunado un conductor quiere ir a un sitio que no es un punto de carga y lo selecciona en el mapa)
   const [selectedLocation, setSelectedLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  /** Si ve d’un event: ruta “Cómo llegar” amb origen a l’estació (no demanar GPS). */
+  const [routeOriginPreset, setRouteOriginPreset] = useState<{latitude: number; longitude: number} | null>(null);
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState<string | null>(null);
   //Estado para saber las coordenadas que ocupan la ruta
   const [routeCoords, setRouteCoords] = useState<{latitude: number, longitude: number}[]>([]);
   //Estado para saber si estamos seleccionando nosotros mismos el origen de la ruta
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
+
+  const handleFocusEventOnMap = useCallback(
+    (
+      eventLat: number,
+      eventLon: number,
+      title: string,
+      originLat: number,
+      originLon: number
+    ) => {
+      const patch = buildEventFocusMapPatch(eventLat, eventLon, title, originLat, originLon);
+      setRouteOriginPreset(patch.routeOriginPreset);
+      setSelectedLocation(patch.selectedLocation);
+      setSelectedLocationLabel(patch.selectedLocationLabel);
+      setSelectedStation(null);
+      setIsNavigating(false);
+      setRouteCoords([]);
+      setRouteDestination(null);
+      setRouteInfo(null);
+      requestAnimationFrame(() => {
+        if (mapRef.current && typeof mapRef.current.fitToCoordinates === 'function') {
+          mapRef.current.fitToCoordinates(
+            getFitCoordinatesForEventFocus(originLat, originLon, eventLat, eventLon),
+            { edgePadding: { top: 100, right: 50, bottom: 280, left: 50 }, animated: true }
+          );
+        }
+      });
+    },
+    []
+  );
 
   //Funcion para empezar la navegacion
   const handleStartNavigation = (coordenadas: {latitude: number, longitude: number}) => {
       setRouteCoords([]);
       setRouteInfo(null);
       setRouteDestination(coordenadas);
+      const originResolution = resolveNavigationOrigin(routeOriginPreset);
+      if (originResolution.type === 'preset') {
+        setRouteOrigin(originResolution.origin);
+        setRouteOriginPreset(null);
+        setSelectedLocationLabel(null);
+        setIsNavigating(true);
+        return;
+      }
       //Preguntamos al usuario el origen
       Alert.alert(
-        "Iniciar ruta",
-        "¿Desde dónde quieres calcular la ruta?",
+        t('navigation.startRouteTitle'),
+        t('navigation.startRouteBody'),
         [
           {
-            text: "Mi ubicación actual",
+            text: t('navigation.myLocation'),
             onPress: () => {
               if (userLocation && userLocation.coords) {
-                setRouteOrigin({
-                  latitude: userLocation.coords.latitude,
-                  longitude: userLocation.coords.longitude
+                void activateNavigation(() => {
+                  setRouteOrigin({
+                    latitude: userLocation.coords.latitude,
+                    longitude: userLocation.coords.longitude,
+                  });
+                  setIsNavigating(true);
                 });
-                setIsNavigating(true);
               } else {
-                Alert.alert("GPS desactivado", "No podemos encontrar tu ubicación actual.");
+                Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
               }
-            }
+            },
           },
           {
-            text: "Buscar otro origen",
+            text: t('navigation.searchOtherOrigin'),
             onPress: () => {
               setIsSelectingOrigin(true); //Activamos el modo selección de punto de origen
               //Alert.alert("Modo búsqueda", "Busca un lugar en la barra superior para usarlo como origen.");
             }
           },
-          { text: "Cancelar", style: "cancel" }
+          { text: t('common.cancel'), style: "cancel" }
         ]
       );
   };
   // Función para manejar el inicio de una sesión de carga
   const handleStartCharging = async (): Promise<boolean> => {
     if (!user || !selectedStation || !userLocation) {
-      setChargingError('Faltan datos necesarios para iniciar la carga');
+      setChargingError(t('charging.missingData'));
       return false;
     }
 
@@ -277,21 +367,21 @@ export default function InicioScreen() {
       // Verificar permisos de ubicación
       const hasPermission = await requestLocationPermissions();
       if (!hasPermission) {
-        setChargingError('Necesitas otorgar permisos de ubicación');
+        setChargingError(t('charging.needLocationPermission'));
         return false;
       }
 
       // Verificar que los servicios de ubicación estén habilitados
       const isEnabled = await isLocationServiceEnabled();
       if (!isEnabled) {
-        setChargingError('Por favor, activa los servicios de ubicación en tu dispositivo');
+        setChargingError(t('charging.enableLocationServices'));
         return false;
       }
 
       // Obtener ubicación actual
       const currentLocation = await getCurrentLocation();
       if (!currentLocation) {
-        setChargingError('No se pudo obtener tu ubicación actual');
+        setChargingError(t('charging.couldNotGetLocation'));
         return false;
       }
 
@@ -305,9 +395,9 @@ export default function InicioScreen() {
 
       if (distance > 30) {
         Alert.alert(
-          'Demasiado lejos',
-          `Te encuentras a ${distance} metros del punto de carga.\n\nDebes acercarte a menos de 30 metros para poder iniciar la carga.`,
-          [{ text: 'Entendido', style: 'default' }]
+          t('charging.tooFarTitle'),
+          t('charging.tooFarBody', { distance }),
+          [{ text: t('common.understood'), style: 'default' }]
         );
         return false; // Aturem l'execució aquí mateix
       }
@@ -334,13 +424,12 @@ export default function InicioScreen() {
         if (apiResponse.session?.id) {
           // Actualizar sesión con ID del backend
           updateSessionId(apiResponse.session.id);
-          console.log('Sesión creada en backend:', apiResponse.session.id);
         }
       }
 
       return success;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al iniciar carga';
+      const message = error instanceof Error ? error.message : t('charging.startError');
       setChargingError(message);
       console.error('Error iniciando carga:', error);
       return false;
@@ -352,7 +441,7 @@ export default function InicioScreen() {
       if (autoStopResult) {
         const points = autoStopResult.apiResponse?.pointsGained || { basePoints: 0, totalPoints: 0, multiplier: 1 };
 
-        setChargingResult({
+        void presentChargingResult({
           durationMinutes: autoStopResult.durationMinutes,
           basePoints: points.basePoints,
           totalPoints: points.totalPoints,
@@ -362,10 +451,9 @@ export default function InicioScreen() {
           reason: autoStopResult.reason,
         });
 
-        setShowResultModal(true);
         clearAutoStopResult(); // Ho netegem perquè no es torni a obrir sol
       }
-    }, [autoStopResult]);
+    }, [autoStopResult, presentChargingResult, clearAutoStopResult]);
 
   // Función para finalizar la carga
     const handleFinishCharging = async () => {
@@ -380,7 +468,7 @@ export default function InicioScreen() {
           // Agafem els punts reals que ens retorna el backend
           const points = result.apiResponse.pointsGained;
 
-          setChargingResult({
+          await presentChargingResult({
             durationMinutes: result.durationMinutes,
             basePoints: points.basePoints,
             totalPoints: points.totalPoints,
@@ -389,12 +477,10 @@ export default function InicioScreen() {
             sessionId: result.session?.id || 0,
             reason: result.reason,
           });
-
-          setShowResultModal(true);
         }
       } catch (error) {
         console.error('Error al finalizar:', error);
-        Alert.alert('Error', 'No se ha podido finalizar la sesión correctamente.');
+        Alert.alert(t('common.error'), t('charging.finishSessionError'));
       } finally {
         setResultLoading(false);
       }
@@ -403,12 +489,12 @@ export default function InicioScreen() {
   // Función para cancelar la carga
   const handleCancelCharging = () => {
     Alert.alert(
-      'Cancelar carga',
-      '¿Estás seguro de que deseas cancelar la sesión de carga?',
+      t('charging.cancelTitle'),
+      t('charging.cancelBody'),
       [
-        { text: 'Continuar', style: 'cancel' },
+        { text: t('charging.cancelContinue'), style: 'cancel' },
         {
-          text: 'Cancelar sesión',
+          text: t('charging.cancelSession'),
           style: 'destructive',
           onPress: () => {
             cancelChargingSession();
@@ -441,8 +527,8 @@ export default function InicioScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { //alerta para informar el proque de la necesidad de ubi
         Alert.alert(
-          'Permiso necesario',
-          'Para mostrarte los puntos de carga más cercanos, necesitamos acceso a tu ubicación.'
+          t('charging.locationPermissionTitle'),
+          t('charging.locationPermissionBody')
         );
         return;
       }
@@ -514,9 +600,8 @@ export default function InicioScreen() {
       if (ac_dc) queryParams.push(`ac_dc=${ac_dc}`);
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
-      const url = `${getApiUrl()}/stations${queryString}`;
 
-      const response = await fetch(url);
+      const response = await appFetch(`/stations${queryString}`);
       const data = await response.json();
 
       setEstaciones(Array.isArray(data) ? data : []);
@@ -533,7 +618,7 @@ export default function InicioScreen() {
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
   try {
-    const response = await fetch(`${getApiUrl()}/favorites?usuari_id=${user.id}`);
+    const response = await appFetch(`/favorites?usuari_id=${user.id}`);
     const data = await response.json();
 
     // Verificamos si data existe y es un array antes de hacer el map
@@ -617,7 +702,8 @@ useEffect(() => {
         // Ajuntem tots els paràmetres amb un "&"
         const queryString = queryParams.join('&');
 
-        const response = await fetch(`${getApiUrl()}/stations/search?${queryString}`);
+        // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
+        const response = await appFetch(`/stations/search?${queryString}`);
         const data = await response.json();
 
         // --- APLIQUEM EL FILTRE DE FAVORITS LOCALMENT ---
@@ -702,11 +788,11 @@ useEffect(() => {
   // --- LÒGICA PEL TEXT DELS FILTRES ---
   let powerText = '';
   if (minKw && maxKw) {
-    powerText = `${minKw} - ${maxKw} kW`;
+    powerText = t('home.filters.powerBetween', { min: minKw, max: maxKw });
   } else if (minKw) {
-    powerText = `≥ ${minKw} kW`;
+    powerText = t('home.filters.powerMin', { min: minKw });
   } else if (maxKw) {
-    powerText = `≤ ${maxKw} kW`;
+    powerText = t('home.filters.powerMax', { max: maxKw });
   }
 
   const hasFilters = !!minKw || !!maxKw || !!connectorType || !!ac_dc || !!showFavoritesFilter;
@@ -719,13 +805,13 @@ useEffect(() => {
       const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
 
       if (!idToken) {
-        setAuthError('No se pudo obtener el token de Google');
+        setAuthError(t('login.errors.googleToken'));
         return;
       }
 
       let res: Response;
       try {
-        res = await fetch(`${getApiUrl()}/auth/google`, {
+        res = await appFetch('/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
@@ -737,11 +823,11 @@ useEffect(() => {
         if (msg.includes('Network request failed')) {
           setAuthError(
             __DEV__
-              ? `No llega al backend. URL usada: ${base}. Con USB usa npm run start:usb (cierra Metro y vuelve a abrir), adb reverse y backend en marcha en el PC.`
-              : 'No llega al backend. Comprueba conexión y que el servidor esté en marcha.'
+              ? t('login.errors.networkDev', { url: base })
+              : t('login.errors.networkProd')
           );
         } else {
-          setAuthError('No se pudo conectar con el servidor.');
+          setAuthError(t('login.errors.server'));
         }
         return;
       }
@@ -749,12 +835,17 @@ useEffect(() => {
       const data = await res.json();
 
       if (!res.ok) {
-        setAuthError(data.error || 'Error al iniciar sesión');
+        if (data?.code !== 'USER_BANNED') {
+          setAuthError(data.error || t('login.errors.loginFailed'));
+        }
         return;
       }
 
       if (data.user) {
-        setUser(data.user);
+        setUser({
+          ...data.user,
+          token: data.token // Assumint que el teu backend envia el token a "data.token"
+        });
         setAuthStep('google');
         setPendingAuth(null);
         setWelcomeUsername('');
@@ -773,9 +864,9 @@ useEffect(() => {
         setWelcomeUsername('');
         setAuthError('');
       } else if (code === statusCodes.IN_PROGRESS) {
-        setAuthError('Ya hay un inicio de sesión en curso');
+        setAuthError(t('login.errors.inProgress'));
       } else {
-        setAuthError('Error al conectar con Google');
+        setAuthError(t('login.errors.googleConnect'));
         console.error('[Google Native Error]', err);
       }
     } finally {
@@ -788,7 +879,7 @@ useEffect(() => {
     setAuthLoadingGoogle(true);
     setAuthError('');
     try {
-      const res = await fetch(`${getApiUrl()}/auth/register`, {
+      const res = await appFetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -803,10 +894,12 @@ useEffect(() => {
         setPendingAuth(null);
         setWelcomeUsername('');
       } else {
-        setAuthError(data.error || 'Error al registrarse');
+        if (data?.code !== 'USER_BANNED') {
+          setAuthError(data.error || t('login.errors.registerFailed'));
+        }
       }
     } catch (_e) {
-      setAuthError('No se pudo conectar con el servidor.');
+      setAuthError(t('login.errors.server'));
     } finally {
       setAuthLoadingGoogle(false);
     }
@@ -814,14 +907,14 @@ useEffect(() => {
 
   async function submitLocalWelcomeAuth() {
     if (!welcomeEmail.trim() || !welcomePassword.trim()) {
-      setAuthError('Email y contraseña son obligatorios');
+      setAuthError(t('login.errors.emailPasswordRequired'));
       return;
     }
 
     setAuthLoadingGoogle(true);
     setAuthError('');
     try {
-      const res = await fetch(`${getApiUrl()}/auth/local/login`, {
+      const res = await appFetch('/auth/local/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -829,16 +922,21 @@ useEffect(() => {
           password: welcomePassword,
         }),
       });
-      const data = await res.json();
+      const data = await res.json()
       if (!res.ok) {
-        setAuthError(data.error || 'No se pudo iniciar sesión');
+        if (data?.code !== 'USER_BANNED') {
+          setAuthError(data.error || t('login.errors.localLoginFailed'));
+        }
         return;
       }
       if (data.user) {
-        setUser(data.user);
+        setUser({
+          ...data.user,
+          token: data.token // Assumint que el teu backend envia el token a "data.token"
+        });
       }
     } catch (_e) {
-      setAuthError('No se pudo conectar con el servidor.');
+      setAuthError(t('login.errors.server'));
     } finally {
       setAuthLoadingGoogle(false);
     }
@@ -871,17 +969,18 @@ useEffect(() => {
     if (!user || !selectedStation) return;
 
     if (!incidenciaComentario.trim() || !incidenciaTipo.trim()) {
-      Alert.alert('Campos obligatorios', 'Debes rellenar comentario y tipo.');
+      Alert.alert(t('incident.requiredTitle'), t('incident.requiredBody'));
       return;
     }
 
     setIncidenciaSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('comentari', incidenciaComentario.trim());
-      formData.append('tipus', incidenciaTipo);
-      formData.append('conductor', String(user.id));
-      formData.append('estacio', String(selectedStation.id));
+      const formData = buildIncidenciaFormData({
+        conductor: user.id,
+        estacio: selectedStation.id,
+        comentari: incidenciaComentario.trim(),
+        tipus: incidenciaTipo,
+      });
 
       if (incidenciaArchivo) {
         formData.append('arxiu', {
@@ -891,21 +990,20 @@ useEffect(() => {
         } as any);
       }
 
-      const response = await fetch(`${getApiUrl()}/incidencias`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error || 'No se pudo registrar la incidencia');
+      const result = await submitIncidencia(formData);
+      if (!result.ok && result.conflict) {
+        Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
+        return;
+      }
+      if (!result.ok) {
+        throw new Error(result.error || t('incident.registerError'));
       }
 
-      Alert.alert('Incidencia enviada', 'La incidencia se ha registrado correctamente.');
+      Alert.alert(t('incident.sentTitle'), t('incident.sentBody'));
       handleCloseIncidenciaForm();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al enviar la incidencia';
-      Alert.alert('Error', message);
+      const message = error instanceof Error ? error.message : t('incident.sendError');
+      Alert.alert(t('common.error'), message);
     } finally {
       setIncidenciaSubmitting(false);
     }
@@ -915,41 +1013,34 @@ useEffect(() => {
     if (!user || !selectedStation) return;
 
     try {
-      const formData = new FormData();
-      formData.append('comentari', 'La Incidencia está solucionada');
-      formData.append('tipus', 'Operatiu');
-      formData.append('conductor', String(user.id));
-      formData.append('estacio', String(selectedStation.id));
-
-      const response = await fetch(`${getApiUrl()}/incidencias`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error || 'No se pudo registrar la incidencia solucionada');
+      const result = await submitSolvedIncidencia(user.id, selectedStation.id);
+      if (!result.ok && result.conflict) {
+        Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
+        return;
+      }
+      if (!result.ok) {
+        throw new Error(result.error || t('incident.solvedRegisterError'));
       }
 
-      Alert.alert('Incidencia reportada', 'Se ha marcado la estación como operativa.');
+      Alert.alert(t('incident.reportedTitle'), t('incident.reportedBody'));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al reportar incidencia solucionada';
-      Alert.alert('Error', message);
+      const message = error instanceof Error ? error.message : t('incident.solvedReportError');
+      Alert.alert(t('common.error'), message);
     }
   };
 
   const handlePickIncidenciaFile = async () => {
     if (!ImagePickerModule) {
       Alert.alert(
-        'Adjuntos no disponibles',
-        'Este dispositivo aún no tiene habilitado el módulo nativo para seleccionar imágenes.'
+        t('incident.attachmentsUnavailableTitle'),
+        t('incident.attachmentsUnavailableBody')
       );
       return;
     }
 
     const permission = await ImagePickerModule.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permiso requerido', 'Necesitamos permiso para acceder a tus imágenes.');
+      Alert.alert(t('incident.photosPermissionTitle'), t('incident.photosPermissionBody'));
       return;
     }
 
@@ -972,7 +1063,7 @@ useEffect(() => {
     return (
       <View style={[styles.screen, styles.centered]}>
         <ActivityIndicator size="large" color={sem.accent} />
-        <Text style={styles.loadingText}>Cargando…</Text>
+        <Text style={styles.loadingText}>{t('home.loading')}</Text>
       </View>
     );
   }
@@ -990,9 +1081,9 @@ useEffect(() => {
         >
           <View style={styles.cardCompact}>
             <Image source={LOGO} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>Bienvenido a e-Go</Text>
+            <Text style={styles.title}>{t('home.welcomeTitle')}</Text>
             <Text style={styles.subtitle}>
-              Tu navegador de estaciones de carga en Catalunya
+              {t('home.welcomeSubtitle')}
             </Text>
             <View style={styles.authLinksRow}>
               <TouchableOpacity
@@ -1000,26 +1091,26 @@ useEffect(() => {
                 onPress={() => router.push('/company-login' as Href)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.adminLinkText}>Acceso Empresa</Text>
+                <Text style={styles.adminLinkText}>{t('login.companyAccess')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.adminLink}
                 onPress={() => router.push('/admin-login')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.adminLinkText}>Acceso Admin</Text>
+                <Text style={styles.adminLinkText}>{t('login.adminAccess')}</Text>
               </TouchableOpacity>
             </View>
 
             {authStep === 'username' ? (
               <>
-                <Text style={styles.welcomeUsernameTitle}>Elige tu nombre de usuario</Text>
+                <Text style={styles.welcomeUsernameTitle}>{t('login.chooseUsernameTitle')}</Text>
                 <Text style={styles.welcomeUsernameSubtitle}>
-                  Así aparecerás en la aplicación
+                  {t('login.chooseUsernameSubtitle')}
                 </Text>
                 <TextInput
                   style={styles.welcomeUsernameInput}
-                  placeholder="Nombre de usuario"
+                  placeholder={t('common.username')}
                   placeholderTextColor="#9ca3af"
                   value={welcomeUsername}
                   onChangeText={setWelcomeUsername}
@@ -1035,11 +1126,11 @@ useEffect(() => {
                   {authLoadingGoogle ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.welcomePrimaryButtonText}>Continuar</Text>
+                    <Text style={styles.welcomePrimaryButtonText}>{t('common.continue')}</Text>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={resetWelcomeAuthToGoogle} style={styles.welcomeBackLink}>
-                  <Text style={styles.welcomeBackLinkText}>Volver a Google</Text>
+                  <Text style={styles.welcomeBackLinkText}>{t('home.welcomeBackGoogle')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -1056,15 +1147,15 @@ useEffect(() => {
                     style={styles.googleIcon}
                     resizeMode="contain"
                   />
-                  <Text style={styles.loginButtonText}>Continuar con Google</Text>
+                  <Text style={styles.loginButtonText}>{t('login.continueGoogle')}</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.authSeparatorText}>o</Text>
+                <Text style={styles.authSeparatorText}>{t('common.or')}</Text>
 
-                <Text style={styles.localAuthHeading}>Inicia sesión</Text>
+                <Text style={styles.localAuthHeading}>{t('home.localAuthHeading')}</Text>
                 <TextInput
                   style={styles.welcomeUsernameInput}
-                  placeholder="Mail"
+                  placeholder={t('common.mail')}
                   placeholderTextColor="#9ca3af"
                   value={welcomeEmail}
                   onChangeText={setWelcomeEmail}
@@ -1073,7 +1164,7 @@ useEffect(() => {
                 />
                 <TextInput
                   style={styles.welcomeUsernameInput}
-                  placeholder="Contraseña"
+                  placeholder={t('common.password')}
                   placeholderTextColor="#9ca3af"
                   value={welcomePassword}
                   onChangeText={setWelcomePassword}
@@ -1088,17 +1179,17 @@ useEffect(() => {
                   {authLoadingGoogle ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.welcomePrimaryButtonText}>Iniciar sesión</Text>
+                    <Text style={styles.welcomePrimaryButtonText}>{t('login.signIn')}</Text>
                   )}
                 </TouchableOpacity>
 
-                <Text style={styles.authSeparatorText}>o</Text>
+                <Text style={styles.authSeparatorText}>{t('common.or')}</Text>
                 <TouchableOpacity
                   style={styles.welcomeBackLink}
                   onPress={() => router.push({ pathname: '/login', params: { mode: 'register' } })}
                   disabled={authLoadingGoogle}
                 >
-                  <Text style={styles.welcomeBackLinkText}>Regístrate</Text>
+                  <Text style={styles.welcomeBackLinkText}>{t('home.registerCta')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -1126,7 +1217,7 @@ useEffect(() => {
         <View style={styles.originSelectionNotice}>
           <View style={styles.originSelectionContent}>
             <MaterialIcons name="location-on" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.originSelectionText}>Selecciona el punto de origen en el mapa</Text>
+            <Text style={styles.originSelectionText}>{t('home.originSelectHint')}</Text>
           </View>
           <TouchableOpacity //Botón de cerrar por si no queremos hacer una ruta.
             onPress={() => setIsSelectingOrigin(false)}
@@ -1195,7 +1286,7 @@ useEffect(() => {
             {showFavoritesFilter && (
               <View style={styles.filterRow}>
                 <MaterialIcons name="favorite" size={18} color={sem.favorite} />
-                <Text style={styles.activeFiltersText}>Favoritos</Text>
+                <Text style={styles.activeFiltersText}>{t('home.favoritesChip')}</Text>
                 <TouchableOpacity
                   onPress={() => router.setParams({ minKw: minKw || '', maxKw: maxKw || '', connectorType: connectorType || '', ac_dc: ac_dc || '', showFavorites: '' })}
                   hitSlop={8}
@@ -1230,11 +1321,14 @@ useEffect(() => {
           showsUserHeading={true}
           //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
           onPress={(e: any) => {
-            if (isSelectingOrigin) {//Si estamos seleccionando un punto de origen para la ruta solo hacemos el cuerpo del if
-                  setRouteOrigin(e.nativeEvent.coordinate); //Guardamos donde ha tocado como origen
-                  setIsSelectingOrigin(false); //Salimos del modo selección
-                  setIsNavigating(true); //Iniciamos la navegación
-                  return; //Cortamos la ejecución aquí
+            if (isSelectingOrigin) {
+                  const origin = e.nativeEvent.coordinate;
+                  void activateNavigation(() => {
+                    setRouteOrigin(origin);
+                    setIsSelectingOrigin(false);
+                    setIsNavigating(true);
+                  });
+                  return;
             }
             if (isNavigating) {//Esto permite que si clicamos a un punto del mapa cuando estamos navegando en una ruta esto sea ignorado (para salir de la navegación hay un boton especifico)
                 return
@@ -1249,6 +1343,8 @@ useEffect(() => {
                 latitude: e.nativeEvent.coordinate.latitude,
                 longitude: e.nativeEvent.coordinate.longitude,
               });
+              setRouteOriginPreset(null);
+              setSelectedLocationLabel(null);
               //Limpiamos la ruta
               setIsNavigating(false);
               setRouteCoords([]);
@@ -1277,17 +1373,21 @@ useEffect(() => {
 
                 //Si estamos eligiendo origen, interceptamos el clic en la estación
                 if (isSelectingOrigin) {
-                  setRouteOrigin({
-                    latitude: parseFloat(est.latitud),
-                    longitude: parseFloat(est.longitud)
+                  void activateNavigation(() => {
+                    setRouteOrigin({
+                      latitude: parseFloat(est.latitud),
+                      longitude: parseFloat(est.longitud),
+                    });
+                    setIsSelectingOrigin(false);
+                    setIsNavigating(true);
                   });
-                  setIsSelectingOrigin(false);
-                  setIsNavigating(true);
-                  return; //Cortamos aquí
+                  return;
                 }
 
                 setSelectedStation(est);
                 setSelectedLocation(null); //Limpiamos el punto manual si seleccionan una estación
+                setRouteOriginPreset(null);
+                setSelectedLocationLabel(null);
                 setRouteCoords([]);
                 setIsNavigating(false);
                 setRouteInfo(null);
@@ -1301,7 +1401,7 @@ useEffect(() => {
                   key={`custom-loc-${selectedLocation.latitude}-${selectedLocation.longitude}`} //Soluciona el problema de que no se borren al clicar en otro sitio
                   coordinate={selectedLocation}
                   pinColor={sem.mapCustomLocation}
-                  title="Ubicación seleccionada"
+                  title={selectedLocationLabel || t('home.selectedLocationTitle')}
                 />
             )}
 
@@ -1309,7 +1409,7 @@ useEffect(() => {
                 {isNavigating && routeDestination && (
                   <Marker
                     coordinate={routeDestination}
-                    title="Ubicación seleccionada"
+                    title={t('home.selectedLocationTitle')}
                     pinColor={sem.mapRouteDestination}
                   />
             )}
@@ -1338,7 +1438,7 @@ useEffect(() => {
                   }
                 }}
                 onError={(errorMessage) => {
-                  Alert.alert("Error de ruta", "No se ha podido calcular la ruta");
+                  Alert.alert(t('navigation.routeErrorTitle'), t('navigation.routeErrorBody'));
                   console.log(errorMessage);
                 }}
               />
@@ -1362,7 +1462,9 @@ useEffect(() => {
               <View style={styles.navPanel}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.navTextBold} numberOfLines={1}>
-                    Hacia {selectedStation ? selectedStation.nom : 'tu destino'}
+                    {t('home.navTowards', {
+                      name: selectedStation ? selectedStation.nom : t('home.navDestination'),
+                    })}
                   </Text>
                   <Text style={styles.navText}>
                     {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
@@ -1376,7 +1478,7 @@ useEffect(() => {
                     onPress={() => setIsDrivingMode(true)}
                   >
                     <MaterialIcons name="navigation" size={20} color="#fff" />
-                    <Text style={styles.startDrivingText}>Iniciar</Text>
+                    <Text style={styles.startDrivingText}>{t('home.startDriving')}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -1389,8 +1491,11 @@ useEffect(() => {
                     setRouteDestination(null);
                     setRouteInfo(null);
                     setRouteCoords([]);
-                    setSelectedLocation(null);
                     setSelectedStation(null);
+                    const cleared = buildClearEventLocationPatch();
+                    setSelectedLocation(cleared.selectedLocation);
+                    setRouteOriginPreset(cleared.routeOriginPreset);
+                    setSelectedLocationLabel(cleared.selectedLocationLabel);
                   }}
                 >
                   <MaterialIcons name="close" size={24} color="#fff" />
@@ -1399,159 +1504,38 @@ useEffect(() => {
             )}
 
         {loadingEstaciones && (
-          <View style={styles.mapLoading}>
+          <View style={styles.mapLoading} testID="map-stations-loading">
             <ActivityIndicator size="small" color={sem.accent} />
           </View>
         )}
 
         {/* Mini panel de información de la estación */}
-        {!isNavigating && selectedStation && !isSelectingOrigin &&(
-          <View style={styles.infoPanel}>
-            <View style={styles.infoHandle} />
-
-            <View style={styles.infoTitleRow}>
-            <MaterialIcons name="location-on" size={18} color={sem.accent} />
-              {/* 1. Nombre de la estación */}
-              <Text style={styles.infoTitle} numberOfLines={2}>
-                {selectedStation.adreca}, {selectedStation.municipi}
-              </Text>
-
-              {/* 2. Botón de favoritos (solo si hay usuario) */}
-              {user && (
-                <FavoriteButton
-                  estacio_id={selectedStation.id}
-                  isInitiallyFavorite={favoriteIds.includes(selectedStation.id)}
-                  onToggle={(isFav) => {
-                    if (isFav) {
-                      setFavoriteIds([...favoriteIds, selectedStation.id]);
-                    } else {
-                      setFavoriteIds(favoriteIds.filter(id => id !== selectedStation.id));
-                    }
-                  }}
-                />
-              )}
-
-              {/* 3. Botón de cerrar */}
-              <TouchableOpacity
-                onPress={() => setSelectedStation(null)}
-                style={styles.infoCloseBtn}
-              >
-                <MaterialIcons name="close" size={20} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-
-
-            {/* CONTENIDO DEL PANEL: Dirección, kW, etc. */}
-            <View style={styles.infoContent}>
-
-              <View style={styles.infoBadgeRow}>
-                <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
-                  <MaterialIcons name="bolt" size={14} color={sem.badgeIcon} />
-                  <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{(parseFloat(selectedStation.kw) !== 0)? selectedStation.kw : 'n/a'} kW</Text>
-                </View>
-              <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
-                <MaterialIcons name="ev-station" size={14} color={sem.badgeIcon} />
-                <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{selectedStation.ac_dc}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: sem.badgeBg }]}>
-                <MaterialIcons name="electrical-services" size={14} color={sem.badgeIcon} />
-                <Text style={[styles.badgeText, { color: sem.badgeLabel }]}>{selectedStation.tipus_connexio}</Text>
-              </View>
-
-              </View>
-
-              {selectedStation.promotor && (
-                <Text style={styles.infoPromotor}>
-                  Gestor: {selectedStation.promotor}
-                </Text>
-              )}
-            </View>
-{/* Mostrar timer si está cargando */}
-            {isCharging && (
-              <View>
-                <ChargingTimerDisplay
-                  elapsedSeconds={elapsedSeconds}
-                  distanceToStation={distanceToStation}
-                />
-              </View>
-            )}
-
-            {/* Mostrar tarjeta de acciones si está cargando */}
-            {isCharging && (
-              <ChargingActionCard
-                isCharging={isCharging}
-                elapsedSeconds={elapsedSeconds}
-                distanceToStation={distanceToStation}
-                onFinishCharging={handleFinishCharging}
-                onCancelCharging={handleCancelCharging}
-              />
-            )}
-
-            {/* Mostrar botón para iniciar carga si no está cargando */}
-            {!isCharging && userLocation && (
-              <View style={styles.chargingButtonContainer}>
-                <StartChargingButton
-                  stationId={selectedStation.id}
-                  stationLat={parseFloat(selectedStation.latitud)}
-                  stationLon={parseFloat(selectedStation.longitud)}
-                  userLat={userLocation.coords.latitude}
-                  userLon={userLocation.coords.longitude}
-                  isCharging={isCharging}
-                  onStartCharging={handleStartCharging}
-                  onError={(message) => {
-                    setChargingError(message);
-                    Alert.alert('Error', message);
-                  }}
-                />
-              </View>
-            )}
-
-            {/* Mostrar error de carga si existe */}
-            {chargingError && (
-              <View style={styles.errorMessage}>
-                <MaterialIcons name="error-outline" size={16} color={sem.error} />
-                <Text style={styles.errorText}>{chargingError}</Text>
-              </View>
-            )}
-
-            {/* Botón de cómo llegar (De TU rama feature/rutas, pero con el icono de dev) */}
-            {!isCharging && (
-              selectedStation.operatiu === false ? (
-                <TouchableOpacity
-                  style={styles.solvedReportButton}
-                  activeOpacity={0.8}
-                  onPress={handleSolvedIncidenciaSubmit}
-                >
-                  <MaterialIcons name="check-circle" size={20} color="#fff" />
-                  <Text style={styles.routeButtonText}>Reportar incidencia solucionada</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.reportButton}
-                  activeOpacity={0.8}
-                  onPress={handleOpenIncidenciaForm}
-                >
-                  <MaterialIcons name="report-problem" size={20} color="#fff" />
-                  <Text style={styles.routeButtonText}>Reportar incidencia</Text>
-                </TouchableOpacity>
-              )
-            )}
-
-            {!isCharging && (
-              <TouchableOpacity
-                style={styles.routeButton}
-                activeOpacity={0.8}
-                onPress={() => handleStartNavigation({
-                  latitude: parseFloat(selectedStation.latitud),
-                  longitude: parseFloat(selectedStation.longitud)
-                })}
-              >
-                <MaterialIcons name="directions" size={20} color="#fff" />
-                <Text style={styles.routeButtonText}>Cómo llegar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {!isNavigating && selectedStation && !isSelectingOrigin && (
+          <StationBottomSheet
+            station={selectedStation}
+            onClose={() => setSelectedStation(null)}
+            isFavorite={favoriteIds.includes(selectedStation.id)}
+            onToggleFavorite={(isFav) => {
+              if (isFav) {
+                setFavoriteIds([...favoriteIds, selectedStation.id]);
+              } else {
+                setFavoriteIds(favoriteIds.filter(id => id !== selectedStation.id));
+              }
+            }}
+            userLocation={userLocation}
+            isCharging={isCharging}
+            elapsedSeconds={elapsedSeconds}
+            distanceToStation={distanceToStation}
+            onStartCharging={handleStartCharging}
+            onFinishCharging={handleFinishCharging}
+            onCancelCharging={handleCancelCharging}
+            chargingError={chargingError}
+            setChargingError={setChargingError}
+            onStartNavigation={handleStartNavigation}
+            onOpenIncidenciaForm={handleOpenIncidenciaForm}
+            onSolvedIncidencia={handleSolvedIncidenciaSubmit}
+            onFocusEventOnMap={handleFocusEventOnMap}
+          />
         )}
 
         {/* Mini panel para cuando se clica a una ubicacion cualquiera del mapa (De TU rama feature/rutas) */}
@@ -1561,12 +1545,17 @@ useEffect(() => {
 
             <View style={styles.infoTitleRow}>
               <MaterialIcons name="place" size={24} color={sem.mapCustomLocation} />
-              <Text style={styles.infoTitle} numberOfLines={1}>
-                Ubicación seleccionada
+              <Text style={styles.infoTitle} numberOfLines={2}>
+                {selectedLocationLabel || t('home.selectedLocationTitle')}
               </Text>
 
               <TouchableOpacity
-                onPress={() => setSelectedLocation(null)}
+                onPress={() => {
+                  const cleared = buildClearEventLocationPatch();
+                  setSelectedLocation(cleared.selectedLocation);
+                  setRouteOriginPreset(cleared.routeOriginPreset);
+                  setSelectedLocationLabel(cleared.selectedLocationLabel);
+                }}
                 style={styles.infoCloseBtn}
               >
                 <MaterialIcons name="close" size={20} color="#94a3b8" />
@@ -1584,7 +1573,7 @@ useEffect(() => {
               activeOpacity={0.8}
               onPress={() => handleStartNavigation(selectedLocation)}
             >
-              <Text style={styles.routeButtonText}>Cómo llegar</Text>
+              <Text style={styles.routeButtonText}>{t('home.howToArrive')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1615,11 +1604,11 @@ useEffect(() => {
       >
         <View style={styles.reportModalBackdrop}>
           <View style={styles.reportModalCard}>
-            <Text style={styles.reportModalTitle}>Reportar incidencia</Text>
-            <Text style={styles.reportLabel}>Comentario</Text>
+            <Text style={styles.reportModalTitle}>{t('home.reportModalTitle')}</Text>
+            <Text style={styles.reportLabel}>{t('home.comment')}</Text>
             <TextInput
               style={styles.reportTextarea}
-              placeholder="Describe qué ha ocurrido"
+              placeholder={t('home.describePlaceholder')}
               placeholderTextColor="#9ca3af"
               multiline
               numberOfLines={4}
@@ -1627,9 +1616,9 @@ useEffect(() => {
               onChangeText={setIncidenciaComentario}
             />
 
-            <Text style={styles.reportLabel}>Tipo</Text>
+            <Text style={styles.reportLabel}>{t('home.type')}</Text>
             <View style={styles.reportTypeContainer}>
-              {INCIDENCIA_TYPES.map((type) => (
+              {INCIDENCIA_TYPE_KEYS.map((type) => (
                 <TouchableOpacity
                   key={type}
                   style={[styles.reportTypeChip, incidenciaTipo === type && styles.reportTypeChipActive]}
@@ -1637,13 +1626,13 @@ useEffect(() => {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.reportTypeChipText, incidenciaTipo === type && styles.reportTypeChipTextActive]}>
-                    {type}
+                    {t(`incident.types.${type}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={styles.reportLabel}>Archivo (imagen)</Text>
+            <Text style={styles.reportLabel}>{t('home.fileImage')}</Text>
             <TouchableOpacity
               style={styles.reportFileButton}
               onPress={handlePickIncidenciaFile}
@@ -1651,13 +1640,13 @@ useEffect(() => {
             >
               <MaterialIcons name="attach-file" size={18} color="#1f2937" />
               <Text style={styles.reportFileButtonText}>
-                {incidenciaArchivo ? incidenciaArchivo.name : 'Seleccionar imagen del dispositivo'}
+                {incidenciaArchivo ? incidenciaArchivo.name : t('home.pickImage')}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.reportActions}>
               <TouchableOpacity style={styles.reportBackButton} onPress={handleCloseIncidenciaForm} activeOpacity={0.8}>
-                <Text style={styles.reportBackButtonText}>Volver</Text>
+                <Text style={styles.reportBackButtonText}>{t('common.back')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.reportSubmitButton, incidenciaSubmitting && styles.reportSubmitButtonDisabled]}
@@ -1665,7 +1654,7 @@ useEffect(() => {
                 activeOpacity={0.8}
                 disabled={incidenciaSubmitting}
               >
-                <Text style={styles.reportSubmitButtonText}>{incidenciaSubmitting ? 'Enviando...' : 'Enviar'}</Text>
+                <Text style={styles.reportSubmitButtonText}>{incidenciaSubmitting ? t('home.sending') : t('common.send')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1681,13 +1670,13 @@ useEffect(() => {
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuDrawer} onPress={(e) => e.stopPropagation()}>
             <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>Ajustes</Text>
+              <Text style={styles.menuTitle}>{t('menu.settings')}</Text>
               <TouchableOpacity
                 onPress={() => setMenuOpen(false)}
                 style={styles.menuClose}
                 hitSlop={12}
               >
-                <MaterialIcons name="close" size={24} color="#1f2937" />
+                <MaterialIcons name="close" size={24} color={isDark ? '#fff' : '#1f2937'} />
               </TouchableOpacity>
             </View>
 
@@ -1702,8 +1691,8 @@ useEffect(() => {
               }}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="person" size={22} color="#1f2937" />
-              <Text style={styles.menuItemText}>Mi perfil</Text>
+              <MaterialIcons name="person" size={22} color={isDark ? '#fff' : '#1f2937'} />
+              <Text style={styles.menuItemText}>{t('menu.myProfile')}</Text>
             </TouchableOpacity>
 
             {/*Boton para añadir filtros*/}
@@ -1724,8 +1713,8 @@ useEffect(() => {
               }}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="filter-list" size={22} color="#1f2937" />
-              <Text style={styles.menuItemText}>Añadir Filtros</Text>
+              <MaterialIcons name="filter-list" size={22} color={isDark ? '#fff' : '#1f2937'} />
+              <Text style={styles.menuItemText}>{t('menu.addFilters')}</Text>
             </TouchableOpacity>
 
             {/* Botón para ver estaciones favoritas */}
@@ -1738,7 +1727,7 @@ useEffect(() => {
               activeOpacity={0.7}
             >
               <MaterialIcons name="favorite" size={22} color={sem.favorite} />
-              <Text style={styles.menuItemText}>Mis Estaciones de Carga</Text>
+              <Text style={styles.menuItemText}>{t('menu.myStations')}</Text>
             </TouchableOpacity>
 
               {/* Botón para ir al asistente IA (De tu rama chatbot) */}
@@ -1750,16 +1739,16 @@ useEffect(() => {
               }}
             >
               <MaterialIcons name="support-agent" size={24} color="#10b981" />
-              <Text style={styles.menuItemText}>Asistente Virtual</Text>
+              <Text style={styles.menuItemText}>{t('menu.virtualAssistant')}</Text>
             </TouchableOpacity>
 
             {/* Opciones de Accesibilidad y Tema (De la rama development) */}
             <View style={styles.themeSection}>
-              <Text style={styles.themeSectionTitle}>Daltonismo</Text>
+              <Text style={styles.themeSectionTitle}>{t('menu.colorblindSection')}</Text>
               <View style={styles.dyslexiaRow}>
                 <View style={styles.dyslexiaTexts}>
-                  <Text style={styles.dyslexiaTitle}>Modo accesible</Text>
-                  <Text style={styles.dyslexiaHint}>Colores del mapa y acentos más distinguibles</Text>
+                  <Text style={styles.dyslexiaTitle}>{t('menu.accessibleMode')}</Text>
+                  <Text style={styles.dyslexiaHint}>{t('menu.accessibleHint')}</Text>
                 </View>
                 <Switch
                   testID="colorblind-friendly-switch"
@@ -1772,24 +1761,26 @@ useEffect(() => {
             </View>
 
             <View style={styles.themeSection}>
-              <Text style={styles.themeSectionTitle}>Tema</Text>
+              <Text style={styles.themeSectionTitle}>{t('menu.theme')}</Text>
               <View style={styles.themeSegment}>
                 <TouchableOpacity
                   style={[styles.themeOption, preference === 'light' && styles.themeOptionActive]}
                   onPress={() => setPreference('light')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.themeOptionText, preference === 'light' && styles.themeOptionTextActive]}>Claro</Text>
+                  <Text style={[styles.themeOptionText, preference === 'light' && styles.themeOptionTextActive]}>{t('menu.themeLight')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.themeOption, preference === 'dark' && styles.themeOptionActive]}
                   onPress={() => setPreference('dark')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.themeOptionText, preference === 'dark' && styles.themeOptionTextActive]}>Oscuro</Text>
+                  <Text style={[styles.themeOptionText, preference === 'dark' && styles.themeOptionTextActive]}>{t('menu.themeDark')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
+
+            <LanguageMenuSelector isDark={isDark} accent={sem.accent} />
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -1804,8 +1795,8 @@ useEffect(() => {
               }}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="logout" size={22} color="#1f2937" />
-              <Text style={styles.menuItemText}>Cerrar Sesión</Text>
+              <MaterialIcons name="logout" size={22} color={isDark ? '#fff' : '#1f2937'} />
+              <Text style={styles.menuItemText}>{t('menu.logout')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -1814,10 +1805,98 @@ useEffect(() => {
   );
 }
 
-const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create({
+type InicioScreenTheme = {
+  screenBg: string;
+  mutedText: string;
+  cardBg: string;
+  titleText: string;
+  subtitleText: string;
+  border: string;
+  inputBorder: string;
+  textPrimary: string;
+  textEmphasis: string;
+  handle: string;
+  infoTitle: string;
+  promotorText: string;
+  menuBackdrop: string;
+  themeSegmentBg: string;
+  themeOptionActiveBg: string;
+  themeOptionText: string;
+  themeOptionTextActive: string;
+  errorBannerBg: string;
+  reportBackdrop: string;
+  formBorder: string;
+  chipBg: string;
+  chipText: string;
+  secondaryButtonBg: string;
+  secondaryButtonText: string;
+  labelText: string;
+};
+
+const INICIO_SCREEN_THEME: Record<'dark' | 'light', InicioScreenTheme> = {
+  dark: {
+    screenBg: '#0f172a',
+    mutedText: '#94a3b8',
+    cardBg: '#1e293b',
+    titleText: '#f1f5f9',
+    subtitleText: '#94a3b8',
+    border: '#334155',
+    inputBorder: '#334155',
+    textPrimary: '#f1f5f9',
+    textEmphasis: '#e2e8f0',
+    handle: '#475569',
+    infoTitle: '#f1f5f9',
+    promotorText: '#cbd5e1',
+    menuBackdrop: 'rgba(0,0,0,0.55)',
+    themeSegmentBg: '#334155',
+    themeOptionActiveBg: '#0f172a',
+    themeOptionText: '#cbd5e1',
+    themeOptionTextActive: '#f1f5f9',
+    errorBannerBg: '#7f1d1d',
+    reportBackdrop: 'rgba(0,0,0,0.6)',
+    formBorder: '#475569',
+    chipBg: '#334155',
+    chipText: '#cbd5e1',
+    secondaryButtonBg: '#334155',
+    secondaryButtonText: '#e2e8f0',
+    labelText: '#cbd5e1',
+  },
+  light: {
+    screenBg: '#f5f5f5',
+    mutedText: '#64748b',
+    cardBg: '#fff',
+    titleText: '#1a1a1a',
+    subtitleText: '#6b7280',
+    border: '#e2e8f0',
+    inputBorder: '#e5e7eb',
+    textPrimary: '#1f2937',
+    textEmphasis: '#111827',
+    handle: '#e2e8f0',
+    infoTitle: '#1e293b',
+    promotorText: '#94a3b8',
+    menuBackdrop: 'rgba(0,0,0,0.4)',
+    themeSegmentBg: '#f1f5f9',
+    themeOptionActiveBg: '#ffffff',
+    themeOptionText: '#475569',
+    themeOptionTextActive: '#111827',
+    errorBannerBg: '#fee2e2',
+    reportBackdrop: 'rgba(0,0,0,0.45)',
+    formBorder: '#d1d5db',
+    chipBg: '#f8fafc',
+    chipText: '#4b5563',
+    secondaryButtonBg: '#f3f4f6',
+    secondaryButtonText: '#374151',
+    labelText: '#374151',
+  },
+};
+
+const createStyles = (isDark: boolean, sem: SemanticColors) => {
+  const t = INICIO_SCREEN_THEME[isDark ? 'dark' : 'light'];
+  const errorTextColor = isDark ? sem.errorTextDark : sem.errorTextLight;
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: isDark ? '#0f172a' : '#f5f5f5',
+    backgroundColor: t.screenBg,
   },
   centered: {
     justifyContent: 'center',
@@ -1825,7 +1904,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   loadingText: {
     fontSize: 16,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     marginTop: 10,
   },
   scroll: {
@@ -1838,7 +1917,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   card: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
@@ -1855,7 +1934,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   cardCompact: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 20,
@@ -1871,13 +1950,13 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1a1a1a',
+    color: t.titleText,
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: isDark ? '#94a3b8' : '#6b7280',
+    color: t.subtitleText,
     textAlign: 'center',
     marginBottom: 18,
   },
@@ -1890,9 +1969,9 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#e2e8f0',
+    borderColor: t.border,
   },
   googleIcon: {
     width: 22,
@@ -1901,7 +1980,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
   },
   authSeparatorText: {
     marginTop: 12,
@@ -1914,7 +1993,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     width: '100%',
     fontSize: 18,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -1927,19 +2006,19 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   adminLinkText: {
     fontSize: 14,
-    color: isDark ? '#e2e8f0' : '#111827',
+    color: t.textEmphasis,
     fontWeight: '600',
   },
   welcomeUsernameTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   welcomeUsernameSubtitle: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#6b7280',
+    color: t.subtitleText,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -1949,8 +2028,8 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#e5e7eb',
-    color: isDark ? '#e2e8f0' : '#111827',
+    borderColor: t.inputBorder,
+    color: t.textEmphasis,
     borderRadius: 10,
     marginBottom: 16,
   },
@@ -1982,7 +2061,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   welcomeBackLinkText: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     fontWeight: '500',
   },
   centerMapButton: {
@@ -1992,7 +2071,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     zIndex: 10,
     width: 48,
     height: 48,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2006,7 +2085,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     position: 'absolute',
     top: 24,
     left: 24,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     padding: 8,
     borderRadius: 20,
     elevation: 3,
@@ -2017,7 +2096,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     bottom: 30,
     left: 20,
     right: 20,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
@@ -2026,7 +2105,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   infoHandle: {
     width: 40,
     height: 4,
-    backgroundColor: isDark ? '#475569' : '#e2e8f0',
+    backgroundColor: t.handle,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 16,
@@ -2041,7 +2120,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   infoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1e293b',
+    color: t.infoTitle,
     flex: 1,
   },
   infoCloseBtn: {
@@ -2058,7 +2137,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   infoText: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     flex: 1,
   },
   infoBadgeRow: {
@@ -2080,7 +2159,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   infoPromotor: {
     fontSize: 12,
-    color: isDark ? '#cbd5e1' : '#94a3b8',
+    color: t.promotorText,
     fontStyle: 'italic',
   },
   routeButton: {
@@ -2120,7 +2199,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.4)',
+    backgroundColor: t.menuBackdrop,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
@@ -2128,7 +2207,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     width: '75%',
     maxWidth: 320,
     height: '100%',
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     paddingTop: 48,
     paddingHorizontal: 20,
   },
@@ -2141,7 +2220,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   menuTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
   },
   menuClose: {
     padding: 4,
@@ -2156,7 +2235,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   menuItemText: {
     fontSize: 16,
     fontWeight: '500',
-    color: isDark ? '#e2e8f0' : '#1f2937',
+    color: t.textPrimary,
   },
   themeSection: {
     marginTop: 10,
@@ -2166,7 +2245,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   themeSectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -2174,7 +2253,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   themeSegment: {
     flexDirection: 'row',
     borderRadius: 10,
-    backgroundColor: isDark ? '#334155' : '#f1f5f9',
+    backgroundColor: t.themeSegmentBg,
     padding: 4,
     gap: 4,
   },
@@ -2186,15 +2265,15 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     justifyContent: 'center',
   },
   themeOptionActive: {
-    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+    backgroundColor: t.themeOptionActiveBg,
   },
   themeOptionText: {
-    color: isDark ? '#cbd5e1' : '#475569',
+    color: t.themeOptionText,
     fontSize: 13,
     fontWeight: '600',
   },
   themeOptionTextActive: {
-    color: isDark ? '#f1f5f9' : '#111827',
+    color: t.themeOptionTextActive,
     fontWeight: '700',
   },
   dyslexiaRow: {
@@ -2212,12 +2291,12 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   dyslexiaTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: isDark ? '#f1f5f9' : '#111827',
+    color: t.themeOptionTextActive,
   },
   dyslexiaHint: {
     marginTop: 2,
     fontSize: 12,
-    color: isDark ? '#94a3b8' : '#64748b',
+    color: t.mutedText,
   },
   userDot: {
     width: 18,
@@ -2232,38 +2311,47 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
   activeFiltersBadge: {
     position: 'absolute',
     bottom: 20,
+    left: 12,
     right: 12,
     zIndex: 10,
-    backgroundColor: isDark ? '#1e293b' : '#fff',
-    flexDirection: 'row', // La columna de text a l'esquerra, la X a la dreta
-    alignItems: 'center',
+    backgroundColor: t.cardBg,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 16,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
     elevation: 4,
     borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#e2e8f0',
+    borderColor: t.border,
   },
   filtersColumn: {
     flexDirection: 'column',
-    gap: 6, // Espai vertical entre el llamp i el connector
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
   },
   filterRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6, // Espai horitzontal entre la icona i el text
+    alignItems: 'flex-start',
+    gap: 6,
   },
 activeFiltersText: {
     fontSize: 14,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   clearFilterButton: {
     marginLeft: 12,
     paddingLeft: 12,
-    borderLeftWidth: 1, // Posa una línia fineta que separa els filtres de la X
-    borderLeftColor: isDark ? '#334155' : '#e2e8f0',
+    borderLeftWidth: 1,
+    borderLeftColor: t.border,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    paddingTop: 2,
   },
 
   // --- Estilos de los componentes de rutas de navegacion ---
@@ -2272,7 +2360,7 @@ activeFiltersText: {
     top: 50, // Ajusta según tu TopBar
     left: 20,
     right: 20,
-    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+    backgroundColor: t.cardBg,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -2289,12 +2377,12 @@ activeFiltersText: {
   navTextBold: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: isDark ? '#f1f5f9' : '#1f2937',
+    color: t.textPrimary,
     marginBottom: 4,
   },
   navText: {
     fontSize: 14,
-    color: isDark ? '#94a3b8' : '#6b7280',
+    color: t.subtitleText,
   },
   cancelRouteBtn: {
     backgroundColor: sem.error,
@@ -2338,7 +2426,7 @@ activeFiltersText: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 999, // Para que esté por encima de todo
+    zIndex: 999, // Para que esté al principio
     elevation: 5, // Sombra en Android
     shadowColor: '#000', // Sombra en iOS
     shadowOffset: { width: 0, height: 2 },
@@ -2369,25 +2457,25 @@ activeFiltersText: {
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
+    backgroundColor: t.errorBannerBg,
     padding: 12,
     borderRadius: 8,
     marginTop: 16,
     gap: 8,
   },
   errorText: {
-    color: isDark ? sem.errorTextDark : sem.errorTextLight,
+    color: errorTextColor,
     fontSize: 14,
     flex: 1,
   },
   reportModalBackdrop: {
     flex: 1,
-    backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.45)',
+    backgroundColor: t.reportBackdrop,
     justifyContent: 'center',
     padding: 18,
   },
   reportModalCard: {
-    backgroundColor: isDark ? '#1e293b' : '#fff',
+    backgroundColor: t.cardBg,
     borderRadius: 16,
     padding: 18,
     gap: 10,
@@ -2395,27 +2483,27 @@ activeFiltersText: {
   reportModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: isDark ? '#f1f5f9' : '#111827',
+    color: t.themeOptionTextActive,
     marginBottom: 4,
   },
   reportLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: isDark ? '#cbd5e1' : '#374151',
+    color: t.labelText,
   },
   reportTextarea: {
     borderWidth: 1,
-    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderColor: t.formBorder,
     borderRadius: 10,
     minHeight: 92,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: isDark ? '#e2e8f0' : '#111827',
+    color: t.textEmphasis,
     textAlignVertical: 'top',
   },
   reportFileButton: {
     borderWidth: 1,
-    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderColor: t.formBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2424,7 +2512,7 @@ activeFiltersText: {
     gap: 8,
   },
   reportFileButtonText: {
-    color: isDark ? '#e2e8f0' : '#1f2937',
+    color: t.textPrimary,
     fontSize: 14,
     fontWeight: '500',
     flexShrink: 1,
@@ -2436,11 +2524,11 @@ activeFiltersText: {
   },
   reportTypeChip: {
     borderWidth: 1,
-    borderColor: isDark ? '#475569' : '#d1d5db',
+    borderColor: t.formBorder,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: isDark ? '#334155' : '#f8fafc',
+    backgroundColor: t.chipBg,
   },
   reportTypeChipActive: {
     borderColor: sem.accent,
@@ -2449,7 +2537,7 @@ activeFiltersText: {
   reportTypeChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: isDark ? '#cbd5e1' : '#4b5563',
+    color: t.chipText,
   },
   reportTypeChipTextActive: {
     color: sem.chipActiveText,
@@ -2462,12 +2550,12 @@ activeFiltersText: {
   reportBackButton: {
     flex: 1,
     borderRadius: 10,
-    backgroundColor: isDark ? '#334155' : '#f3f4f6',
+    backgroundColor: t.secondaryButtonBg,
     paddingVertical: 12,
     alignItems: 'center',
   },
   reportBackButtonText: {
-    color: isDark ? '#e2e8f0' : '#374151',
+    color: t.secondaryButtonText,
     fontWeight: '700',
     fontSize: 15,
   },
@@ -2500,4 +2588,5 @@ activeFiltersText: {
     fontWeight: 'bold',
     fontSize: 14,
   },
-});
+  });
+};

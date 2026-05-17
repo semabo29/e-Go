@@ -2,9 +2,14 @@ const request = require('supertest');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
+jest.mock('../../models/userModel', () => ({
+  findByIdWithBanStatus: jest.fn(),
+}));
+
 const { requireAdmin } = require('../../middleware/requireAdmin');
 const adminStationController = require('../../controllers/adminStationController');
 const stationModel = require('../../models/stationModel');
+const userModel = require('../../models/userModel');
 
 jest.mock('../../models/stationModel', () => ({
   createManualStation: jest.fn(),
@@ -23,6 +28,7 @@ describe('Admin stations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    userModel.findByIdWithBanStatus.mockResolvedValue({ id: 1, is_banned: false });
   });
 
   function authHeader() {
@@ -121,6 +127,40 @@ describe('Admin stations', () => {
     stationModel.deleteManualStation.mockResolvedValue(null);
     const res = await request(app).delete('/admin/stations/99').set(authHeader());
     expect(res.status).toBe(404);
+  });
+
+  test('POST /admin/stations -> 409 si external_id duplicado', async () => {
+    const err = new Error('duplicate');
+    err.code = '23505';
+    stationModel.createManualStation.mockRejectedValue(err);
+    const res = await request(app).post('/admin/stations').set(authHeader()).send({
+      nom: 'Manual',
+      latitud: 41.1,
+      longitud: 2.1,
+    });
+    expect(res.status).toBe(409);
+  });
+
+  test('POST /admin/stations -> 500 si falla el modelo', async () => {
+    stationModel.createManualStation.mockRejectedValue(new Error('db fail'));
+    const res = await request(app).post('/admin/stations').set(authHeader()).send({
+      nom: 'Manual',
+      latitud: 41.1,
+      longitud: 2.1,
+    });
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /admin/stations/:id -> 500 si falla el modelo', async () => {
+    stationModel.updateManualStation.mockRejectedValue(new Error('db fail'));
+    const res = await request(app).patch('/admin/stations/12').set(authHeader()).send({ nom: 'X' });
+    expect(res.status).toBe(500);
+  });
+
+  test('DELETE /admin/stations/:id -> 500 si falla el modelo', async () => {
+    stationModel.deleteManualStation.mockRejectedValue(new Error('db fail'));
+    const res = await request(app).delete('/admin/stations/5').set(authHeader());
+    expect(res.status).toBe(500);
   });
 
   test('DELETE /admin/stations/:id -> 200 si borra', async () => {

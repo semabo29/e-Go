@@ -327,30 +327,35 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
   // Confirmamos la integración real: al alternar favorito desde el panel de estación,
   // el marker cambia entre verde (no favorito) y rojo (favorito).
   test('toggling FavoriteButton changes marker pin (green -> red -> green)', async () => {
-    const { getByTestId, getByText, queryByTestId } = render(<InicioScreen />);
+    const { getByTestId, getAllByText, queryByTestId } = render(<InicioScreen />);
 
     await waitFor(() => {
       expect(getByTestId('station-marker')).toBeTruthy();
     });
 
+    // Abrimos el panel de la estación
     fireEvent.press(getByTestId('station-marker'));
 
+    // Esperamos a que aparezca el icono de corazón vacío
     await waitFor(() => {
-      expect(getByText('favorite-border')).toBeTruthy();
+      expect(getAllByText('favorite-border').length).toBeGreaterThan(0);
     });
 
-    // When pressing the icon name Text, it should trigger the parent TouchableOpacity.
-    fireEvent.press(getByText('favorite-border'));
+    // Le damos clic al corazón vacío para hacerlo favorito
+    fireEvent.press(getAllByText('favorite-border')[0]);
 
+    // Comprobamos que el marcador se vuelve rojo (favorito)
     await waitFor(() => {
       expect(getByTestId('favorite-station-marker')).toBeTruthy();
       expect(queryByTestId('station-marker')).toBeNull();
     });
 
-    fireEvent.press(getByText('favorite'));
+    // Le damos clic al corazón lleno para quitarlo de favoritos
+    fireEvent.press(getAllByText('favorite')[0]);
 
+    // Comprobamos que el marcador vuelve a ser el normal (verde)
     await waitFor(() => {
-      expect(getByTestId('station-marker')).toBeTruthy();
+      expect(getByTestId('station-marker')).toBeTruthy(); 
       expect(queryByTestId('favorite-station-marker')).toBeNull();
     });
   });

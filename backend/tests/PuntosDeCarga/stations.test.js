@@ -33,10 +33,6 @@ describe('Stations routes (unit - route/controller)', () => {
       maxKw: undefined,
       connectorType: undefined,
       ac_dc: undefined,
-      north: undefined,
-      south: undefined,
-      east: undefined,
-      west: undefined,
     });
   });
 
@@ -52,10 +48,6 @@ describe('Stations routes (unit - route/controller)', () => {
       maxKw: '200',
       connectorType: 'CCS2',
       ac_dc: 'DC',
-      north: undefined,
-      south: undefined,
-      east: undefined,
-      west: undefined,
     });
   });
 
@@ -87,28 +79,6 @@ describe('Stations routes (unit - route/controller)', () => {
       maxKw: '50',
       connectorType: undefined,
       ac_dc: undefined,
-      north: undefined,
-      south: undefined,
-      east: undefined,
-      west: undefined,
-    });
-  });
-
-  test('GET /stations passa filtres de bounding box al service', async () => {
-    // Comprueba que los filtros geograficos se pasen correctamente al servicio.
-    stationService.getStations.mockResolvedValue([]);
-    const res = await request(app).get('/stations?north=42.0&south=41.0&east=2.5&west=1.5');
-
-    expect(res.status).toBe(200);
-    expect(stationService.getStations).toHaveBeenCalledWith({
-      minKw: undefined,
-      maxKw: undefined,
-      connectorType: undefined,
-      ac_dc: undefined,
-      north: '42.0',
-      south: '41.0',
-      east: '2.5',
-      west: '1.5',
     });
   });
 

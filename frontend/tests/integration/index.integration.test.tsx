@@ -1,12 +1,16 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Alert } from 'react-native';
 import InicioScreen from '@/app/(tabs)/index';
 
 const mockUseAuth = jest.fn();
 const mockUseCharging = jest.fn();
 const mockUseLocalSearchParams = jest.fn();
+const mockMapViewRef = {
+  animateToRegion: jest.fn(),
+  fitToCoordinates: jest.fn(),
+};
 const mockRequestForegroundPermissionsAsync = jest.fn(async () => ({ status: 'granted' }));
 const mockGetCurrentPositionAsync = jest.fn(async () => ({
   coords: { latitude: 41.38, longitude: 2.17 },
@@ -61,9 +65,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
   const { View, TouchableOpacity } = require('react-native');
 
   const MapView = React.forwardRef(({ children, onPress }: any, ref: any) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
-    }));
+    React.useImperativeHandle(ref, () => mockMapViewRef);
     return (
       <TouchableOpacity
         testID="map-view"
@@ -529,6 +531,159 @@ describe('InicioScreen map and station panel', () => {
     });
 
     expect(queryByText('Comentario')).toBeNull();
+    alertSpy.mockRestore();
+  });
+});
+
+/** Simula layout del carrusel de eventos */
+function layoutEventosCarousel(getByTestId: (id: string) => unknown) {
+  fireEvent(getByTestId('eventos-carousel-viewport'), 'layout', {
+    nativeEvent: { layout: { width: 320, height: 200, x: 0, y: 0 } },
+  });
+}
+
+function installFetchWithEventos() {
+  globalThis.fetch = jest.fn((url: string) => {
+    const href = String(url);
+    if (href.includes('/favorites')) {
+      return Promise.resolve({ json: async () => [{ id: 1 }] } as Response);
+    }
+    if (href.includes('/reviews')) {
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    }
+    if (href.includes('radio_km') || href.includes('/eventos')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 101,
+              titulo: 'Feria del mapa',
+              imagen_url: null,
+              distancia_km: 0.3,
+              lat: 41.395,
+              lon: 2.16,
+            },
+          ],
+        }),
+      } as Response);
+    }
+    if (href.includes('/stations')) {
+      return Promise.resolve({
+        json: async () => [
+          {
+            id: 1,
+            nom: 'Punt 1',
+            latitud: '41.3901',
+            longitud: '2.1540',
+            municipi: 'Barcelona',
+            adreca: 'Carrer de Test',
+            kw: '50',
+            promotor: 'Ajuntament',
+            ac_dc: 'DC',
+            tipus_connexio: 'CCS',
+          },
+        ],
+      } as Response);
+    }
+    return Promise.resolve({ json: async () => [] } as Response);
+  }) as unknown as typeof fetch;
+}
+
+describe('InicioScreen - evento en mapa y ruta desde estación', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMapViewRef.fitToCoordinates.mockClear();
+    mockRequestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    mockGetCurrentPositionAsync.mockResolvedValue({
+      coords: { latitude: 41.38, longitude: 2.17 },
+    });
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockUseAuth.mockReturnValue({
+      user: { id: 12, email: 'user@test.com', username: 'test', created_at: '', updated_at: '' },
+      logout: jest.fn(),
+      isLoading: false,
+    });
+    mockUseCharging.mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
+    });
+    installFetchWithEventos();
+    jest.spyOn(
+      require('@/constants/eventosApi'),
+      'getEventosApiToken'
+    ).mockReturnValue('map-integration-token');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // Tocar evento cierra el panel de estación y centra el mapa en la estación y el evento
+  it('al elegir un evento cierra el panel de estación y encuadra el mapa', async () => {
+    const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => expect(getByTestId('favorite-station-marker')).toBeTruthy());
+    fireEvent.press(getByTestId('favorite-station-marker'));
+    await waitFor(() => expect(getByText('Eventos cercanos')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('eventos-carousel-viewport')).toBeTruthy());
+    layoutEventosCarousel(getByTestId);
+    await waitFor(() => expect(getByText('Feria del mapa')).toBeTruthy());
+
+    fireEvent.press(getByText('Feria del mapa'));
+
+    await waitFor(() => {
+      expect(queryByText('Reportar incidencia')).toBeNull();
+      expect(getByText('Feria del mapa')).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(mockMapViewRef.fitToCoordinates).toHaveBeenCalled();
+    });
+    const [coords] = mockMapViewRef.fitToCoordinates.mock.calls[0];
+    expect(coords).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ latitude: 41.3901, longitude: 2.154 }),
+        expect.objectContaining({ latitude: 41.395, longitude: 2.16 }),
+      ])
+    );
+  });
+
+  // Cómo llegar tras un evento usa origen en la estación
+  it('Cómo llegar tras evento usa origen en estación sin preguntar GPS', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { getByTestId, getByText, getAllByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => expect(getByTestId('favorite-station-marker')).toBeTruthy());
+    fireEvent.press(getByTestId('favorite-station-marker'));
+    await waitFor(() => expect(getByText('Eventos cercanos')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('eventos-carousel-viewport')).toBeTruthy());
+    layoutEventosCarousel(getByTestId);
+    await waitFor(() => expect(getByText('Feria del mapa')).toBeTruthy());
+    fireEvent.press(getByText('Feria del mapa'));
+
+    await waitFor(() => expect(queryByText('Reportar incidencia')).toBeNull());
+
+    const routeButtons = getAllByText('Cómo llegar');
+    fireEvent.press(routeButtons[routeButtons.length - 1]);
+
+    await waitFor(() => {
+      const iniciarCalls = alertSpy.mock.calls.filter((c) => c[0] === 'Iniciar ruta');
+      expect(iniciarCalls.length).toBe(0);
+    });
+
     alertSpy.mockRestore();
   });
 });

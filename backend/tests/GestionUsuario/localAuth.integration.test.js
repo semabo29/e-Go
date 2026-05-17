@@ -107,4 +107,27 @@ describe('Integración auth local (email/password)', () => {
       })
     );
   });
+
+  test('POST /auth/local/login devuelve 403 para usuario baneado', async () => {
+    const passwordHash = await bcrypt.hash('secret123', 10);
+    pool.query.mockResolvedValue({
+      rows: [
+        {
+          id: 9,
+          email: 'banned@test.com',
+          username: 'banned',
+          password_hash: passwordHash,
+          is_banned: true,
+          created_at: '2026-01-01',
+          updated_at: '2026-01-01',
+        },
+      ],
+    });
+
+    const res = await request(app).post('/auth/local/login').send({
+      email: 'banned@test.com',
+      password: 'secret123',
+    });
+    expect(res.status).toBe(403);
+  });
 });

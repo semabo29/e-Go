@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,9 +15,18 @@ import {
 
 import { MapView, Marker } from '@/app/_components/MapWrapper';
 import { FormState } from '@/components/stations/types';
+import { GeoSuggestion, reverseGeoAddress, searchGeoAddress } from '@/services/geoService';
 
 const CATALUNYA_MUNICIPALITIES_BY_PROVINCE = require('@/constants/catalunyaMunicipalities.json') as Record<string, string[]>;
 const CATALUNYA_PROVINCES = Object.keys(CATALUNYA_MUNICIPALITIES_BY_PROVINCE);
+
+/** Centre geogràfic aproximat de Catalunya quan encara no hi ha coordenades vàlides al formulari. */
+const CATALUNYA_DEFAULT_MAP_REGION = {
+  latitude: 41.72,
+  longitude: 1.78,
+  latitudeDelta: 0.55,
+  longitudeDelta: 0.55,
+};
 const AC_DC_OPTIONS = ['AC', 'DC'] as const;
 const TIPUS_CONNEXIO_OPTIONS = ['TESLA', 'MENNEKES.M', 'MENNEKES.F', 'ChadeMO', 'CCS Combo2', 'Shuko'] as const;
 const TIPUS_VELOCITAT_OPTIONS = ['RAPID', 'superRAPID', 'semiRAPID', 'NORMAL'] as const;
@@ -39,6 +51,8 @@ type Props = {
 
 export function ManualStationForm(props: Props) {
   const { title, subtitle, submitLabel, loading, error, success, form, onChange, onSubmit, onBack } = props;
+  const scrollRef = useRef<ScrollView>(null);
+  const direccionSectionYRef = useRef(0);
   const [mapOpen, setMapOpen] = useState(false);
   const [provincePickerOpen, setProvincePickerOpen] = useState(false);
   const [municipalityPickerOpen, setMunicipalityPickerOpen] = useState(false);
@@ -47,6 +61,15 @@ export function ManualStationForm(props: Props) {
   const [tipusVelocitatPickerOpen, setTipusVelocitatPickerOpen] = useState(false);
   const [municipalityQuery, setMunicipalityQuery] = useState('');
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<GeoSuggestion[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [geoMessage, setGeoMessage] = useState('');
+  const [reverseLoading, setReverseLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipAddressSearchRef = useRef(false);
+  const manualMunicipalityRef = useRef(false);
+  const manualProvinceRef = useRef(false);
+  const [keyboardPad, setKeyboardPad] = useState(0);
   const municipalityOptions = form.provincia ? CATALUNYA_MUNICIPALITIES_BY_PROVINCE[form.provincia] ?? [] : [];
   const filteredMunicipalityOptions = !municipalityQuery.trim()
     ? municipalityOptions
@@ -65,8 +88,112 @@ export function ManualStationForm(props: Props) {
     onChange(key, ordered.join(separator));
   }
 
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => setKeyboardPad(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardPad(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const latStr = form.latitud.trim();
+    const lngStr = form.longitud.trim();
+    // Number('') === 0: sense aquesta comprovació el mapa es centraria a (0,0).
+    if (!latStr || !lngStr) {
+      setPicked(null);
+      return;
+    }
+    const lat = Number(latStr);
+    const lng = Number(lngStr);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setPicked(null);
+      return;
+    }
+    setPicked({ lat, lng });
+  }, [form.latitud, form.longitud]);
+
+  useEffect(() => {
+    if (skipAddressSearchRef.current) {
+      skipAddressSearchRef.current = false;
+      return;
+    }
+
+    const query = form.adreca.trim();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setAddressLoading(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setAddressLoading(true);
+        const suggestions = await searchGeoAddress(query);
+        setAddressSuggestions(suggestions);
+      } catch {
+        setAddressSuggestions([]);
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [form.adreca]);
+
+  function applyGeoSuggestion(suggestion: GeoSuggestion, setCoordinates: boolean) {
+    skipAddressSearchRef.current = true;
+    onChange('adreca', suggestion.formattedAddress);
+    if (setCoordinates) {
+      onChange('latitud', String(suggestion.lat));
+      onChange('longitud', String(suggestion.lng));
+      setPicked({ lat: suggestion.lat, lng: suggestion.lng });
+    }
+    if (!manualMunicipalityRef.current && suggestion.municipi) {
+      onChange('municipi', suggestion.municipi);
+    }
+    if (!manualProvinceRef.current && suggestion.provincia) {
+      onChange('provincia', suggestion.provincia);
+    }
+    setAddressSuggestions([]);
+  }
+
+  function scrollOperationalSectionIntoView() {
+    const run = () => scrollRef.current?.scrollToEnd({ animated: true });
+    requestAnimationFrame(run);
+    setTimeout(run, 200);
+  }
+
+  function scrollDireccionSectionIntoView() {
+    const run = () => {
+      const top = direccionSectionYRef.current;
+      const targetY = Math.max(0, top - 20);
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
+    };
+    requestAnimationFrame(run);
+    setTimeout(run, 200);
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.keyboardRoot}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      enabled={Platform.OS === 'ios'}
+    >
+      <ScrollView
+        ref={scrollRef}
+        style={styles.screen}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 28 + keyboardPad }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator
+      >
       <View style={styles.card}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
@@ -96,9 +223,39 @@ export function ManualStationForm(props: Props) {
             <Text style={form.tipus_velocitat ? styles.selectText : styles.placeholderText}>{form.tipus_velocitat || 'Tipo de velocidad'}</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.section}>
+        <View
+          style={styles.section}
+          onLayout={(e) => {
+            direccionSectionYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.sectionTitle}>Direccion</Text>
-          <TextInput style={styles.input} placeholder="Direccion" placeholderTextColor="#9ca3af" value={form.adreca} onChangeText={(v) => onChange('adreca', v)} />
+          <TextInput
+            style={styles.input}
+            placeholder="Direccion"
+            placeholderTextColor="#9ca3af"
+            value={form.adreca}
+            onFocus={scrollDireccionSectionIntoView}
+            onChangeText={(v) => {
+              skipAddressSearchRef.current = false;
+              onChange('adreca', v);
+            }}
+          />
+          {addressLoading ? <Text style={styles.helperText}>Buscando direcciones...</Text> : null}
+          {!addressLoading && addressSuggestions.length ? (
+            <View style={styles.suggestionList}>
+              {addressSuggestions.map((suggestion) => (
+                <TouchableOpacity
+                  key={`${suggestion.lat},${suggestion.lng},${suggestion.formattedAddress}`}
+                  style={styles.suggestionItem}
+                  onPress={() => applyGeoSuggestion(suggestion, true)}
+                >
+                  <Text style={styles.suggestionText}>{suggestion.formattedAddress}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+          {geoMessage ? <Text style={styles.helperText}>{geoMessage}</Text> : null}
           <View style={styles.row}>
             <TouchableOpacity style={[styles.input, styles.half, styles.selectInput]} onPress={() => setProvincePickerOpen(true)} activeOpacity={0.8}>
               <Text style={form.provincia ? styles.selectText : styles.placeholderText}>{form.provincia || 'Provincia'}</Text>
@@ -107,6 +264,7 @@ export function ManualStationForm(props: Props) {
               style={[styles.input, styles.half, styles.selectInput, !form.provincia && styles.disabledInput]}
               onPress={() => {
                 if (form.provincia) {
+                  manualMunicipalityRef.current = true;
                   setMunicipalityQuery('');
                   setMunicipalityPickerOpen(true);
                 }
@@ -120,8 +278,22 @@ export function ManualStationForm(props: Props) {
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Operador</Text>
-          <TextInput style={styles.input} placeholder="Promotor/gestor" placeholderTextColor="#9ca3af" value={form.promotor} onChangeText={(v) => onChange('promotor', v)} />
-          <TextInput style={styles.input} placeholder="Acceso" placeholderTextColor="#9ca3af" value={form.acces} onChangeText={(v) => onChange('acces', v)} />
+          <TextInput
+            style={styles.input}
+            placeholder="Promotor/gestor"
+            placeholderTextColor="#9ca3af"
+            value={form.promotor}
+            onChangeText={(v) => onChange('promotor', v)}
+            onFocus={scrollOperationalSectionIntoView}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Acceso"
+            placeholderTextColor="#9ca3af"
+            value={form.acces}
+            onChangeText={(v) => onChange('acces', v)}
+            onFocus={scrollOperationalSectionIntoView}
+          />
         </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {success ? <Text style={styles.successText}>{success}</Text> : null}
@@ -132,6 +304,7 @@ export function ManualStationForm(props: Props) {
           <Text style={styles.secondaryButtonText}>Volver</Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
       <Modal visible={mapOpen} animationType="slide" onRequestClose={() => setMapOpen(false)}>
         <View style={styles.mapScreen}>
           <View style={styles.mapHeader}>
@@ -141,7 +314,11 @@ export function ManualStationForm(props: Props) {
           <View style={styles.mapContainer}>
             <MapView
               style={StyleSheet.absoluteFillObject}
-              initialRegion={{ latitude: picked?.lat ?? 41.3879, longitude: picked?.lng ?? 2.16992, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+              initialRegion={
+                picked
+                  ? { latitude: picked.lat, longitude: picked.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+                  : CATALUNYA_DEFAULT_MAP_REGION
+              }
               onPress={(e: any) => setPicked({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
             >
               {picked ? <Marker coordinate={{ latitude: picked.lat, longitude: picked.lng }} /> : null}
@@ -150,15 +327,35 @@ export function ManualStationForm(props: Props) {
           <View style={styles.mapFooter}>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => {
+              onPress={async () => {
                 if (picked) {
                   onChange('latitud', String(picked.lat));
                   onChange('longitud', String(picked.lng));
+                  try {
+                    setReverseLoading(true);
+                    setGeoMessage('');
+                    const suggestion = await reverseGeoAddress(picked.lat, picked.lng);
+                    if (suggestion) {
+                      applyGeoSuggestion(suggestion, false);
+                    } else {
+                      setGeoMessage(
+                        'No se encontro direccion para este punto. Puedes escribir la direccion a mano.'
+                      );
+                    }
+                  } catch (e) {
+                    setGeoMessage(
+                      e instanceof Error
+                        ? e.message
+                        : 'No se pudo autocompletar la direccion desde el mapa.'
+                    );
+                  } finally {
+                    setReverseLoading(false);
+                  }
                 }
                 setMapOpen(false);
               }}
             >
-              <Text style={styles.primaryButtonText}>Usar esta ubicacion</Text>
+              <Text style={styles.primaryButtonText}>{reverseLoading ? 'Obteniendo direccion...' : 'Usar esta ubicacion'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -173,17 +370,26 @@ export function ManualStationForm(props: Props) {
         <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona tipo de velocidad</Text>{TIPUS_VELOCITAT_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.tipus_velocitat, /\si\s/).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('tipus_velocitat', option, TIPUS_VELOCITAT_OPTIONS, ' i ', /\si\s/)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setTipusVelocitatPickerOpen(false)}><Text style={styles.secondaryButtonText}>Cerrar</Text></TouchableOpacity></View></View>
       </Modal>
       <Modal visible={provincePickerOpen} animationType="fade" transparent onRequestClose={() => setProvincePickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona provincia</Text>{CATALUNYA_PROVINCES.map((province) => <TouchableOpacity key={province} style={styles.pickerOption} onPress={() => { onChange('provincia', province); if (form.provincia !== province) onChange('municipi', ''); setProvincePickerOpen(false); setMunicipalityQuery(''); }}><Text style={styles.pickerOptionText}>{province}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setProvincePickerOpen(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona provincia</Text>{CATALUNYA_PROVINCES.map((province) => <TouchableOpacity key={province} style={styles.pickerOption} onPress={() => { manualProvinceRef.current = true; onChange('provincia', province); if (form.provincia !== province) onChange('municipi', ''); setProvincePickerOpen(false); setMunicipalityQuery(''); }}><Text style={styles.pickerOptionText}>{province}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setProvincePickerOpen(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></TouchableOpacity></View></View>
       </Modal>
       <Modal visible={municipalityPickerOpen} animationType="fade" transparent onRequestClose={() => setMunicipalityPickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona municipio</Text><TextInput style={styles.input} placeholder="Buscar municipio" placeholderTextColor="#9ca3af" value={municipalityQuery} onChangeText={setMunicipalityQuery} /><ScrollView style={styles.pickerList}>{filteredMunicipalityOptions.map((municipality) => <TouchableOpacity key={municipality} style={styles.pickerOption} onPress={() => { onChange('municipi', municipality); setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.pickerOptionText}>{municipality}</Text></TouchableOpacity>)}{!filteredMunicipalityOptions.length ? <Text style={styles.emptyText}>No se han encontrado municipios</Text> : null}</ScrollView><TouchableOpacity style={styles.secondaryButton} onPress={() => { setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.secondaryButtonText}>Cancelar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona municipio</Text><TextInput style={styles.input} placeholder="Buscar municipio" placeholderTextColor="#9ca3af" value={municipalityQuery} onChangeText={setMunicipalityQuery} /><ScrollView style={styles.pickerList}>{filteredMunicipalityOptions.map((municipality) => <TouchableOpacity key={municipality} style={styles.pickerOption} onPress={() => { manualMunicipalityRef.current = true; onChange('municipi', municipality); setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.pickerOptionText}>{municipality}</Text></TouchableOpacity>)}{!filteredMunicipalityOptions.length ? <Text style={styles.emptyText}>No se han encontrado municipios</Text> : null}</ScrollView><TouchableOpacity style={styles.secondaryButton} onPress={() => { setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.secondaryButtonText}>Cancelar</Text></TouchableOpacity></View></View>
       </Modal>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f5f5' }, scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20, paddingVertical: 32 },
+  keyboardRoot: { flex: 1 },
+  screen: { flex: 1, backgroundColor: '#f5f5f5' },
+  scroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    padding: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
+  },
   card: { width: '100%', maxWidth: 520, backgroundColor: '#fff', borderRadius: 18, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 6 }, subtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 18 },
   section: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' }, sectionTitle: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: '#6b7280', marginBottom: 8 },
@@ -197,5 +403,9 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 }, pickerCard: { width: '100%', maxWidth: 360, backgroundColor: '#fff', borderRadius: 18, padding: 18 },
   pickerTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }, pickerList: { maxHeight: 320 }, pickerOption: { paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#f9fafb', marginBottom: 8 },
   pickerOptionSelected: { backgroundColor: '#e5e7eb', borderWidth: 1, borderColor: '#9ca3af' }, pickerOptionText: { fontSize: 15, color: '#111827', fontWeight: '500' }, emptyText: { fontSize: 14, color: '#6b7280', textAlign: 'center', paddingVertical: 12 },
+  helperText: { fontSize: 12, color: '#6b7280', marginTop: -4, marginBottom: 8 },
+  suggestionList: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
+  suggestionItem: { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  suggestionText: { fontSize: 14, color: '#111827' },
   errorText: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginTop: 8 }, successText: { color: '#047857', fontSize: 14, textAlign: 'center', marginTop: 8 },
 });

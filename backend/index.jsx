@@ -1,5 +1,4 @@
 const path = require('path');
-// Cargamos variables de entorno (Prioriza las de AWS Lambda)
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
@@ -11,10 +10,12 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const companyRoutes = require('./routes/company');
 const stationRoutes = require('./routes/stations');
+const geoRoutes = require('./routes/geo');
 const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de favoritos
 const vehicleRoutes = require('./routes/vehicles');//Importamos la ruta de vehiculos
 const subscriptionRoutes = require('./routes/subscription');
 const chargingRoutes = require('./routes/charging'); // Importamos la ruta de carga
+const reviewsRoutes = require('./routes/reviews');
 const rankingRoutes = require('./routes/ranking');
 const userRoutes = require('./routes/users');
 const friendsRoutes = require('./routes/amics');
@@ -67,11 +68,13 @@ app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/company', companyRoutes);
 app.use('/stations', stationRoutes);
+app.use('/geo', geoRoutes);
 // Cualquier petición que empiece con la URL /favorites debe ser gestionada por las reglas de favoriteRoutes
 app.use('/favorites', favoriteRoutes);
 app.use('/car', vehicleRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/charging', chargingRoutes); // Rutas para sesiones de carga y puntos
+app.use('/', reviewsRoutes);
 app.use('/ranking', rankingRoutes);
 app.use('/user', userRoutes);
 app.use('/friends', friendsRoutes);

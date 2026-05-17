@@ -4,11 +4,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 interface ChargingActionCardProps {
   isCharging: boolean;
   elapsedSeconds: number;
-  distanceToStation: number;
+  distanceToStation: number | null;
   onFinishCharging: () => void;
   onCancelCharging: () => void;
 }
@@ -20,13 +22,15 @@ export function ChargingActionCard({
   onFinishCharging,
   onCancelCharging,
 }: ChargingActionCardProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const { colorblindFriendly } = useColorblindPreference();
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
-  const styles = useMemo(() => createStyles(sem), [sem]);
+  const styles = useMemo(() => createStyles(isDark, sem), [isDark, sem]);
+
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Convertir segundos a minutos
   const minutes = Math.floor(elapsedSeconds / 60);
 
   const handleFinishPress = () => {
@@ -47,27 +51,22 @@ export function ChargingActionCard({
     }
   };
 
-  if (!isCharging) {
-    return null;
-  }
+  if (!isCharging) return null;
 
   return (
     <>
       <View style={styles.container}>
-        {/* Estado actual */}
         <View style={styles.statusSection}>
           <View style={styles.statusBadge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>Cargando...</Text>
+            <View style={[styles.statusDot, { backgroundColor: sem.accent }]} />
+            <Text style={[styles.statusText, { color: sem.accent }]}>Cargando...</Text>
           </View>
           <Text style={styles.minutesText}>{minutes} min de carga</Text>
         </View>
 
-        {/* Botones de acción */}
         <View style={styles.buttonContainer}>
-          {/* Botón Finalizar */}
           <TouchableOpacity
-            style={[styles.button, styles.finishButton]}
+            style={[styles.button, styles.finishButton, { backgroundColor: sem.accent }]}
             onPress={handleFinishPress}
             disabled={isSubmitting}
             activeOpacity={0.8}
@@ -82,20 +81,18 @@ export function ChargingActionCard({
             )}
           </TouchableOpacity>
 
-          {/* Botón Cancelar */}
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
             onPress={onCancelCharging}
             disabled={isSubmitting}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="close" size={20} color="#64748b" />
+            <MaterialIcons name="close" size={20} color={isDark ? "#94a3b8" : "#64748b"} />
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Advertencia de distancia */}
-        {distanceToStation > 30 && (
+        {(distanceToStation !== null && distanceToStation > 30) && (
           <View style={styles.warningSection}>
             <MaterialIcons name="warning" size={16} color={sem.error} />
             <Text style={[styles.warningText, { color: sem.error }]}>Te estás alejando del punto de carga</Text>
@@ -103,7 +100,6 @@ export function ChargingActionCard({
         )}
       </View>
 
-      {/* Modal de confirmación */}
       <Modal visible={showConfirmModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -121,7 +117,7 @@ export function ChargingActionCard({
                 <Text style={styles.modalCancelText}>Continuar cargando</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalConfirmButton]}
+                style={[styles.modalButton, styles.modalConfirmButton, { backgroundColor: sem.accent }]}
                 onPress={handleConfirmFinish}
               >
                 <Text style={styles.modalConfirmText}>Confirmar</Text>
@@ -134,142 +130,136 @@ export function ChargingActionCard({
   );
 }
 
-const createStyles = (sem: SemanticColors) =>
-  StyleSheet.create({
-    container: {
-      backgroundColor: '#fff',
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 12,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    },
-    statusSection: {
-      marginBottom: 16,
-    },
-    statusBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    statusDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: sem.accent,
-      marginRight: 8,
-    },
-    statusText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: sem.accent,
-    },
-    minutesText: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: '#0f172a',
-    },
-    buttonContainer: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    button: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 12,
-      borderRadius: 8,
-      gap: 6,
-    },
-    finishButton: {
-      backgroundColor: sem.accent,
-    },
-    finishButtonText: {
-      color: '#fff',
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    cancelButton: {
-      backgroundColor: '#f1f5f9',
-      borderWidth: 1,
-      borderColor: '#e2e8f0',
-    },
-    cancelButtonText: {
-      color: '#64748b',
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    warningSection: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      backgroundColor: '#fef2f2',
-      borderRadius: 8,
-      gap: 8,
-    },
-    warningText: {
-      fontSize: 13,
-      fontWeight: '500',
-      flex: 1,
-    },
-    // Modal styles
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalContent: {
-      backgroundColor: '#fff',
-      borderRadius: 16,
-      padding: 20,
-      maxWidth: '85%',
-      elevation: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-    },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: '#0f172a',
-      marginBottom: 8,
-    },
-    modalMessage: {
-      fontSize: 14,
-      color: '#64748b',
-      marginBottom: 20,
-      lineHeight: 20,
-    },
-    modalButtons: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    modalButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 8,
-      alignItems: 'center',
-    },
-    modalCancelButton: {
-      backgroundColor: '#f1f5f9',
-    },
-    modalCancelText: {
-      color: '#475569',
-      fontWeight: '600',
-    },
-    modalConfirmButton: {
-      backgroundColor: sem.accent,
-    },
-    modalConfirmText: {
-      color: '#fff',
-      fontWeight: '600',
-    },
-  });
+const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create({
+  container: {
+    backgroundColor: isDark ? '#1e293b' : '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: '#334155',
+  },
+  statusSection: {
+    marginBottom: 16,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  minutesText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: isDark ? Colors.dark.text : '#0f172a',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  button: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  finishButton: {
+    // Color gestionat per sem.accent directament al component
+  },
+  finishButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    backgroundColor: isDark ? '#334155' : '#f1f5f9',
+    borderWidth: 1,
+    borderColor: isDark ? '#475569' : '#e2e8f0',
+  },
+  cancelButtonText: {
+    color: isDark ? '#94a3b8' : '#64748b',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  warningSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: isDark ? '#450a0a' : '#fef2f2',
+    borderRadius: 8,
+    gap: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: isDark ? '#1e293b' : '#fff',
+    borderRadius: 16,
+    padding: 20,
+    maxWidth: '85%',
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: isDark ? Colors.dark.text : '#0f172a',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: isDark ? '#94a3b8' : '#64748b',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: isDark ? '#334155' : '#f1f5f9',
+  },
+  modalConfirmButton: {
+    // Declarat per evitar errors de TS, el fons s'aplica per inline style
+  },
+  modalCancelText: {
+    color: isDark ? '#cbd5e1' : '#475569',
+    fontWeight: '600',
+  },
+  modalConfirmText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+});

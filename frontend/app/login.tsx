@@ -11,10 +11,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+
+import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
+import { appFetch } from '@/services/appFetch';
+import { Colors } from '@/constants/theme';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 
 const LOGO = require('./_assets/favicon.png');
@@ -24,6 +29,7 @@ GoogleSignin.configure({
 });
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const { setUser } = useAuth();
   const { colorblindFriendly } = useColorblindPreference();
   const brandAccent = useMemo(() => getSemanticColors(colorblindFriendly).accent, [colorblindFriendly]);
@@ -39,6 +45,9 @@ export default function LoginScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** true = ocultar con puntos (secureTextEntry), false = texto legible */
+  const [passwordHidden, setPasswordHidden] = useState(true);
+  const [confirmPasswordHidden, setConfirmPasswordHidden] = useState(true);
 
   function continueWithoutGoogleTemporarily() {
     const now = new Date().toISOString();
@@ -62,13 +71,13 @@ export default function LoginScreen() {
       const idToken = (userInfo as any).data?.idToken ?? (userInfo as any).idToken;
 
       if (!idToken) {
-        setError('No se pudo obtener el token de Google');
+        setError(t('login.errors.googleToken'));
         return;
       }
 
       let res: Response;
       try {
-        res = await fetch(`${getApiUrl()}/auth/google`, {
+        res = await appFetch('/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
@@ -80,11 +89,11 @@ export default function LoginScreen() {
         if (msg.includes('Network request failed')) {
           setError(
             __DEV__
-              ? `No llega al backend. URL usada: ${base}. Con USB usa npm run start:usb (cierra Metro y vuelve a abrir), adb reverse y backend en marcha en el PC.`
-              : 'No llega al backend. Comprueba conexión y que el servidor esté en marcha.'
+              ? t('login.errors.networkDev', { url: base })
+              : t('login.errors.networkProd')
           );
         } else {
-          setError('No se pudo conectar con el servidor.');
+          setError(t('login.errors.server'));
         }
         return;
       }
@@ -92,7 +101,9 @@ export default function LoginScreen() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Error al iniciar sesión');
+        if (data?.code !== 'USER_BANNED') {
+          setError(data.error || t('login.errors.loginFailed'));
+        }
         return;
       }
 
@@ -110,9 +121,9 @@ export default function LoginScreen() {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
         setError('');
       } else if (err.code === statusCodes.IN_PROGRESS) {
-        setError('Ya hay un inicio de sesión en curso');
+        setError(t('login.errors.inProgress'));
       } else {
-        setError('Error al conectar con Google');
+        setError(t('login.errors.googleConnect'));
         console.error('[Google Native Error]', err);
       }
     } finally {
@@ -135,12 +146,17 @@ export default function LoginScreen() {
     }
   }, [openGoogle, mode]);
 
+  useEffect(() => {
+    setPasswordHidden(true);
+    setConfirmPasswordHidden(true);
+  }, [authMode]);
+
   async function registerWithUsername() {
     if (!pendingAuth || !username.trim()) return;
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${getApiUrl()}/auth/register`, {
+      const res = await appFetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,10 +169,12 @@ export default function LoginScreen() {
         setUser(data.user);
         router.replace('/(tabs)');
       } else {
-        setError(data.error || 'Error al registrarse');
+        if (data?.code !== 'USER_BANNED') {
+          setError(data.error || t('login.errors.registerFailed'));
+        }
       }
     } catch (err) {
-      setError('No se pudo conectar con el servidor.');
+      setError(t('login.errors.server'));
     } finally {
       setLoading(false);
     }
@@ -164,15 +182,15 @@ export default function LoginScreen() {
 
   async function submitLocalAuth() {
     if (!email.trim() || !password.trim()) {
-      setError('Email y contraseña son obligatorios');
+      setError(t('login.errors.emailPasswordRequired'));
       return;
     }
     if (authMode === 'local-register' && !localUsername.trim()) {
-      setError('El nombre de usuario es obligatorio');
+      setError(t('login.errors.usernameRequired'));
       return;
     }
     if (authMode === 'local-register' && password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError(t('login.errors.passwordsMismatch'));
       return;
     }
 
@@ -184,14 +202,16 @@ export default function LoginScreen() {
         authMode === 'local-register'
           ? { email: email.trim(), password, username: localUsername.trim() }
           : { email: email.trim(), password };
-      const res = await fetch(`${getApiUrl()}${endpoint}`, {
+      const res = await appFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo iniciar sesión');
+        if (data?.code !== 'USER_BANNED') {
+          setError(data.error || t('login.errors.localLoginFailed'));
+        }
         return;
       }
       if (data.user) {
@@ -199,7 +219,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       }
     } catch (err) {
-      setError('No se pudo conectar con el servidor.');
+      setError(t('login.errors.server'));
     } finally {
       setLoading(false);
     }
@@ -210,11 +230,11 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
         <View style={styles.card}>
           <Image source={LOGO} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.title}>Elige tu nombre de usuario</Text>
-          <Text style={styles.subtitle}>Así aparecerás en la aplicación</Text>
+          <Text style={styles.title}>{t('login.chooseUsernameTitle')}</Text>
+          <Text style={styles.subtitle}>{t('login.chooseUsernameSubtitle')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nombre de usuario"
+            placeholder={t('common.username')}
             placeholderTextColor="#9ca3af"
             value={username}
             onChangeText={setUsername}
@@ -222,7 +242,7 @@ export default function LoginScreen() {
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <TouchableOpacity style={[styles.primaryButton, { backgroundColor: brandAccent }]} onPress={registerWithUsername} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Continuar</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('common.continue')}</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -237,14 +257,14 @@ export default function LoginScreen() {
           style={[styles.logo, authMode === 'local-register' && styles.logoCompact]}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Bienvenido a e-Go</Text>
+        <Text style={styles.title}>{t('login.welcome')}</Text>
 
         <View style={styles.linksRow}>
           <TouchableOpacity style={styles.adminLink} onPress={() => router.push('/company-login' as Href)}>
-            <Text style={styles.adminLinkText}>Acceso Empresa</Text>
+            <Text style={styles.adminLinkText}>{t('login.companyAccess')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.adminLink} onPress={() => router.push('/admin-login')}>
-            <Text style={styles.adminLinkText}>Acceso Admin</Text>
+            <Text style={styles.adminLinkText}>{t('login.adminAccess')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -269,12 +289,12 @@ export default function LoginScreen() {
                     style={styles.googleIcon}
                     resizeMode="contain"
                   />
-                  <Text style={styles.googleButtonText}>Continuar con Google</Text>
+                  <Text style={styles.googleButtonText}>{t('login.continueGoogle')}</Text>
                 </>
               )}
             </TouchableOpacity>
 
-            <Text style={styles.separatorText}>o</Text>
+            <Text style={styles.separatorText}>{t('common.or')}</Text>
 
             <TouchableOpacity
               style={[styles.primaryButton, styles.mailButton, { backgroundColor: brandAccent }]}
@@ -285,7 +305,7 @@ export default function LoginScreen() {
               disabled={loading}
               activeOpacity={0.85}
             >
-              <Text style={styles.primaryButtonText}>Mail y contraseña</Text>
+              <Text style={styles.primaryButtonText}>{t('login.mailPassword')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -294,16 +314,16 @@ export default function LoginScreen() {
               disabled={loading}
               activeOpacity={0.8}
             >
-              <Text style={styles.googleButtonText}>Continuar sin Google</Text>
+              <Text style={styles.googleButtonText}>{t('login.skipGoogle')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <View style={styles.localForm}>
-            <Text style={styles.localTitle}>Registro</Text>
+            <Text style={styles.localTitle}>{t('login.registerTitle')}</Text>
             {authMode === 'local-register' ? (
               <TextInput
                 style={styles.input}
-                placeholder="Nombre de usuario"
+                placeholder={t('common.username')}
                 placeholderTextColor="#9ca3af"
                 value={localUsername}
                 onChangeText={setLocalUsername}
@@ -312,35 +332,75 @@ export default function LoginScreen() {
             ) : null}
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t('common.email')}
               placeholderTextColor="#9ca3af"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              placeholderTextColor="#9ca3af"
-              value={password}
-              onChangeText={setPassword}
-            />
-            {authMode === 'local-register' ? (
+            <View style={styles.passwordRow}>
               <TextInput
-                style={styles.input}
-                placeholder="Confirmar contraseña"
+                style={styles.passwordInput}
+                placeholder={t('common.password')}
                 placeholderTextColor="#9ca3af"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={passwordHidden}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                autoComplete="password"
               />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setPasswordHidden((h) => !h)}
+                accessibilityRole="button"
+                accessibilityLabel={passwordHidden ? t('login.a11y.showPassword') : t('login.a11y.hidePassword')}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <MaterialIcons
+                  name={passwordHidden ? 'visibility' : 'visibility-off'}
+                  size={22}
+                  color="#6b7280"
+                />
+              </TouchableOpacity>
+            </View>
+            {authMode === 'local-register' ? (
+              <View style={styles.passwordRow}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder={t('common.confirmPassword')}
+                  placeholderTextColor="#9ca3af"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={confirmPasswordHidden}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setConfirmPasswordHidden((h) => !h)}
+                  accessibilityRole="button"
+                  accessibilityLabel={confirmPasswordHidden ? t('login.a11y.showConfirm') : t('login.a11y.hideConfirm')}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <MaterialIcons
+                    name={confirmPasswordHidden ? 'visibility' : 'visibility-off'}
+                    size={22}
+                    color="#6b7280"
+                  />
+                </TouchableOpacity>
+              </View>
             ) : null}
             <TouchableOpacity style={[styles.primaryButton, { backgroundColor: brandAccent }]} onPress={submitLocalAuth} disabled={loading}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  {authMode === 'local-register' ? 'Crear cuenta' : 'Iniciar sesión'}
+                  {authMode === 'local-register' ? t('login.createAccount') : t('login.signIn')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -352,8 +412,8 @@ export default function LoginScreen() {
             >
               <Text style={styles.switchModeText}>
                 {authMode === 'local-register'
-                  ? '¿Ya tienes cuenta? Inicia sesión'
-                  : '¿No tienes cuenta? Regístrate con mail'}
+                  ? t('login.switchToLogin')
+                  : t('login.switchToRegister')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -361,12 +421,12 @@ export default function LoginScreen() {
               onPress={() => setAuthMode('google')}
               disabled={loading}
             >
-              <Text style={styles.backGoogleText}>Continuar con Google</Text>
+              <Text style={styles.backGoogleText}>{t('login.backToGoogle')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <Text style={styles.terms}>Al continuar, aceptas nuestros términos y condiciones</Text>
+        <Text style={styles.terms}>{t('login.terms')}</Text>
       </View>
     </ScrollView>
   );
@@ -390,6 +450,30 @@ const styles = StyleSheet.create({
   separatorText: { marginTop: 12, marginBottom: 8, color: '#6b7280', fontSize: 14, fontWeight: '600' },
   mailButton: { marginTop: 0, marginBottom: 4 },
   input: { width: '100%', paddingVertical: 11, paddingHorizontal: 14, fontSize: 16, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, marginBottom: 12 },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    marginBottom: 12,
+    paddingRight: 4,
+    backgroundColor: '#fff',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: '#111827',
+  },
+  eyeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   errorText: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 12 },
   linksRow: { flexDirection: 'row', gap: 16, marginBottom: 18 },
   adminLink: {},

@@ -12,26 +12,21 @@ import {
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+import { appFetch } from '@/services/appFetch';
 import { getApiUrl } from '@/constants/api';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import { WelcomePremiumModal } from '@/components/WelcomePremiumModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
-import {
-  buildFallbackStatus,
-  formatPeriodEnd,
-  type SubscriptionStatus,
-} from '@/features/subscription/subscriptionHelpers';
+import { useTranslation } from 'react-i18next';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { formatPeriodEnd } from '@/features/subscription/subscriptionHelpers';
 
 const STRIPE_SUCCESS_URL = 'https://example.com/stripe/success';
 const STRIPE_CANCEL_URL = 'https://example.com/stripe/cancel';
-const PREMIUM_BENEFITS = [
-  'Sin anuncios',
-  'Acceso ilimitado a funciones',
-  'Soporte prioritario',
-];
 
 export default function PaymentsScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { colorblindFriendly } = useColorblindPreference();
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
@@ -42,6 +37,12 @@ export default function PaymentsScreen() {
     [colorblindFriendly, sem.accent]
   );
   const { user } = useAuth();
+  const {
+    subStatus,
+    isPremium,
+    isLoading: loadingStatus,
+    refreshSubscription: loadSubscriptionStatus,
+  } = useSubscription();
   const theme = {
     background: pick(['#f8fafc', '#0f172a']),
     title: pick(['#111827', '#f1f5f9']),
@@ -83,14 +84,11 @@ export default function PaymentsScreen() {
     activePlanBorder: sem.accent,
   };
   const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
-  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   const [showWelcomePremium, setShowWelcomePremium] = useState(false);
   const [welcomeMode, setWelcomeMode] = useState<'new' | 'reactivated'>('reactivated');
-  const isPremium = Boolean(subStatus?.isPremium);
   const premiumPulse = React.useRef(new Animated.Value(0)).current;
   const premiumScale = React.useRef(new Animated.Value(1)).current;
   const premiumChipScale = React.useRef(new Animated.Value(1)).current;
@@ -99,30 +97,6 @@ export default function PaymentsScreen() {
   const checkoutFlowRef = React.useRef(false);
 
   const sleep = useCallback((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)), []);
-
-  const loadSubscriptionStatus = useCallback(async () => {
-    if (!user?.id) {
-      setSubStatus(null);
-      return;
-    }
-    setLoadingStatus(true);
-    try {
-      const api = getApiUrl();
-      const res = await fetch(`${api}/subscription/status?userId=${user.id}`);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as SubscriptionStatus;
-      setSubStatus(data);
-    } catch (err) {
-      console.warn('[payments] Error cargando suscripción:', err);
-      setSubStatus(buildFallbackStatus());
-    } finally {
-      setLoadingStatus(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadSubscriptionStatus();
-  }, [loadSubscriptionStatus]);
 
   useEffect(() => {
     if (!isPremium) {
@@ -227,11 +201,9 @@ export default function PaymentsScreen() {
   const refreshStatusAfterCheckout = useCallback(
     async (sessionId: string) => {
       if (!user?.id) return;
-      const api = getApiUrl();
-      // El webhook puede tardar unos segundos; confirmamos por sesión y reintentamos.
       for (let attempt = 0; attempt < 6; attempt += 1) {
         try {
-          const confirmRes = await fetch(`${api}/subscription/confirm-checkout-session`, {
+          const confirmRes = await appFetch('/subscription/confirm-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: user.id, sessionId }),
@@ -259,8 +231,7 @@ export default function PaymentsScreen() {
     if (!user?.id || startingCheckout) return;
     setStartingCheckout(true);
     try {
-      const api = getApiUrl();
-      const res = await fetch(`${api}/subscription/create-checkout-session`, {
+      const res = await appFetch('/subscription/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -292,8 +263,7 @@ export default function PaymentsScreen() {
     if (!user?.id || canceling) return;
     setCanceling(true);
     try {
-      const api = getApiUrl();
-      const res = await fetch(`${api}/subscription/cancel`, {
+      const res = await appFetch('/subscription/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -314,8 +284,7 @@ export default function PaymentsScreen() {
     if (!user?.id || reactivating) return;
     setReactivating(true);
     try {
-      const api = getApiUrl();
-      const res = await fetch(`${api}/subscription/reactivate`, {
+      const res = await appFetch('/subscription/reactivate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -335,25 +304,25 @@ export default function PaymentsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.screen}>
-      <Text style={styles.title}>Escoger plan</Text>
-      <Text style={styles.subtitle}>Elige el plan que mejor se adapte a ti</Text>
+      <Text style={styles.title}>{t('payments.title')}</Text>
+      <Text style={styles.subtitle}>{t('payments.subtitle')}</Text>
 
       {loadingStatus ? (
         <ActivityIndicator color={sem.accent} size="large" style={styles.loader} />
       ) : (
         <View style={styles.plansContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tus planes</Text>
-            <Text style={styles.sectionHint}>Puedes cambiar cuando quieras</Text>
+            <Text style={styles.sectionTitle}>{t('payments.yourPlans')}</Text>
+            <Text style={styles.sectionHint}>{t('payments.plansHint')}</Text>
           </View>
 
           <View style={[styles.planCard, styles.freeCard, !isPremium && styles.activeFreeCard]}>
             <View style={styles.headerRow}>
-              <Text style={styles.planName}>FREE</Text>
-              {!isPremium && <Text style={styles.activeFreeChip}>Plan actual</Text>}
+              <Text style={styles.planName}>{t('payments.freeName')}</Text>
+              {!isPremium && <Text style={styles.activeFreeChip}>{t('payments.currentPlan')}</Text>}
             </View>
-            <Text style={styles.planPrice}>0€/mes</Text>
-            <Text style={styles.planDesc}>Mapa, favoritos y funcionalidades base.</Text>
+            <Text style={styles.planPrice}>{t('payments.freePrice')}</Text>
+            <Text style={styles.planDesc}>{t('payments.freeDesc')}</Text>
           </View>
 
           <Animated.View
@@ -398,33 +367,33 @@ export default function PaymentsScreen() {
             )}
             <View style={styles.headerRow}>
               <View>
-                <Text style={styles.premiumEyebrow}>e-Go Premium</Text>
-                <Text style={styles.premiumName}>Premium</Text>
+                <Text style={styles.premiumEyebrow}>{t('payments.premiumEyebrow')}</Text>
+                <Text style={styles.premiumName}>{t('payments.premiumName')}</Text>
               </View>
               {isPremium && (
                 <Animated.View style={{ transform: [{ scale: premiumChipScale }] }}>
-                  <Text style={styles.activePremiumChip}>Activo</Text>
+                  <Text style={styles.activePremiumChip}>{t('common.active')}</Text>
                 </Animated.View>
               )}
             </View>
-            <Text style={styles.premiumPrice}>4,99€/mes</Text>
-            <Text style={styles.premiumDesc}>La experiencia completa de e-Go, sin límites.</Text>
+            <Text style={styles.premiumPrice}>{t('payments.premiumPrice')}</Text>
+            <Text style={styles.premiumDesc}>{t('payments.premiumDesc')}</Text>
 
             <View style={styles.benefitsWrap}>
-              {PREMIUM_BENEFITS.map((benefit) => (
-                <View key={benefit} style={styles.benefitRow}>
+              {(['benefit1', 'benefit2', 'benefit3'] as const).map((key) => (
+                <View key={key} style={styles.benefitRow}>
                   <Text style={styles.benefitCheck}>✓</Text>
-                  <Text style={styles.benefitText}>{benefit}</Text>
+                  <Text style={styles.benefitText}>{t(`payments.${key}`)}</Text>
                 </View>
               ))}
             </View>
 
-            {periodEndLabel && <Text style={styles.periodText}>Renovación: {periodEndLabel}</Text>}
+            {periodEndLabel && <Text style={styles.periodText}>{t('payments.renewal', { date: periodEndLabel })}</Text>}
 
             {isPremium && subStatus?.cancel_at_period_end ? (
               <>
                 <Text style={styles.cancelInfo}>
-                  Tu suscripción está programada para cancelarse al final del periodo.
+                  {t('payments.cancelScheduled')}
                 </Text>
                 <Pressable
                   style={[styles.reactivateButton, reactivating && styles.buttonDisabled]}
@@ -432,7 +401,7 @@ export default function PaymentsScreen() {
                   disabled={reactivating}
                 >
                   <Text style={styles.reactivateButtonText}>
-                    {reactivating ? 'Reactivando...' : 'Reactivar suscripción'}
+                    {reactivating ? t('payments.reactivating') : t('payments.reactivate')}
                   </Text>
                 </Pressable>
               </>
@@ -446,7 +415,7 @@ export default function PaymentsScreen() {
                 disabled={startingCheckout}
               >
                 <Text style={styles.buttonText}>
-                  {startingCheckout ? 'Abriendo Stripe...' : 'Pasar a Premium'}
+                  {startingCheckout ? t('payments.openingStripe') : t('payments.goPremium')}
                 </Text>
               </Pressable>
             ) : (
@@ -457,7 +426,7 @@ export default function PaymentsScreen() {
                   disabled={canceling}
                 >
                   <Text style={styles.secondaryButtonText}>
-                    {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
+                    {canceling ? t('payments.canceling') : t('payments.cancelSub')}
                   </Text>
                 </Pressable>
               )

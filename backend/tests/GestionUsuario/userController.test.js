@@ -1,7 +1,11 @@
 const userService = require('../../services/userService');
+const { respondIfBannedUserId } = require('../../middleware/requireNotBanned');
 const userController = require('../../controllers/userController');
 
 jest.mock('../../services/userService');
+jest.mock('../../middleware/requireNotBanned', () => ({
+  respondIfBannedUserId: jest.fn().mockResolvedValue(false),
+}));
 
 function mockRes() {
   const res = {};
@@ -13,6 +17,7 @@ function mockRes() {
 describe('userController', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    respondIfBannedUserId.mockResolvedValue(false);
   });
 
   describe('getUser', () => {
@@ -37,6 +42,15 @@ describe('userController', () => {
       expect(userService.getUser).toHaveBeenCalledWith('1');
       expect(res.json).toHaveBeenCalledWith(mockUser);
       expect(res.status).not.toHaveBeenCalled();
+    });
+
+    test('no consulta si el usuario está baneado', async () => {
+      respondIfBannedUserId.mockResolvedValueOnce(true);
+      const res = mockRes();
+
+      await userController.getUser({ query: { usuari_id: '5' } }, res);
+
+      expect(userService.getUser).not.toHaveBeenCalled();
     });
 
     test('getUser devuelve usuario con todos los campos', async () => {
@@ -159,6 +173,18 @@ describe('userController', () => {
       expect(res.json).toHaveBeenCalledWith({
         error: 'Usuario no encontrado',
       });
+    });
+
+    test('no actualiza si el usuario está baneado', async () => {
+      respondIfBannedUserId.mockResolvedValueOnce(true);
+      const res = mockRes();
+
+      await userController.updateUser(
+        { query: { usuari_id: '1' }, body: { username: 'x' } },
+        res
+      );
+
+      expect(userService.updateUser).not.toHaveBeenCalled();
     });
 
     test('updateUser responde 500 en error no controlado', async () => {

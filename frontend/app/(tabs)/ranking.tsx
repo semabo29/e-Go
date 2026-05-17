@@ -8,6 +8,7 @@ import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface RankingUser {
   id: number;
@@ -16,6 +17,7 @@ interface RankingUser {
 }
 
 export default function RankingScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { colorblindFriendly } = useColorblindPreference();
   const { user } = useAuth();
@@ -98,7 +100,7 @@ export default function RankingScreen() {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator testID="ranking-loading-indicator" size="large" color={sem.accent} />
-        <Text style={styles.loadingText}>Cargando líderes...</Text>
+        <Text style={styles.loadingText}>{t('ranking.loading')}</Text>
       </View>
     );
   }
@@ -110,7 +112,7 @@ export default function RankingScreen() {
           <View style={styles.titleContainer}>
             <MaterialIcons name="emoji-events" size={32} color={sem.accent} />
             <View style={styles.titleText}>
-              <Text style={styles.title}>Ranking e-Go</Text>
+              <Text style={styles.title}>{t('ranking.title')}</Text>
               <Text style={styles.subtitle}>
                 {isGlobalRanking ? 'Los conductores más sostenibles' : 'Tus amigos'}
               </Text>
@@ -149,14 +151,14 @@ export default function RankingScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.username, index < 3 && styles.topUsername]}>
-                  {item.username || 'Usuario Anónimo'}
+                  {item.username || t('ranking.anonymousUser')}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.pointsCol}>
               <Text style={styles.points}>{item.punts}</Text>
-              <Text style={styles.ptsLabel}>pts</Text>
+              <Text style={styles.ptsLabel}>{t('ranking.pts')}</Text>
             </View>
           </View>
         )}

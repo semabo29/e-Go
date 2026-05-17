@@ -3,7 +3,6 @@ import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import RankingScreen from '@/app/(tabs)/ranking';
 
-// Mockeamos la constante de la API para que no dé errores al importar
 jest.mock('@/constants/api', () => ({
   getApiUrl: () => 'http://localhost:3000',
 }));
@@ -31,13 +30,12 @@ describe('RankingScreen', () => {
     jest.clearAllMocks();
   });
 
+  // Fetch pendiente: debe mostrarse el indicador de carga.
   it('muestra el estado de carga inicialmente', () => {
-    // Simulamos un fetch que se queda "pensando" para poder ver el loading
     global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
 
     const { getByText } = render(<RankingScreen />);
-    
-    // Comprobamos que sale el texto del ActivityIndicator
+
     expect(getByText('Cargando líderes...')).toBeTruthy();
   });
 
@@ -57,9 +55,7 @@ describe('RankingScreen', () => {
 
     const { getByText } = render(<RankingScreen />);
 
-    // Esperamos a que el fetch termine y se pinte la pantalla
     await waitFor(() => {
-      // Comprobamos que los usuarios y puntos aparecen en pantalla
       expect(getByText('EcoDriver_BCN')).toBeTruthy();
       expect(getByText('850')).toBeTruthy();
       expect(getByText('VoltMaster')).toBeTruthy();
@@ -82,15 +78,13 @@ describe('RankingScreen', () => {
     });
   });
 
+  // Error de red: no crashea y muestra el estado vacío.
   it('gestiona los errores de red sin "crashear"', async () => {
-    // Simulamos que el servidor está caído
     global.fetch = jest.fn(() => Promise.reject(new Error('Network Error'))) as unknown as typeof fetch;
 
     const { getByText } = render(<RankingScreen />);
 
-    // Esperamos a que pase el loading
     await waitFor(() => {
-      // Al fallar, el estado se queda vacío, por lo que debería mostrar el mensaje por defecto
       expect(getByText('Aún no hay puntuaciones.')).toBeTruthy();
     });
   });

@@ -32,11 +32,14 @@ describe('Company auth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    pool.query.mockResolvedValue({ rows: [{ id: 5, is_banned: false }] });
   });
 
   test('POST /auth/company/google -> 403 si no es empresa', async () => {
     getGooglePayload.mockResolvedValue({ email: 'user@example.com' });
-    pool.query.mockResolvedValue({ rows: [] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app)
       .post('/auth/company/google')
@@ -47,18 +50,20 @@ describe('Company auth', () => {
 
   test('POST /auth/company/google -> 200 si es empresa', async () => {
     getGooglePayload.mockResolvedValue({ email: 'empresa@example.com' });
-    pool.query.mockResolvedValue({
-      rows: [
-        {
-          id: 5,
-          user_id: 8,
-          nombre: 'ChargeCo',
-          company_since: '2026-04-19T10:00:00.000Z',
-          email: 'empresa@example.com',
-          username: 'empresa',
-        },
-      ],
-    });
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 5,
+            user_id: 8,
+            nombre: 'ChargeCo',
+            company_since: '2026-04-19T10:00:00.000Z',
+            email: 'empresa@example.com',
+            username: 'empresa',
+          },
+        ],
+      });
 
     const res = await request(app)
       .post('/auth/company/google')
@@ -135,5 +140,219 @@ describe('Company auth', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.company.role).toBe('company');
+  });
+
+  test('PATCH /company/profile -> 400 si nombre vacio', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, email: 'empresa@example.com', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: '   ' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /company/profile -> 200 actualiza nombre', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, email: 'empresa@example.com', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [{ user_id: 5, nombre: 'Nuevo SL', created_at: '2026-01-01T00:00:00.000Z' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ id: 5, email: 'empresa@example.com', username: 'empresa' }],
+      });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: '  Nuevo SL  ' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.company.nombre).toBe('Nuevo SL');
+  });
+
+  test('PUT /company/profile -> 200 actualiza nombre', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, email: 'empresa@example.com', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [{ user_id: 5, nombre: 'Otro SL', created_at: '2026-01-01T00:00:00.000Z' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ id: 5, email: 'empresa@example.com', username: 'empresa' }],
+      });
+
+    const res = await request(app)
+      .put('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Otro SL' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.company.nombre).toBe('Otro SL');
+  });
+
+  test('GET /company/user -> 200 devuelve perfil', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, email: 'empresa@example.com', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 8,
+            user_id: 8,
+            email: 'empresa@example.com',
+            username: 'empresa',
+            nombre: 'ChargeCo',
+            created_at: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.company.nombre).toBe('ChargeCo');
+  });
+
+  test('GET /company/user -> 404 si empresa no existe', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('GET /company/user -> 400 si token sin user_id ni sub valido', async () => {
+    const token = jwt.sign(
+      { sub: 'x', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] });
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /company/profile -> 404 si empresa no encontrada', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'X' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('GET /company/user -> 500 si falla la consulta', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockRejectedValueOnce(new Error('db fail'));
+
+    const res = await request(app)
+      .get('/company/user')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /company/profile -> 500 si falla la actualizacion', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 5, role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 5, is_banned: false }] });
+    jest.spyOn(userModel, 'updateCompanyNombre').mockRejectedValue(new Error('db fail'));
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Fallo' });
+
+    expect(res.status).toBe(500);
+    jest.restoreAllMocks();
+  });
+
+  test('PATCH /company/profile -> 400 si token invalido para empresa', async () => {
+    const token = jwt.sign({ sub: 'bad', role: 'company' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'X' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /company/profile -> 200 prioriza user_id del JWT frente a sub', async () => {
+    const token = jwt.sign(
+      { sub: 5, user_id: 8, email: 'empresa@example.com', role: 'company' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 8, is_banned: false }] })
+      .mockResolvedValueOnce({
+        rows: [{ user_id: 8, nombre: 'Nombre OK', created_at: '2026-01-01T00:00:00.000Z' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ id: 8, email: 'empresa@example.com', username: 'empresa' }],
+      });
+
+    const res = await request(app)
+      .patch('/company/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'Nombre OK' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.company.user_id).toBe(8);
+    expect(res.body.company.nombre).toBe('Nombre OK');
   });
 });

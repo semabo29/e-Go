@@ -126,10 +126,6 @@ export default function AdminHomeScreen() {
               <Text style={styles.infoLabel}>Email</Text>
               <Text style={styles.infoValue}>{admin?.email}</Text>
             </View>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Rol</Text>
-              <Text style={styles.infoValue}>{admin?.role}</Text>
-            </View>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => router.push('/admin-station-new' as Href)}
@@ -141,6 +137,30 @@ export default function AdminHomeScreen() {
               onPress={() => router.push('/admin-requests' as Href)}
             >
               <Text style={styles.primaryButtonAltText}>Revisar solicitudes pendientes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-users' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Moderacion de usuarios"
+            >
+              <Text style={styles.primaryButtonAltText}>Moderacion de usuarios</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-incidencias' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Incidencias pendientes"
+            >
+              <Text style={styles.primaryButtonAltText}>Incidencias pendientes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-incidencias-history' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Historico de incidencias"
+            >
+              <Text style={styles.primaryButtonAltText}>Historico de incidencias</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
@@ -287,12 +307,6 @@ const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
     textAlign: 'center',
     marginBottom: 6,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 22,
-  },
   centered: {
     alignItems: 'center',
     gap: 10,
@@ -367,6 +381,7 @@ const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 16,

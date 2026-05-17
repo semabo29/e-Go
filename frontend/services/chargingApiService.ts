@@ -1,4 +1,4 @@
-import { getApiUrl } from '@/constants/api';
+import { appFetch } from '@/services/appFetch';
 
 export interface ChargingSessionResponse {
   success: boolean;
@@ -38,7 +38,7 @@ export async function startChargingSession(
   ubicacionLat: number,
   ubicacionLon: number
 ): Promise<ChargingSessionResponse> {
-  const response = await fetch(`${getApiUrl()}/charging/start`, {
+  const response = await appFetch('/charging/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -67,7 +67,7 @@ export async function endChargingSession(
   ubicacionFinalLon: number | null,
   endReason: 'manual' | 'distance_exceeded' | 'signal_loss'
 ): Promise<ChargingEndResponse> {
-  const response = await fetch(`${getApiUrl()}/charging/end`, {
+  const response = await appFetch('/charging/end', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -91,7 +91,7 @@ export async function endChargingSession(
  * Obtiene la sesión activa del usuario
  */
 export async function getActiveChargingSession(usuariId: number): Promise<ChargingSessionResponse | null> {
-  const response = await fetch(`${getApiUrl()}/charging/active?usuari_id=${usuariId}`, {
+  const response = await appFetch(`/charging/active?usuari_id=${usuariId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -111,7 +111,7 @@ export async function cancelChargingSession(
   sessionId: number,
   reason?: string
 ): Promise<void> {
-  const response = await fetch(`${getApiUrl()}/charging/cancel`, {
+  const response = await appFetch('/charging/cancel', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -129,7 +129,7 @@ export async function cancelChargingSession(
  * Obtiene estadísticas de carga del usuario
  */
 export async function getChargingStats(usuariId: number) {
-  const response = await fetch(`${getApiUrl()}/charging/stats/${usuariId}`, {
+  const response = await appFetch(`/charging/stats/${usuariId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });

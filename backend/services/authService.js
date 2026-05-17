@@ -14,6 +14,19 @@ const AuthError = (code, message) => {
   return err;
 };
 
+function bannedUserError(user) {
+  const err = new Error('Esta cuenta esta baneada');
+  err.code = 'USER_BANNED';
+  err.banned_reason = user?.banned_reason ?? null;
+  return err;
+}
+
+function ensureNotBanned(user) {
+  if (user?.is_banned) {
+    throw bannedUserError(user);
+  }
+}
+
 async function loginWithGoogle(body) {
   const hasIdToken = !!body.idToken;
   const hasCode = !!(body.code && body.redirectUri);
@@ -29,10 +42,12 @@ async function loginWithGoogle(body) {
 
   const user = await userModel.findConductorByEmail(email);
   if (user) {
+    ensureNotBanned(user);
     return { user, needsUsername: false };
   }
   const existingUser = await userModel.findByEmail(email);
   if (existingUser) {
+    ensureNotBanned(existingUser);
     await userModel.ensureConductorForUser(existingUser.id);
     return { user: existingUser, needsUsername: false };
   }
@@ -108,6 +123,7 @@ async function registerWithEmail(body) {
   }
 
   if (existingUser && !existingUser.password_hash) {
+    ensureNotBanned(existingUser);
     const updatedUser = await userModel.setPasswordHashByUserId(existingUser.id, passwordHash);
     if (updatedUser) {
       await userModel.ensureConductorForUser(updatedUser.id);
@@ -133,6 +149,7 @@ async function loginWithEmail(body) {
   if (!user || !user.password_hash) {
     throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
   }
+  ensureNotBanned(user);
   const ok = await bcrypt.compare(body.password, user.password_hash);
   if (!ok) {
     throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
