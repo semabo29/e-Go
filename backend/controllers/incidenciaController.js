@@ -21,6 +21,9 @@ async function create(req, res) {
     if (error.code === 'NOT_FOUND') {
       return res.status(404).json({ error: error.message });
     }
+    if (error.code === 'CONFLICT') {
+      return res.status(409).json({ error: error.message });
+    }
     console.error('Error creando incidencia:', error);
     return res.status(500).json({ error: 'Error creando incidencia' });
   }

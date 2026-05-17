@@ -29,6 +29,25 @@ async function stationExists(stationId) {
   return result.rowCount > 0;
 }
 
+async function hasOpenIncidenciaForConductorAndStation(conductor, estacio, tipus, client = null) {
+  const db = client || pool;
+  const isOperatiu = tipus === 'Operatiu';
+  const result = await db.query(
+    `SELECT 1 FROM ego.incidencia
+     WHERE conductor = $1
+       AND estacio = $2
+       AND resolta = FALSE
+       AND rebutjada = FALSE
+       AND (
+         ($3::boolean = TRUE AND tipus = 'Operatiu')
+         OR ($3::boolean = FALSE AND tipus <> 'Operatiu')
+       )
+     LIMIT 1;`,
+    [conductor, estacio, isOperatiu]
+  );
+  return result.rowCount > 0;
+}
+
 async function createIncidencia({ tipus, comentari, arxiu, conductor, estacio }, client = null) {
   const db = client || pool;
   const query = `
@@ -231,6 +250,7 @@ module.exports = {
   getIncidenciaTypes,
   conductorExists,
   stationExists,
+  hasOpenIncidenciaForConductorAndStation,
   createIncidencia,
   listPending,
   listHistory,

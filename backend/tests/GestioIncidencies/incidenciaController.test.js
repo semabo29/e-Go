@@ -74,6 +74,22 @@ describe('incidenciaController', () => {
       expect(res.json).toHaveBeenCalledWith({ error: 'El comentario es obligatorio' });
     });
 
+    test('responde 409 cuando el servicio lanza CONFLICT', async () => {
+      const req = { body: {}, file: undefined };
+      const res = mockRes();
+      incidenciaService.createIncidencia.mockRejectedValue({
+        code: 'CONFLICT',
+        message: 'Ya has reportado esta incidencia para esta estación',
+      });
+
+      await incidenciaController.create(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Ya has reportado esta incidencia para esta estación',
+      });
+    });
+
     test('responde 404 cuando el servicio lanza NOT_FOUND', async () => {
       // No existe la estación o el conductor en la base de datos.
       const req = { body: {}, file: undefined };

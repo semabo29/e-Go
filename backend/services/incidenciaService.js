@@ -3,12 +3,13 @@ const incidenciaModel = require('../models/incidenciaModel');
 const userPointsModel = require('../models/userPointsModel');
 const subscriptionModel = require('../models/subscriptionModel');
 const { uploadFile, getPublicUrl } = require('../lib/s3Service');
-
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
 
 const INCIDENCIA_POINTS = 10;
 const PREMIUM_MULTIPLIER = 2;
 const AUTO_TRIGGER_THRESHOLD = 5;
+const INCIDENCIA_ALREADY_REPORTED_MESSAGE =
+  'Ya has reportado esta incidencia para esta estación';
 
 async function listIncidenciaTypes() {
   return incidenciaModel.getIncidenciaTypes();
@@ -125,6 +126,18 @@ async function createIncidencia(data, file) {
   try {
     await client.query('BEGIN');
 
+    const hasOpen = await incidenciaModel.hasOpenIncidenciaForConductorAndStation(
+      conductor,
+      estacio,
+      tipus,
+      client
+    );
+    if (hasOpen) {
+      const error = new Error(INCIDENCIA_ALREADY_REPORTED_MESSAGE);
+      error.code = 'CONFLICT';
+      throw error;
+    }
+
     const incidencia = await incidenciaModel.createIncidencia(
       { tipus, comentari, arxiu, conductor, estacio },
       client
@@ -136,6 +149,11 @@ async function createIncidencia(data, file) {
     return incidencia;
   } catch (err) {
     await client.query('ROLLBACK');
+    if (err.code === '23505') {
+      const conflict = new Error(INCIDENCIA_ALREADY_REPORTED_MESSAGE);
+      conflict.code = 'CONFLICT';
+      throw conflict;
+    }
     throw err;
   } finally {
     client.release();
