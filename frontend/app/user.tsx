@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Image, View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Alert, Image, View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { appFetch } from '@/services/appFetch';
 import { getApiUrl } from '@/constants/api';
@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 
 const LOGO = require('./_assets/favicon.png'); // Ruta a tu imagen de perfil (el logo de momento)
 const RAINBOW_BASE_COLORS = ['#3b82f6', '#a855f7', '#ec4899', '#f97316', '#facc15', '#3fad17', '#14b8b0', '#3b82f6'];
@@ -84,6 +86,34 @@ export default function PerfilScreen() {
   const { colorblindFriendly } = useColorblindPreference();
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const styles = useMemo(() => createUserStyles(sem), [sem]);
+
+  // Referència a la part de la pantalla que volem "fotografiar"
+  const viewShotRef = useRef<ViewShot>(null);
+
+  // Funció que fa la captura i la comparteix
+  const shareToInstagram = async () => {
+    try {
+      if (viewShotRef.current && viewShotRef.current.capture) {
+        // Fa la captura i ens retorna la ruta de la imatge
+        const uri = await viewShotRef.current.capture();
+
+        // Comprovem si el mòbil permet compartir arxius
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/jpeg',
+            dialogTitle: 'Comparte tu perfil de e-Go',
+            UTI: 'public.jpeg', // Especial per a iOS
+          });
+        } else {
+          Alert.alert('Error', 'El uso compartido no está disponible en este dispositivo');
+        }
+      }
+    } catch (error) {
+      console.error('Error al compartir:', error);
+      Alert.alert('Error', 'No se ha podido capturar el perfil.');
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -170,105 +200,121 @@ export default function PerfilScreen() {
       </View>
       {/* Contingut del perfil */}
       <View style={styles.profileContainer}>
-        <View style={styles.profileCard}>
-          <View style={styles.profileAvatarWrapper}>
-            <Image source={LOGO} style={styles.avatar} resizeMode="contain" />
+        <ViewShot
+          ref={viewShotRef}
+          options={{ format: 'jpg', quality: 0.9 }}
+          style={{ backgroundColor: '#fff', borderRadius: 16 }} // Posa el color de fons del teu perfil
+        >
+          <View style={styles.profileCard}>
+            <View style={styles.profileAvatarWrapper}>
+              <Image source={LOGO} style={styles.avatar} resizeMode="contain" />
+            </View>
+            <View style={styles.profileContent}>
+              {renderProfileName()}
+              {perfil?.id === user?.id && (
+                <>
+                  {!isEditing ? (
+                    <>
+                      <Text style={styles.profileEmail}>{perfil?.email ?? 'email@ejemplo.com'}</Text>
+                      <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => {
+                          setEditedUsername(perfil?.username ?? '');
+                          setEditedEmail(perfil?.email ?? '');
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Text style={styles.editButtonText}>Modificar perfil</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <TextInput
+                        style={styles.input}
+                        value={editedUsername}
+                        onChangeText={setEditedUsername}
+                        placeholder="Nombre de usuario"
+                        placeholderTextColor="#94a3b8"
+                      />
+                      <TextInput
+                        style={styles.input}
+                        value={editedEmail}
+                        onChangeText={setEditedEmail}
+                        placeholder="Email"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                    </>
+                  )}
+                </>
+              )}
+              <Text style={styles.profileSubtitle}>Se unió el {perfil?.created_at ? new Date(perfil.created_at).toLocaleDateString() : 'fecha no disponible'}</Text>
+              {(perfil?.empresa || perfil?.admin) && (
+                <View style={styles.badgeRow}>
+                  {perfil?.empresa && (
+                    <View style={styles.badge}>
+                      <MaterialIcons name="business" size={16} color="#2563eb" />
+                      <Text style={styles.badgeLabel}>Empresa</Text>
+                    </View>
+                  )}
+                  {perfil?.admin && (
+                    <View style={styles.badge}>
+                      <MaterialIcons name="shield" size={16} color={sem.mapCustomLocation} />
+                      <Text style={styles.badgeLabel}>Admin</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+              {perfil?.id === user?.id && isEditing && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+                    onPress={savePerfil}
+                    disabled={isSaving}
+                  >
+                    <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setEditedUsername(perfil?.username ?? '');
+                      setEditedEmail(perfil?.email ?? '');
+                      setIsEditing(false);
+                    }}
+                    disabled={isSaving}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
-          <View style={styles.profileContent}>
-            {renderProfileName()}
-            {perfil?.id === user?.id && (
-              <>
-                {!isEditing ? (
-                  <>
-                    <Text style={styles.profileEmail}>{perfil?.email ?? 'email@ejemplo.com'}</Text>
-                    <TouchableOpacity
-                      style={styles.editButton}
-                      onPress={() => {
-                        setEditedUsername(perfil?.username ?? '');
-                        setEditedEmail(perfil?.email ?? '');
-                        setIsEditing(true);
-                      }}
-                    >
-                      <Text style={styles.editButtonText}>Modificar perfil</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <TextInput
-                      style={styles.input}
-                      value={editedUsername}
-                      onChangeText={setEditedUsername}
-                      placeholder="Nombre de usuario"
-                      placeholderTextColor="#94a3b8"
-                    />
-                    <TextInput
-                      style={styles.input}
-                      value={editedEmail}
-                      onChangeText={setEditedEmail}
-                      placeholder="Email"
-                      placeholderTextColor="#94a3b8"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                    />
-                  </>
-                )}
-              </>
-            )}
-            <Text style={styles.profileSubtitle}>Se unió el {perfil?.created_at ? new Date(perfil.created_at).toLocaleDateString() : 'fecha no disponible'}</Text>
-            {(perfil?.empresa || perfil?.admin) && (
-              <View style={styles.badgeRow}>
-                {perfil?.empresa && (
-                  <View style={styles.badge}>
-                    <MaterialIcons name="business" size={16} color="#2563eb" />
-                    <Text style={styles.badgeLabel}>Empresa</Text>
-                  </View>
-                )}
-                {perfil?.admin && (
-                  <View style={styles.badge}>
-                    <MaterialIcons name="shield" size={16} color={sem.mapCustomLocation} />
-                    <Text style={styles.badgeLabel}>Admin</Text>
-                  </View>
-                )}
-              </View>
-            )}
-            {perfil?.id === user?.id && isEditing && (
-              <>
-                <TouchableOpacity
-                  style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-                  onPress={savePerfil}
-                  disabled={isSaving}
-                >
-                  <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setEditedUsername(perfil?.username ?? '');
-                    setEditedEmail(perfil?.email ?? '');
-                    setIsEditing(false);
-                  }}
-                  disabled={isSaving}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={sem.accent} />
-            <Text style={styles.loadingText}>Cargando perfil...</Text>
-          </View>
-        ) : perfil ? (
-          <View style={[styles.statsCard, styles.centered]}>
-            <Text style={styles.points}>{perfil.punts}</Text>
-            <Text style={styles.ptsLabel}>Puntos</Text>
-          </View>
-        ) : (
-          <Text style={styles.emptyText}>No existe el usuario</Text>
-        )}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={sem.accent} />
+              <Text style={styles.loadingText}>Cargando perfil...</Text>
+            </View>
+          ) : perfil ? (
+            <View style={[styles.statsCard, styles.centered]}>
+              <Text style={styles.points}>{perfil.punts}</Text>
+              <Text style={styles.ptsLabel}>Puntos</Text>
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>No existe el usuario</Text>
+          )}
+        </ViewShot>
+
+        {/* AFEGIM EL BOTÓ D'INSTAGRAM */}
+        <TouchableOpacity
+          style={styles.instagramButton}
+          onPress={shareToInstagram}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="camera-alt" size={20} color="#fff" />
+          <Text style={styles.instagramButtonText}>Comparte tu perfil!</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -450,5 +496,20 @@ const createUserStyles = (sem: SemanticColors) => StyleSheet.create({
     color: '#94a3b8',
     marginTop: 40,
     fontSize: 16,
+  },
+  instagramButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: sem.accent,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 20, // Ajusta l'espai com necessitis
+    gap: 8,
+  },
+  instagramButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

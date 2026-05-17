@@ -23,6 +23,8 @@ module.exports = ({ config }) => {
     ]);
   }
 
+  plugins.push('expo-sharing');
+
   return {
     ...config,
     plugins,
