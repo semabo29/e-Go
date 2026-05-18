@@ -1,0 +1,2985 @@
+
+> backend@1.0.0 test
+> jest --config jest.config.js --runInBand
+
+FAIL tests/integration/incidencias.integration.test.js (10.061 s)
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error creando incidencia: error: column "datainici" of relation "incidencia" does not exist
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/pg-pool/index.js:45:11
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at Object.createIncidencia (/home/sergi/Escritorio/PES/e-Go/backend/models/incidenciaModel.js:48:18)
+          at Object.createIncidencia (/home/sergi/Escritorio/PES/e-Go/backend/services/incidenciaService.js:76:22)
+          at create (/home/sergi/Escritorio/PES/e-Go/backend/controllers/incidenciaController.js:15:24) {
+        length: 132,
+        severity: 'ERROR',
+        code: '42703',
+        detail: undefined,
+        hint: undefined,
+        position: '54',
+        internalPosition: undefined,
+        internalQuery: undefined,
+        where: undefined,
+        schema: undefined,
+        table: undefined,
+        column: undefined,
+        dataType: undefined,
+        constraint: undefined,
+        file: 'parse_target.c',
+        line: '1065',
+        routine: 'checkInsertTargets'
+      }
+
+      22 |       return res.status(404).json({ error: error.message });
+      23 |     }
+    > 24 |     console.error('Error creando incidencia:', error);
+         |             ^
+      25 |     return res.status(500).json({ error: 'Error creando incidencia' });
+      26 |   }
+      27 | }
+
+      at error (controllers/incidenciaController.js:24:13)
+
+    console.error
+      Error creando incidencia: error: column "datainici" of relation "incidencia" does not exist
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/pg-pool/index.js:45:11
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at Object.createIncidencia (/home/sergi/Escritorio/PES/e-Go/backend/models/incidenciaModel.js:48:18)
+          at Object.createIncidencia (/home/sergi/Escritorio/PES/e-Go/backend/services/incidenciaService.js:76:22)
+          at create (/home/sergi/Escritorio/PES/e-Go/backend/controllers/incidenciaController.js:15:24) {
+        length: 132,
+        severity: 'ERROR',
+        code: '42703',
+        detail: undefined,
+        hint: undefined,
+        position: '54',
+        internalPosition: undefined,
+        internalQuery: undefined,
+        where: undefined,
+        schema: undefined,
+        table: undefined,
+        column: undefined,
+        dataType: undefined,
+        constraint: undefined,
+        file: 'parse_target.c',
+        line: '1065',
+        routine: 'checkInsertTargets'
+      }
+
+      22 |       return res.status(404).json({ error: error.message });
+      23 |     }
+    > 24 |     console.error('Error creando incidencia:', error);
+         |             ^
+      25 |     return res.status(500).json({ error: 'Error creando incidencia' });
+      26 |   }
+      27 | }
+
+      at error (controllers/incidenciaController.js:24:13)
+
+    console.error
+      Error creando incidencia: error: column "datainici" of relation "incidencia" does not exist
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/pg-pool/index.js:45:11
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at Object.createIncidencia (/home/sergi/Escritorio/PES/e-Go/backend/models/incidenciaModel.js:48:18)
+          at Object.createIncidencia (/home/sergi/Escritorio/PES/e-Go/backend/services/incidenciaService.js:76:22)
+          at create (/home/sergi/Escritorio/PES/e-Go/backend/controllers/incidenciaController.js:15:24) {
+        length: 132,
+        severity: 'ERROR',
+        code: '42703',
+        detail: undefined,
+        hint: undefined,
+        position: '54',
+        internalPosition: undefined,
+        internalQuery: undefined,
+        where: undefined,
+        schema: undefined,
+        table: undefined,
+        column: undefined,
+        dataType: undefined,
+        constraint: undefined,
+        file: 'parse_target.c',
+        line: '1065',
+        routine: 'checkInsertTargets'
+      }
+
+      22 |       return res.status(404).json({ error: error.message });
+      23 |     }
+    > 24 |     console.error('Error creando incidencia:', error);
+         |             ^
+      25 |     return res.status(500).json({ error: 'Error creando incidencia' });
+      26 |   }
+      27 | }
+
+      at error (controllers/incidenciaController.js:24:13)
+
+  ● Incidencias integration (real DB) › POST /incidencias crea incidencia válida sin archivo (201)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      75 |     const res = await request(app).post('/incidencias').field('comentari', `${testCommentPrefix}-ok`).field('tipus', 'Operatiu').field('conductor', String(validUserId)).field('estacio', String(validStationId));
+      76 |
+    > 77 |     expect(res.status).toBe(201);
+         |                        ^
+      78 |     expect(res.body).toEqual(
+      79 |       expect.objectContaining({
+      80 |         tipus: 'Operatiu',
+
+      at Object.toBe (tests/integration/incidencias.integration.test.js:77:24)
+
+  ● Incidencias integration (real DB) › flujo incidencia solucionada › POST /incidencias crea incidencia solucionada con payload esperado (201)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      131 |         .field('estacio', String(validStationId));
+      132 |
+    > 133 |       expect(res.status).toBe(201);
+          |                          ^
+      134 |       expect(res.body).toEqual(
+      135 |         expect.objectContaining({
+      136 |           comentari: solvedComment,
+
+      at Object.toBe (tests/integration/incidencias.integration.test.js:133:26)
+
+  ● Incidencias integration (real DB) › flujo incidencia solucionada › POST /incidencias persistencia DB: guarda incidencia solucionada con defaults
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      155 |         .field('estacio', String(validStationId));
+      156 |
+    > 157 |       expect(createRes.status).toBe(201);
+          |                                ^
+      158 |       expect(createRes.body.id).toBeDefined();
+      159 |
+      160 |       const dbRes = await pool.query(
+
+      at Object.toBe (tests/integration/incidencias.integration.test.js:157:32)
+
+FAIL tests/Skins/skinController.test.js (8.664 s)
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+  ● Proves d'integració de Skins i Garatge › Consultar inventari i punts del conductor (codi 200) | GET a /api/skins/conductor/:id
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      68 |     // Ha de tenir com a mínim la skin base equipada
+      69 |     const baseSkin = data.inventari.find(s => s.id === 1);
+    > 70 |     expect(baseSkin).toBeDefined();
+         |                      ^
+      71 |     expect(baseSkin.equipada).toBe(true);
+      72 |   });
+      73 |
+
+      at Object.toBeDefined (tests/Skins/skinController.test.js:70:22)
+
+  ● Proves d'integració de Skins i Garatge › No permet comprar una skin si no té punts (codi 400)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      90 |       .send({ skin_id: 3 }); // Intentem comprar una altra
+      91 |
+    > 92 |     expect(response.status).toBe(400);
+         |                             ^
+      93 |     expect(response.body.error).toBe('No tens punts suficients');
+      94 |   });
+      95 |
+
+      at Object.toBe (tests/Skins/skinController.test.js:92:29)
+
+PASS tests/integration/stationsSync.integration.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      Sincronizadas 1 estaciones
+
+      at Object.log [as syncStations] (services/stationService.js:21:11)
+
+PASS tests/integration/db.integration.test.js (6.778 s)
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error al obtenir vehicles: Error: ID dusuari no proporcionat
+          at Object.getUserVehicles (/home/sergi/Escritorio/PES/e-Go/backend/services/vehicleService.js:19:24)
+          at getUserVehicles (/home/sergi/Escritorio/PES/e-Go/backend/controllers/vehicleController.js:44:43)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      45 |     res.json(vehicles);
+      46 |   } catch (err) {
+    > 47 |     console.error('Error al obtenir vehicles:', err);
+         |             ^
+      48 |     res.status(500).json({ error: 'Error al obtenir vehicles' });
+      49 |   }
+      50 | }
+
+      at error (controllers/vehicleController.js:47:13)
+
+    console.error
+      Error al afegir vehicle: Error: Faltan parametres
+          at Object.addCar (/home/sergi/Escritorio/PES/e-Go/backend/services/vehicleService.js:5:80)
+          at addCar (/home/sergi/Escritorio/PES/e-Go/backend/controllers/vehicleController.js:11:26)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      16 |     });
+      17 |   } catch (err) {
+    > 18 |     console.error('Error al afegir vehicle:', err);
+         |             ^
+      19 |     res.status(500).json({ error: 'Error al processar la solicitud' });
+      20 |   }
+      21 | }
+
+      at error (controllers/vehicleController.js:18:13)
+
+    console.error
+      Error al afegir vehicle: error: insert or update on table "vehicles" violates foreign key constraint "fk_usuari"
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/pg-pool/index.js:45:11
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at Object.addCar (/home/sergi/Escritorio/PES/e-Go/backend/models/vehicleModel.js:11:18)
+          at Object.addCar (/home/sergi/Escritorio/PES/e-Go/backend/services/vehicleService.js:6:9)
+          at addCar (/home/sergi/Escritorio/PES/e-Go/backend/controllers/vehicleController.js:11:5) {
+        length: 238,
+        severity: 'ERROR',
+        code: '23503',
+        detail: 'Key (usuari_id)=(909999) is not present in table "conductor".',
+        hint: undefined,
+        position: undefined,
+        internalPosition: undefined,
+        internalQuery: undefined,
+        where: undefined,
+        schema: 'ego',
+        table: 'vehicles',
+        column: undefined,
+        dataType: undefined,
+        constraint: 'fk_usuari',
+        file: 'ri_triggers.c',
+        line: '2599',
+        routine: 'ri_ReportViolation'
+      }
+
+      16 |     });
+      17 |   } catch (err) {
+    > 18 |     console.error('Error al afegir vehicle:', err);
+         |             ^
+      19 |     res.status(500).json({ error: 'Error al processar la solicitud' });
+      20 |   }
+      21 | }
+
+      at error (controllers/vehicleController.js:18:13)
+
+    console.error
+      Error al eliminar el vehicle: Error: Falta ID dusuari o nom de vehicle
+          at Object.removeVehicle (/home/sergi/Escritorio/PES/e-Go/backend/services/vehicleService.js:13:32)
+          at removeVehicle (/home/sergi/Escritorio/PES/e-Go/backend/controllers/vehicleController.js:28:26)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      33 |     });
+      34 |   } catch (err) {
+    > 35 |     console.error('Error al eliminar el vehicle:', err);
+         |             ^
+      36 |     res.status(500).json({ error: 'Error al processar la solicitud' });
+      37 |   }
+      38 | }
+
+      at error (controllers/vehicleController.js:35:13)
+
+PASS tests/integration/favorites.integration.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error al añadir favorito: Error: Faltan IDs de usuario o estación
+          at Object.addFavorite (/home/sergi/Escritorio/PES/e-Go/backend/services/favoriteService.js:5:38)
+          at addFavorite (/home/sergi/Escritorio/PES/e-Go/backend/controllers/favoriteController.js:10:27)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      16 |     });
+      17 |   } catch (err) {
+    > 18 |     console.error('Error al añadir favorito:', err);
+         |             ^
+      19 |     res.status(500).json({ error: 'Error al procesar la solicitud' });
+      20 |   }
+      21 | }
+
+      at error (controllers/favoriteController.js:18:13)
+
+PASS tests/integration/api.integration.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error obteniendo estaciones: Error: forced db failure
+          at BoundPool.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/integration/api.integration.test.js:65:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:397:39
+          at BoundPool.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:404:13)
+          at BoundPool.mockConstructor [as query] (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:148:19)
+          at Object.query [as getAllStations] (/home/sergi/Escritorio/PES/e-Go/backend/models/stationModel.js:92:29)
+          at Object.getAllStations [as getStations] (/home/sergi/Escritorio/PES/e-Go/backend/services/stationService.js:26:23)
+          at getStations (/home/sergi/Escritorio/PES/e-Go/backend/controllers/stationController.js:16:43)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17)
+
+      17 |     res.json(stations);
+      18 |   } catch (err) {
+    > 19 |     console.error('Error obteniendo estaciones:', err);
+         |             ^
+      20 |     res.status(500).json({ error: 'Error obteniendo estaciones' });
+      21 |   }
+      22 | }
+
+      at error (controllers/stationController.js:19:13)
+
+PASS tests/GestioPreferits/favorits.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error al añadir favorito: Error: Faltan IDs de usuario o estación
+          at Object.addFavorite (/home/sergi/Escritorio/PES/e-Go/backend/services/favoriteService.js:5:38)
+          at addFavorite (/home/sergi/Escritorio/PES/e-Go/backend/controllers/favoriteController.js:10:27)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      16 |     });
+      17 |   } catch (err) {
+    > 18 |     console.error('Error al añadir favorito:', err);
+         |             ^
+      19 |     res.status(500).json({ error: 'Error al procesar la solicitud' });
+      20 |   }
+      21 | }
+
+      at error (controllers/favoriteController.js:18:13)
+
+PASS tests/integration/stationsSearch.integration.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+PASS tests/GestioVehicles/vehicle.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error al afegir vehicle: Error: Faltan parametres
+          at Object.addCar (/home/sergi/Escritorio/PES/e-Go/backend/services/vehicleService.js:5:80)
+          at addCar (/home/sergi/Escritorio/PES/e-Go/backend/controllers/vehicleController.js:11:26)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      16 |     });
+      17 |   } catch (err) {
+    > 18 |     console.error('Error al afegir vehicle:', err);
+         |             ^
+      19 |     res.status(500).json({ error: 'Error al processar la solicitud' });
+      20 |   }
+      21 | }
+
+      at error (controllers/vehicleController.js:18:13)
+
+PASS tests/GestionUsuario/localAuth.integration.test.js
+PASS tests/GestionGeo/geoController.test.js
+PASS tests/integration/canReach.integration.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error in canReach: Error: Tipo de vehículo inválido.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:53:19)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at canReach (index.jsx:88:26)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at node_modules/router/index.js:688:15
+      at next (node_modules/router/index.js:276:14)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at router (node_modules/router/index.js:60:12)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at cors (node_modules/cors/lib/index.js:188:7)
+      at node_modules/cors/lib/index.js:224:17
+      at originCallback (node_modules/cors/lib/index.js:214:15)
+      at node_modules/cors/lib/index.js:219:13
+      at optionsCallback (node_modules/cors/lib/index.js:199:9)
+      at corsMiddleware (node_modules/cors/lib/index.js:204:7)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at Function.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+    console.error
+      Error in canReach: Error: Coordenadas de inicio inválidas.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:41:19)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at canReach (index.jsx:88:26)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at node_modules/router/index.js:688:15
+      at next (node_modules/router/index.js:276:14)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at router (node_modules/router/index.js:60:12)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at cors (node_modules/cors/lib/index.js:188:7)
+      at node_modules/cors/lib/index.js:224:17
+      at originCallback (node_modules/cors/lib/index.js:214:15)
+      at node_modules/cors/lib/index.js:219:13
+      at optionsCallback (node_modules/cors/lib/index.js:199:9)
+      at corsMiddleware (node_modules/cors/lib/index.js:204:7)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at Function.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+    console.error
+      Error in canReach: Error: Batería inválida.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:59:19)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at canReach (index.jsx:88:26)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at node_modules/router/index.js:688:15
+      at next (node_modules/router/index.js:276:14)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at router (node_modules/router/index.js:60:12)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at cors (node_modules/cors/lib/index.js:188:7)
+      at node_modules/cors/lib/index.js:224:17
+      at originCallback (node_modules/cors/lib/index.js:214:15)
+      at node_modules/cors/lib/index.js:219:13
+      at optionsCallback (node_modules/cors/lib/index.js:199:9)
+      at corsMiddleware (node_modules/cors/lib/index.js:204:7)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at Function.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+    console.error
+      Error in canReach: Error: No hay una ruta disponible entre los puntos de origen y destino
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:97:19)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at /home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:20 {
+        type: 'ROUTE_NOT_FOUND'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at index.jsx:88:20
+
+    console.error
+      Error in canReach: Error: Demasiadas solicitudes a la API. Intenta de nuevo más tarde.
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:101:19)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at /home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:20 {
+        type: 'OVER_QUERY_LIMIT'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at index.jsx:88:20
+
+    console.error
+      Error in canReach: Error: Failed to get route: Google Maps Directions API error: REQUEST_DENIED
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:126:11)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at /home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:20 {
+        [cause]: Error: Google Maps Directions API error: REQUEST_DENIED
+            at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:105:13)
+            at processTicksAndRejections (node:internal/process/task_queues:95:5)
+            at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+            at /home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:20
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at index.jsx:88:20
+
+    console.error
+      Error in canReach: Error: Batería inválida.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:59:19)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at canReach (index.jsx:88:26)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at node_modules/router/index.js:688:15
+      at next (node_modules/router/index.js:276:14)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at router (node_modules/router/index.js:60:12)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at cors (node_modules/cors/lib/index.js:188:7)
+      at node_modules/cors/lib/index.js:224:17
+      at originCallback (node_modules/cors/lib/index.js:214:15)
+      at node_modules/cors/lib/index.js:219:13
+      at optionsCallback (node_modules/cors/lib/index.js:199:9)
+      at corsMiddleware (node_modules/cors/lib/index.js:204:7)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at Function.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+    console.error
+      Error in canReach: Error: Coordenadas de inicio inválidas.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:41:19)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at canReach (index.jsx:88:26)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at node_modules/router/index.js:688:15
+      at next (node_modules/router/index.js:276:14)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at router (node_modules/router/index.js:60:12)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at cors (node_modules/cors/lib/index.js:188:7)
+      at node_modules/cors/lib/index.js:224:17
+      at originCallback (node_modules/cors/lib/index.js:214:15)
+      at node_modules/cors/lib/index.js:219:13
+      at optionsCallback (node_modules/cors/lib/index.js:199:9)
+      at corsMiddleware (node_modules/cors/lib/index.js:204:7)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at Function.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+    console.error
+      Error in canReach: Error: Tipo de vehículo inválido.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:53:19)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+          at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+          at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+          at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+          at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+          at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+          at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+          at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+          at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+          at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+          at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+          at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+          at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+          at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+          at Server.emit (node:events:524:28)
+          at parserOnIncoming (node:_http_server:1139:12)
+          at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at canReach (index.jsx:88:26)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at node_modules/router/index.js:688:15
+      at next (node_modules/router/index.js:276:14)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at router (node_modules/router/index.js:60:12)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at cors (node_modules/cors/lib/index.js:188:7)
+      at node_modules/cors/lib/index.js:224:17
+      at originCallback (node_modules/cors/lib/index.js:214:15)
+      at node_modules/cors/lib/index.js:219:13
+      at optionsCallback (node_modules/cors/lib/index.js:199:9)
+      at corsMiddleware (node_modules/cors/lib/index.js:204:7)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at Function.handle (node_modules/router/index.js:186:3)
+      at Function.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+    console.error
+      Error in canReach: Error: Failed to get route: network down
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:126:11)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at /home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:20 {
+        [cause]: Error: network down
+            at /home/sergi/Escritorio/PES/e-Go/backend/tests/integration/canReach.integration.test.js:200:13
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:397:39
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:404:13
+            at mockConstructor (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:148:19)
+            at fetch (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:91:28)
+            at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:29)
+            at canReach (/home/sergi/Escritorio/PES/e-Go/backend/index.jsx:88:26)
+            at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+            at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:157:13)
+            at Route.dispatch (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/route.js:117:3)
+            at handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:435:11)
+            at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:295:15
+            at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+            at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:688:15
+            at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:276:14)
+            at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+            at router (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:60:12)
+            at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+            at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+            at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+            at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+            at read (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/read.js:53:5)
+            at jsonParser (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/body-parser/lib/types/json.js:88:5)
+            at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+            at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+            at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+            at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+            at cors (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:188:7)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:224:17
+            at originCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:214:15)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:219:13
+            at optionsCallback (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:199:9)
+            at corsMiddleware (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/cors/lib/index.js:204:7)
+            at Layer.handleRequest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/lib/layer.js:152:17)
+            at trimPrefix (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:342:13)
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:297:9
+            at processParams (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:582:12)
+            at next (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:291:5)
+            at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/router/index.js:186:3)
+            at Function.handle (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/application.js:177:15)
+            at Server.app (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/express/lib/express.js:38:9)
+            at Server.emit (node:events:524:28)
+            at parserOnIncoming (node:_http_server:1139:12)
+            at HTTPParser.parserOnHeadersComplete (node:_http_common:118:17)
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at index.jsx:88:20
+
+PASS tests/geocodeRoute.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (23) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      geocode autocomplete: Error: no access
+          at Object.autocompleteAddress (/home/sergi/Escritorio/PES/e-Go/backend/services/geocodeService.js:34:17)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at autocomplete (/home/sergi/Escritorio/PES/e-Go/backend/controllers/geocodeController.js:9:21) {
+        code: 'GOOGLE_ERROR',
+        googleStatus: 'REQUEST_DENIED'
+      }
+
+      16 |       return res.status(400).json({ error: error.message });
+      17 |     }
+    > 18 |     console.error('geocode autocomplete:', error);
+         |             ^
+      19 |     return res.status(502).json({ error: 'No s’ha pogut contactar amb el servei de mapes.' });
+      20 |   }
+      21 | }
+
+      at error (controllers/geocodeController.js:18:13)
+
+    console.error
+      geocode place: Error: bad place
+          at Object.placeDetails (/home/sergi/Escritorio/PES/e-Go/backend/services/geocodeService.js:76:17)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at place (/home/sergi/Escritorio/PES/e-Go/backend/controllers/geocodeController.js:29:21) {
+        code: 'GOOGLE_ERROR',
+        googleStatus: 'INVALID_REQUEST'
+      }
+
+      36 |       return res.status(400).json({ error: error.message });
+      37 |     }
+    > 38 |     console.error('geocode place:', error);
+         |             ^
+      39 |     return res.status(502).json({ error: 'No s’ha pogut obtenir la ubicació.' });
+      40 |   }
+      41 | }
+
+      at error (controllers/geocodeController.js:38:13)
+
+PASS tests/GestionEmpresas/companyAuth.test.js
+  ● Console
+
+    console.error
+      Error en /company/user: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyAuth.test.js:295:30)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      35 |     return res.json({ company });
+      36 |   } catch (err) {
+    > 37 |     console.error('Error en /company/user:', err);
+         |             ^
+      38 |     return res.status(500).json({ error: 'Error en el servidor' });
+      39 |   }
+      40 | });
+
+      at error (routes/company.js:37:13)
+
+    console.error
+      Error en /company/profile: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyAuth.test.js:311:68)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      53 |       return res.status(400).json({ error: err.message });
+      54 |     }
+    > 55 |     console.error('Error en /company/profile:', err);
+         |             ^
+      56 |     return res.status(500).json({ error: 'Error en el servidor' });
+      57 |   }
+      58 | }
+
+      at error (routes/company.js:55:13)
+
+PASS tests/GestionUsuario/profileUpdate.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error actualizando información del usuario: Error: Fallo de conexión a la BD
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/profileUpdate.test.js:88:30)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      38 |     res.json(updated);
+      39 |   } catch (err) {
+    > 40 |     console.error('Error actualizando información del usuario:', err);
+         |             ^
+      41 |     res.status(500).json({ error: 'Error actualizando información del usuario' });
+      42 |   }
+      43 | }
+
+      at error (controllers/userController.js:40:13)
+
+PASS tests/GestionEmpresas/companyStations.test.js
+  ● Console
+
+    console.error
+      Error listando estaciones de empresa: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyStations.test.js:154:63)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      11 |     return res.json(stations);
+      12 |   } catch (err) {
+    > 13 |     console.error('Error listando estaciones de empresa:', err);
+         |             ^
+      14 |     return res.status(500).json({ error: 'Error en el servidor' });
+      15 |   }
+      16 | }
+
+      at error (controllers/companyStationController.js:13:13)
+
+    console.error
+      Error listando solicitudes de empresa: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyStations.test.js:160:64)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      21 |     return res.json(requests);
+      22 |   } catch (err) {
+    > 23 |     console.error('Error listando solicitudes de empresa:', err);
+         |             ^
+      24 |     return res.status(500).json({ error: 'Error en el servidor' });
+      25 |   }
+      26 | }
+
+      at error (controllers/companyStationController.js:23:13)
+
+    console.error
+      Error creando solicitud de alta de estacion: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyStations.test.js:166:57)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      40 |     return res.status(201).json(request);
+      41 |   } catch (err) {
+    > 42 |     console.error('Error creando solicitud de alta de estacion:', err);
+         |             ^
+      43 |     return res.status(500).json({ error: 'Error en el servidor' });
+      44 |   }
+      45 | }
+
+      at error (controllers/companyStationController.js:42:13)
+
+    console.error
+      Error creando solicitud de modificacion de estacion: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyStations.test.js:176:57)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      73 |     return res.status(201).json(request);
+      74 |   } catch (err) {
+    > 75 |     console.error('Error creando solicitud de modificacion de estacion:', err);
+         |             ^
+      76 |     return res.status(500).json({ error: 'Error en el servidor' });
+      77 |   }
+      78 | }
+
+      at error (controllers/companyStationController.js:75:13)
+
+    console.error
+      Error creando solicitud de borrado de estacion: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionEmpresas/companyStations.test.js:186:57)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+       98 |     return res.status(201).json(request);
+       99 |   } catch (err) {
+    > 100 |     console.error('Error creando solicitud de borrado de estacion:', err);
+          |             ^
+      101 |     return res.status(500).json({ error: 'Error en el servidor' });
+      102 |   }
+      103 | }
+
+      at error (controllers/companyStationController.js:100:13)
+
+PASS tests/GestionAdmins/adminAuth.test.js
+  ● Console
+
+    console.error
+      Error en /admin/user: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminAuth.test.js:201:30)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      24 |     return res.json({ user });
+      25 |   } catch (err) {
+    > 26 |     console.error('Error en /admin/user:', err);
+         |             ^
+      27 |     return res.status(500).json({ error: 'Error en el servidor' });
+      28 |   }
+      29 | });
+
+      at error (routes/admin.js:26:13)
+
+PASS tests/GestionAdmins/adminStations.test.js
+  ● Console
+
+    console.error
+      Error creando estacion manual: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStations.test.js:145:56)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      22 |       return res.status(409).json({ error: 'external_id ya existe' });
+      23 |     }
+    > 24 |     console.error('Error creando estacion manual:', err);
+         |             ^
+      25 |     return res.status(500).json({ error: 'Error en el servidor' });
+      26 |   }
+      27 | }
+
+      at error (controllers/adminStationController.js:24:13)
+
+    console.error
+      Error actualizando estacion manual: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStations.test.js:155:56)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      45 |     return res.json(station);
+      46 |   } catch (err) {
+    > 47 |     console.error('Error actualizando estacion manual:', err);
+         |             ^
+      48 |     return res.status(500).json({ error: 'Error en el servidor' });
+      49 |   }
+      50 | }
+
+      at error (controllers/adminStationController.js:47:13)
+
+    console.error
+      Error borrando estacion manual: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStations.test.js:161:56)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      62 |     return res.json({ success: true, id: deleted.id });
+      63 |   } catch (err) {
+    > 64 |     console.error('Error borrando estacion manual:', err);
+         |             ^
+      65 |     return res.status(500).json({ error: 'Error en el servidor' });
+      66 |   }
+      67 | }
+
+      at error (controllers/adminStationController.js:64:13)
+
+PASS tests/Ranking/ranking.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error obteniendo el ranking: Error: Fallo de conexión a la BD
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/Ranking/ranking.test.js:42:34)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      16 |     res.json(result.rows);
+      17 |   } catch (error) {
+    > 18 |     console.error('Error obteniendo el ranking:', error);
+         |             ^
+      19 |     res.status(500).json({ error: 'Error interno del servidor al cargar el ranking' });
+      20 |   }
+      21 | });
+
+      at error (routes/ranking.js:18:13)
+
+PASS tests/GestionAdmins/adminStationRequests.test.js
+  ● Console
+
+    console.error
+      Error listando solicitudes pendientes: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStationRequests.test.js:79:62)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+       6 |     return res.json(requests);
+       7 |   } catch (err) {
+    >  8 |     console.error('Error listando solicitudes pendientes:', err);
+         |             ^
+       9 |     return res.status(500).json({ error: 'Error en el servidor' });
+      10 |   }
+      11 | }
+
+      at error (controllers/adminCompanyRequestController.js:8:13)
+
+    console.error
+      Error aprobando solicitud: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStationRequests.test.js:143:58)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      35 |       return res.status(404).json({ error: err.message });
+      36 |     }
+    > 37 |     console.error('Error aprobando solicitud:', err);
+         |             ^
+      38 |     return res.status(500).json({ error: 'Error en el servidor' });
+      39 |   }
+      40 | }
+
+      at error (controllers/adminCompanyRequestController.js:37:13)
+
+    console.error
+      Error rechazando solicitud: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStationRequests.test.js:151:57)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      59 |     return res.json(request);
+      60 |   } catch (err) {
+    > 61 |     console.error('Error rechazando solicitud:', err);
+         |             ^
+      62 |     return res.status(500).json({ error: 'Error en el servidor' });
+      63 |   }
+      64 | }
+
+      at error (controllers/adminCompanyRequestController.js:61:13)
+
+PASS tests/Subscription/subscriptionController.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.log
+      [dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      [subscription] createCheckoutSession: Error: stripe down
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/Subscription/subscriptionController.test.js:171:49)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      63 |     return res.json({ url: session.url, sessionId: session.id });
+      64 |   } catch (err) {
+    > 65 |     console.error('[subscription] createCheckoutSession:', err);
+         |             ^
+      66 |     return res.status(500).json({
+      67 |       error: 'No se pudo crear la sesión de pago',
+      68 |       details: err.message,
+
+      at Object.error [as createCheckoutSession] (controllers/subscriptionController.js:65:13)
+      at Object.<anonymous> (tests/Subscription/subscriptionController.test.js:178:7)
+
+    console.error
+      [subscription] reactivateSubscription: Error: cannot update
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/Subscription/subscriptionController.test.js:223:47)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      191 |     });
+      192 |   } catch (err) {
+    > 193 |     console.error('[subscription] reactivateSubscription:', err);
+          |             ^
+      194 |     return res.status(500).json({
+      195 |       error: 'No se pudo reactivar la suscripción',
+      196 |       details: err.message,
+
+      at Object.error [as reactivateSubscription] (controllers/subscriptionController.js:193:13)
+      at Object.<anonymous> (tests/Subscription/subscriptionController.test.js:229:7)
+
+    console.error
+      [subscription] confirmCheckoutSession: Error: stripe
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/Subscription/subscriptionController.test.js:321:51)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      261 |     });
+      262 |   } catch (err) {
+    > 263 |     console.error('[subscription] confirmCheckoutSession:', err);
+          |             ^
+      264 |     return res.status(500).json({
+      265 |       error: 'No se pudo confirmar la sesión de pago',
+      266 |       details: err.message,
+
+      at Object.error [as confirmCheckoutSession] (controllers/subscriptionController.js:263:13)
+      at Object.<anonymous> (tests/Subscription/subscriptionController.test.js:326:7)
+
+    console.error
+      [subscription] getStatus: Error: db
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/Subscription/subscriptionController.test.js:339:56)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+       97 |     });
+       98 |   } catch (err) {
+    >  99 |     console.error('[subscription] getStatus:', err);
+          |             ^
+      100 |     return res.status(500).json({ error: 'Error leyendo suscripción' });
+      101 |   }
+      102 | }
+
+      at Object.error [as getStatus] (controllers/subscriptionController.js:99:13)
+      at Object.<anonymous> (tests/Subscription/subscriptionController.test.js:341:7)
+
+    console.error
+      [stripe] scheduleSubscriptionCancelAtPeriodEnd usuari 5 stripe.subscriptions.retrieve is not a function
+
+      52 |     return { ok: true, reason: 'cancel_at_period_end_set', subscription: updated };
+      53 |   } catch (err) {
+    > 54 |     console.error('[stripe] scheduleSubscriptionCancelAtPeriodEnd usuari', usuariId, err.message);
+         |             ^
+      55 |     return { ok: false, reason: 'stripe_error', error: err.message };
+      56 |   }
+      57 | }
+
+      at error (services/stripeSubscriptionCancelAtPeriodEnd.js:54:13)
+      at Object.cancelSubscription (controllers/subscriptionController.js:121:20)
+      at Object.<anonymous> (tests/Subscription/subscriptionController.test.js:383:7)
+
+PASS tests/GestionAdmins/adminUsersBan.test.js
+  ● Console
+
+    console.error
+      Error en GET /admin/users: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminUsersBan.test.js:75:54)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+       7 |     return res.json({ users });
+       8 |   } catch (err) {
+    >  9 |     console.error('Error en GET /admin/users:', err);
+         |             ^
+      10 |     return res.status(500).json({ error: 'Error en el servidor' });
+      11 |   }
+      12 | }
+
+      at error (controllers/adminUserController.js:9:13)
+
+    console.error
+      Error en PATCH /admin/users/:id/ban: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminUsersBan.test.js:114:50)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      47 |     return res.json({ user: updated, ...(subscription_stripe ? { subscription_stripe } : {}) });
+      48 |   } catch (err) {
+    > 49 |     console.error('Error en PATCH /admin/users/:id/ban:', err);
+         |             ^
+      50 |     return res.status(500).json({ error: 'Error en el servidor' });
+      51 |   }
+      52 | }
+
+      at error (controllers/adminUserController.js:49:13)
+
+PASS tests/GestionUsuario/authGoogle.integration.test.js
+PASS tests/lib/stripe.test.js
+PASS tests/middleware/requireCompany.test.js
+PASS tests/PuntosDeCarga/stations.test.js
+  ● Console
+
+    console.error
+      Error obteniendo estaciones: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/PuntosDeCarga/stations.test.js:64:50)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      17 |     res.json(stations);
+      18 |   } catch (err) {
+    > 19 |     console.error('Error obteniendo estaciones:', err);
+         |             ^
+      20 |     res.status(500).json({ error: 'Error obteniendo estaciones' });
+      21 |   }
+      22 | }
+
+      at error (controllers/stationController.js:19:13)
+
+    console.error
+      Error buscando estaciones: Error: search fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/PuntosDeCarga/stations.test.js:122:53)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      42 |     res.json(stations);
+      43 |   } catch (err) {
+    > 44 |     console.error('Error buscando estaciones:', err);
+         |             ^
+      45 |     res.status(500).json({ error: 'Error buscando estaciones' });
+      46 |   }
+      47 | }
+
+      at error (controllers/stationController.js:44:13)
+
+    console.error
+      Error sincronizando estaciones: Error: sync fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/PuntosDeCarga/stations.test.js:145:51)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      57 |     });
+      58 |   } catch (err) {
+    > 59 |     console.error('Error sincronizando estaciones:', err);
+         |             ^
+      60 |     res.status(500).json({ error: 'Error sincronizando estaciones' });
+      61 |   }
+      62 | }
+
+      at error (controllers/stationController.js:59:13)
+
+PASS tests/GestionReviews/reviews.test.js
+  ● Console
+
+    console.error
+      Error obtenint ressenyes: Error: BD Caiguda
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionReviews/reviews.test.js:60:36)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      43 |             res.json(formattedRows);
+      44 |         } catch (error) {
+    > 45 |             console.error('Error obtenint ressenyes:', error);
+         |                     ^
+      46 |             res.status(500).json({ error: 'Error intern del servidor' });
+      47 |         }
+      48 |     },
+
+      at error (controllers/reviewsController.js:45:21)
+
+PASS tests/routes/authPrivilegedGoogle.test.js
+  ● Console
+
+    console.error
+      Error en /auth/admin/google: Error: db
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/routes/authPrivilegedGoogle.test.js:71:34)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      75 |     });
+      76 |   } catch (err) {
+    > 77 |     console.error('Error en /auth/admin/google:', err);
+         |             ^
+      78 |     return res.status(500).json({ error: 'Error en el servidor' });
+      79 |   }
+      80 | });
+
+      at error (routes/auth.js:77:13)
+
+    console.error
+      Error en /auth/company/google: Error: db
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/routes/authPrivilegedGoogle.test.js:78:34)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      89 |     });
+      90 |   } catch (err) {
+    > 91 |     console.error('Error en /auth/company/google:', err);
+         |             ^
+      92 |     return res.status(500).json({ error: 'Error en el servidor' });
+      93 |   }
+      94 | });
+
+      at error (routes/auth.js:91:13)
+
+PASS tests/middleware/requireAdmin.test.js
+PASS tests/GestionUsuario/authController.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  override existing env vars with { override: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error en /auth/google: Error: boom
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/authController.test.js:28:51)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      37 |       });
+      38 |     }
+    > 39 |     console.error('Error en /auth/google:', err);
+         |             ^
+      40 |     res.status(500).json({
+      41 |       error: 'Error en el servidor',
+      42 |       details: err.message,
+
+      at Object.error [as googleLogin] (controllers/authController.js:39:13)
+      at Object.<anonymous> (tests/GestionUsuario/authController.test.js:32:5)
+
+    console.error
+      Error en /auth/local/register: Error: boom
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/authController.test.js:59:53)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      125 |       });
+      126 |     }
+    > 127 |     console.error('Error en /auth/local/register:', err);
+          |             ^
+      128 |     res.status(500).json({ error: 'Error en el servidor' });
+      129 |   }
+      130 | }
+
+      at Object.error [as localRegister] (controllers/authController.js:127:13)
+      at Object.<anonymous> (tests/GestionUsuario/authController.test.js:63:5)
+
+    console.error
+      Error en /auth/local/login: Error: boom
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/authController.test.js:107:50)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      70 |       });
+      71 |     }
+    > 72 |     console.error('Error en /auth/local/login:', err);
+         |             ^
+      73 |     res.status(500).json({ error: 'Error en el servidor' });
+      74 |   }
+      75 | }
+
+      at Object.error [as localLogin] (controllers/authController.js:72:13)
+      at Object.<anonymous> (tests/GestionUsuario/authController.test.js:109:5)
+
+    console.error
+      Error en /auth/register: Error: db
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/authController.test.js:245:44)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      93 |       return res.status(409).json({ error: msg });
+      94 |     }
+    > 95 |     console.error('Error en /auth/register:', err);
+         |             ^
+      96 |     res.status(500).json({ error: 'Error en el servidor' });
+      97 |   }
+      98 | }
+
+      at Object.error [as register] (controllers/authController.js:95:13)
+      at Object.<anonymous> (tests/GestionUsuario/authController.test.js:247:5)
+
+    console.error
+      Error en /auth/admin/local/login: Error: boom
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/authController.test.js:314:55)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      157 |       return res.status(401).json({ error: err.message });
+      158 |     }
+    > 159 |     console.error('Error en /auth/admin/local/login:', err);
+          |             ^
+      160 |     res.status(500).json({ error: 'Error en el servidor' });
+      161 |   }
+      162 | }
+
+      at Object.error [as adminLocalLogin] (controllers/authController.js:159:13)
+      at Object.<anonymous> (tests/GestionUsuario/authController.test.js:316:5)
+
+    console.error
+      Error en /auth/company/local/login: Error: boom
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionUsuario/authController.test.js:353:57)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      189 |       return res.status(401).json({ error: err.message });
+      190 |     }
+    > 191 |     console.error('Error en /auth/company/local/login:', err);
+          |             ^
+      192 |     res.status(500).json({ error: 'Error en el servidor' });
+      193 |   }
+      194 | }
+
+      at Object.error [as companyLocalLogin] (controllers/authController.js:191:13)
+      at Object.<anonymous> (tests/GestionUsuario/authController.test.js:355:5)
+
+PASS tests/GestionAdmins/adminStationsList.test.js
+  ● Console
+
+    console.error
+      Error listando estaciones manuales: Error: db fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestionAdmins/adminStationsList.test.js:57:61)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      79 |     return res.json(stations);
+      80 |   } catch (err) {
+    > 81 |     console.error('Error listando estaciones manuales:', err);
+         |             ^
+      82 |     return res.status(500).json({ error: 'Error en el servidor' });
+      83 |   }
+      84 | }
+
+      at error (controllers/adminStationController.js:81:13)
+
+PASS tests/GestionUsuario/registerRoute.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+PASS tests/GestioServei/canReach.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error in canReach: Error: Coordenadas de inicio inválidas.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:41:19)
+          at Object.canReach (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:278:9)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.canReach (tests/GestioServei/canReach.test.js:278:9)
+
+    console.error
+      Error in canReach: Error: Coordenadas de final inválidas.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:47:19)
+          at Object.canReach (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:290:9)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.canReach (tests/GestioServei/canReach.test.js:290:9)
+
+    console.error
+      Error in canReach: Error: Tipo de vehículo inválido.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:53:19)
+          at Object.canReach (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:302:9)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.canReach (tests/GestioServei/canReach.test.js:302:9)
+
+    console.error
+      Error in canReach: Error: Batería inválida.
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:59:19)
+          at Object.canReach (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:314:9)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34) {
+        type: 'VALIDATION_ERROR'
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.canReach (tests/GestioServei/canReach.test.js:314:9)
+
+    console.error
+      Error in canReach: Error: Failed to get route: socket hang up
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:126:11)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:380:7) {
+        [cause]: Error: socket hang up
+            at /home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:375:17
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:397:39
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:404:13
+            at mockConstructor (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:103:19)
+            at fetch (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:91:28)
+            at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:29)
+            at Object.canReach (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:381:9)
+            at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+            at new Promise (<anonymous>)
+            at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+            at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+            at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+            at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+            at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+            at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+            at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+            at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+            at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+            at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+            at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.<anonymous> (tests/GestioServei/canReach.test.js:380:7)
+
+    console.error
+      Error in canReach: Error: Failed to get route: Cannot read properties of undefined (reading 'legs')
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:126:11)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:399:7) {
+        [cause]: TypeError: Cannot read properties of undefined (reading 'legs')
+            at legs (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:109:23)
+            at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+            at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:399:7)
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.<anonymous> (tests/GestioServei/canReach.test.js:399:7)
+
+    console.error
+      Error in canReach: Error: Failed to get route: Cannot read properties of undefined (reading 'points')
+          at getRoute (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:126:11)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:427:7) {
+        [cause]: TypeError: Cannot read properties of undefined (reading 'points')
+            at points (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:112:53)
+            at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:64:23)
+            at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:427:7)
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.<anonymous> (tests/GestioServei/canReach.test.js:427:7)
+
+    console.error
+      Error in canReach: Error: Failed to get elevation gain: Google Elevation API error: OVER_QUERY_LIMIT
+          at getElevationGain (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:166:11)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:69:28)
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:449:7) {
+        [cause]: Error: Google Elevation API error: OVER_QUERY_LIMIT
+            at getElevationGain (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:148:13)
+            at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:69:28)
+            at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:449:7)
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.<anonymous> (tests/GestioServei/canReach.test.js:449:7)
+
+    console.error
+      Error in canReach: Error: Failed to get elevation gain: elevation timeout
+          at getElevationGain (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:166:11)
+          at canReach (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:69:28)
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:471:7) {
+        [cause]: Error: elevation timeout
+            at /home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:466:17
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:397:39
+            at /home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:404:13
+            at mockConstructor (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-mock/build/index.js:103:19)
+            at fetch (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:144:28)
+            at getElevationGain (/home/sergi/Escritorio/PES/e-Go/backend/services/rangeCalculationService.js:69:34)
+            at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioServei/canReach.test.js:471:7)
+      }
+
+      78 |     };
+      79 |   } catch (error) {
+    > 80 |     console.error("Error in canReach:", error);
+         |             ^
+      81 |     throw error;
+      82 |   }
+      83 | }
+
+      at error (services/rangeCalculationService.js:80:13)
+      at Object.<anonymous> (tests/GestioServei/canReach.test.js:471:7)
+
+PASS tests/Subscription/subscription.integration.test.js
+PASS tests/PuntosDeCarga/buscarPunto.test.js
+  ● Console
+
+    console.error
+      Error buscando estaciones: Error: service fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/PuntosDeCarga/buscarPunto.test.js:53:53)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:95:5)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      42 |     res.json(stations);
+      43 |   } catch (err) {
+    > 44 |     console.error('Error buscando estaciones:', err);
+         |             ^
+      45 |     res.status(500).json({ error: 'Error buscando estaciones' });
+      46 |   }
+      47 | }
+
+      at error (controllers/stationController.js:44:13)
+
+PASS tests/middleware/requireNotBanned.test.js
+PASS tests/Subscription/stripeWebhookController.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      [stripe webhook] Firma inválida: invalid signature
+
+      48 |     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      49 |   } catch (err) {
+    > 50 |     console.error('[stripe webhook] Firma inválida:', err.message);
+         |             ^
+      51 |     return res.status(400).send(`Webhook Error: ${err.message}`);
+      52 |   }
+      53 |
+
+      at error (controllers/stripeWebhookController.js:50:13)
+      at Object.handleWebhook (tests/Subscription/stripeWebhookController.test.js:34:11)
+
+    console.error
+      [stripe webhook] Falta STRIPE_SECRET_KEY o STRIPE_WEBHOOK_SECRET
+
+      39 |
+      40 |   if (!stripe || !webhookSecret) {
+    > 41 |     console.error('[stripe webhook] Falta STRIPE_SECRET_KEY o STRIPE_WEBHOOK_SECRET');
+         |             ^
+      42 |     return res.status(500).json({ error: 'Webhook no configurado' });
+      43 |   }
+      44 |
+
+      at error (controllers/stripeWebhookController.js:41:13)
+      at Object.handleWebhook (tests/Subscription/stripeWebhookController.test.js:46:11)
+
+    console.warn
+      [stripe webhook] checkout.session.completed sin user o subscription
+
+      62 |         const subId = session.subscription;
+      63 |         if (!userId || !subId) {
+    > 64 |           console.warn('[stripe webhook] checkout.session.completed sin user o subscription');
+         |                   ^
+      65 |           break;
+      66 |         }
+      67 |         const sub = await stripe.subscriptions.retrieve(subId);
+
+      at warn (controllers/stripeWebhookController.js:64:19)
+      at Object.handleWebhook (tests/Subscription/stripeWebhookController.test.js:218:11)
+
+    console.warn
+      [stripe webhook] No usuari_id para subscription sub_orphan
+
+      23 |
+      24 |   if (!usuariId) {
+    > 25 |     console.warn('[stripe webhook] No usuari_id para subscription', sub.id);
+         |             ^
+      26 |     return;
+      27 |   }
+      28 |
+
+      at warn (controllers/stripeWebhookController.js:25:13)
+      at handleWebhook (controllers/stripeWebhookController.js:74:9)
+      at Object.<anonymous> (tests/Subscription/stripeWebhookController.test.js:245:5)
+
+    console.error
+      [stripe webhook] Error procesando evento: customer.subscription.updated Error: stripe internal fail
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/Subscription/stripeWebhookController.test.js:329:47)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      87 |     }
+      88 |   } catch (err) {
+    > 89 |     console.error('[stripe webhook] Error procesando evento:', event.type, err);
+         |             ^
+      90 |     return res.status(500).json({ error: 'Error interno' });
+      91 |   }
+      92 |
+
+      at error (controllers/stripeWebhookController.js:89:13)
+      at Object.<anonymous> (tests/Subscription/stripeWebhookController.test.js:336:5)
+
+PASS tests/GestioIncidencies/incidenciaController.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+    console.error
+      Error listando tipos de incidencia: Error: boom
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioIncidencies/incidenciaController.test.js:34:63)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+       6 |     return res.json(types);
+       7 |   } catch (error) {
+    >  8 |     console.error('Error listando tipos de incidencia:', error);
+         |             ^
+       9 |     return res.status(500).json({ error: 'Error obteniendo tipos de incidencia' });
+      10 |   }
+      11 | }
+
+      at Object.error [as getTypes] (controllers/incidenciaController.js:8:13)
+      at Object.<anonymous> (tests/GestioIncidencies/incidenciaController.test.js:38:7)
+
+    console.error
+      Error creando incidencia: Error: unexpected
+          at Object.<anonymous> (/home/sergi/Escritorio/PES/e-Go/backend/tests/GestioIncidencies/incidenciaController.test.js:96:60)
+          at Promise.then.completed (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at _runTestsForDescribeBlock (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:121:9)
+          at run (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/home/sergi/Escritorio/PES/e-Go/backend/node_modules/jest-runner/build/runTest.js:444:34)
+
+      22 |       return res.status(404).json({ error: error.message });
+      23 |     }
+    > 24 |     console.error('Error creando incidencia:', error);
+         |             ^
+      25 |     return res.status(500).json({ error: 'Error creando incidencia' });
+      26 |   }
+      27 | }
+
+      at Object.error [as create] (controllers/incidenciaController.js:24:13)
+      at Object.<anonymous> (tests/GestioIncidencies/incidenciaController.test.js:98:7)
+
+PASS tests/GestionUsuario/bannedUserScopedApi.test.js
+PASS tests/GestionUsuario/userModel.test.js
+PASS tests/GestionUsuario/pendingToken.test.js
+PASS tests/lib/scheduler.test.js
+PASS tests/GestioPreferits/favoriteService.test.js
+  ● Console
+
+    console.log
+      [dotenv@17.3.1] injecting env (24) from .env -- tip: ⚙️  override existing env vars with { override: true }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+PASS tests/GestionUsuario/authService.test.js
+PASS tests/geocodeController.test.js
+PASS tests/lib/authHelpers.google.test.js
+  ● Console
+
+    console.error
+      Error verificando token Google: invalid
+
+      30 |     return ticket.getPayload();
+      31 |   } catch (err) {
+    > 32 |     console.error('Error verificando token Google:', err.message);
+         |             ^
+      33 |     return null;
+      34 |   }
+      35 | }
+
+      at error (lib/authHelpers.js:32:13)
+
+    console.error
+      [auth] Falta code_verifier. El frontend tiene que enviarlo.
+
+      42 |   }
+      43 |   if (!codeVerifier) {
+    > 44 |     console.error('[auth] Falta code_verifier. El frontend tiene que enviarlo.');
+         |             ^
+      45 |     return null;
+      46 |   }
+      47 |   try {
+
+      at error (lib/authHelpers.js:44:13)
+      at Object.exchangeCodeForPayload [as getGooglePayload] (lib/authHelpers.js:79:12)
+      at Object.getGooglePayload (tests/lib/authHelpers.google.test.js:60:24)
+
+    console.error
+      [auth] Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET en .env
+
+      38 | async function exchangeCodeForPayload(code, redirectUri, codeVerifier) {
+      39 |   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    > 40 |     console.error('[auth] Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET en .env');
+         |             ^
+      41 |     return null;
+      42 |   }
+      43 |   if (!codeVerifier) {
+
+      at error (lib/authHelpers.js:40:13)
+      at Object.exchangeCodeForPayload [as getGooglePayload] (lib/authHelpers.js:79:12)
+      at Object.getGooglePayload (tests/lib/authHelpers.google.test.js:71:24)
+
+    console.error
+      [auth] Google no devolvió id_token. redirect_uri: https://app/cb
+
+      62 |     const idToken = data.id_token;
+      63 |     if (!idToken) {
+    > 64 |       console.error('[auth] Google no devolvió id_token. redirect_uri:', redirectUri);
+         |               ^
+      65 |       console.error('[auth] Respuesta Google:', JSON.stringify(data));
+      66 |       return null;
+      67 |     }
+
+      at error (lib/authHelpers.js:64:15)
+      at Object.<anonymous> (tests/lib/authHelpers.google.test.js:86:15)
+
+    console.error
+      [auth] Respuesta Google: {"error":"nope"}
+
+      63 |     if (!idToken) {
+      64 |       console.error('[auth] Google no devolvió id_token. redirect_uri:', redirectUri);
+    > 65 |       console.error('[auth] Respuesta Google:', JSON.stringify(data));
+         |               ^
+      66 |       return null;
+      67 |     }
+      68 |     return verifyGoogleToken(idToken);
+
+      at error (lib/authHelpers.js:65:15)
+      at Object.<anonymous> (tests/lib/authHelpers.google.test.js:86:15)
+
+    console.error
+      [auth] Error al cambiar code por token: network
+
+      68 |     return verifyGoogleToken(idToken);
+      69 |   } catch (err) {
+    > 70 |     console.error('[auth] Error al cambiar code por token:', err.message);
+         |             ^
+      71 |     return null;
+      72 |   }
+      73 | }
+
+      at error (lib/authHelpers.js:70:13)
+
+PASS tests/GestionAdmins/stripeSubscriptionCancelAtPeriodEnd.test.js
+  ● Console
+
+    console.warn
+      [stripe] STRIPE_SECRET_KEY ausente: no se puede programar cancel_at_period_end para usuari 5
+
+      22 |   const stripe = getStripe();
+      23 |   if (!stripe) {
+    > 24 |     console.warn(
+         |             ^
+      25 |       '[stripe] STRIPE_SECRET_KEY ausente: no se puede programar cancel_at_period_end para usuari',
+      26 |       usuariId
+      27 |     );
+
+      at warn (services/stripeSubscriptionCancelAtPeriodEnd.js:24:13)
+      at Object.scheduleSubscriptionCancelAtPeriodEnd (tests/GestionAdmins/stripeSubscriptionCancelAtPeriodEnd.test.js:23:21)
+
+PASS tests/models/stationModel.test.js
+PASS tests/GestioIncidencies/incidenciaService.test.js
+PASS tests/geocodeService.test.js
+PASS tests/models/subscriptionModel.test.js
+
+Summary of all failing tests
+FAIL tests/integration/incidencias.integration.test.js (10.061 s)
+  ● Incidencias integration (real DB) › POST /incidencias crea incidencia válida sin archivo (201)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      75 |     const res = await request(app).post('/incidencias').field('comentari', `${testCommentPrefix}-ok`).field('tipus', 'Operatiu').field('conductor', String(validUserId)).field('estacio', String(validStationId));
+      76 |
+    > 77 |     expect(res.status).toBe(201);
+         |                        ^
+      78 |     expect(res.body).toEqual(
+      79 |       expect.objectContaining({
+      80 |         tipus: 'Operatiu',
+
+      at Object.toBe (tests/integration/incidencias.integration.test.js:77:24)
+
+  ● Incidencias integration (real DB) › flujo incidencia solucionada › POST /incidencias crea incidencia solucionada con payload esperado (201)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      131 |         .field('estacio', String(validStationId));
+      132 |
+    > 133 |       expect(res.status).toBe(201);
+          |                          ^
+      134 |       expect(res.body).toEqual(
+      135 |         expect.objectContaining({
+      136 |           comentari: solvedComment,
+
+      at Object.toBe (tests/integration/incidencias.integration.test.js:133:26)
+
+  ● Incidencias integration (real DB) › flujo incidencia solucionada › POST /incidencias persistencia DB: guarda incidencia solucionada con defaults
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      155 |         .field('estacio', String(validStationId));
+      156 |
+    > 157 |       expect(createRes.status).toBe(201);
+          |                                ^
+      158 |       expect(createRes.body.id).toBeDefined();
+      159 |
+      160 |       const dbRes = await pool.query(
+
+      at Object.toBe (tests/integration/incidencias.integration.test.js:157:32)
+
+FAIL tests/Skins/skinController.test.js (8.664 s)
+  ● Proves d'integració de Skins i Garatge › Consultar inventari i punts del conductor (codi 200) | GET a /api/skins/conductor/:id
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      68 |     // Ha de tenir com a mínim la skin base equipada
+      69 |     const baseSkin = data.inventari.find(s => s.id === 1);
+    > 70 |     expect(baseSkin).toBeDefined();
+         |                      ^
+      71 |     expect(baseSkin.equipada).toBe(true);
+      72 |   });
+      73 |
+
+      at Object.toBeDefined (tests/Skins/skinController.test.js:70:22)
+
+  ● Proves d'integració de Skins i Garatge › No permet comprar una skin si no té punts (codi 400)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      90 |       .send({ skin_id: 3 }); // Intentem comprar una altra
+      91 |
+    > 92 |     expect(response.status).toBe(400);
+         |                             ^
+      93 |     expect(response.body.error).toBe('No tens punts suficients');
+      94 |   });
+      95 |
+
+      at Object.toBe (tests/Skins/skinController.test.js:92:29)
+
+
+Test Suites: 2 failed, 49 passed, 51 total
+Tests:       5 failed, 498 passed, 503 total
+Snapshots:   0 total
+Time:        39.805 s
+Ran all test suites.

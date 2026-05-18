@@ -128,3 +128,18 @@ jest.mock('@/contexts/ChargingContext', () => ({
     clearAutoStopResult: jest.fn(),
   }),
 }));
+
+// Mock global de seguridad básico para expo-router
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    setParams: jest.fn(),
+  }),
+  useLocalSearchParams: () => ({}),
+  useFocusEffect: jest.fn((cb: any) => cb()),
+  Stack: {
+    Screen: () => null,
+  },
+}), { virtual: true });

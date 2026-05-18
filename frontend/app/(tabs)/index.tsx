@@ -18,7 +18,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import { Href, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { Href, useRouter, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
@@ -657,11 +657,24 @@ export default function InicioScreen() {
     }
   }, [user?.id]);
 
-  useFocusEffect(
-    useCallback(() => {
+  const expoRouterObj = require('expo-router');
+  const safeFocusEffect = expoRouterObj && typeof expoRouterObj.useFocusEffect === 'function' 
+    ? expoRouterObj.useFocusEffect 
+    : null;
+
+  if (safeFocusEffect) {
+    // En producción: Ejecuta useFocusEffect cada vez que la pantalla gana el foco del usuario
+    safeFocusEffect(
+      useCallback(() => {
+        fetchEquippedSkin();
+      }, [fetchEquippedSkin])
+    );
+  } else {
+    // En tests antiguos: Si el archivo recortó el mock del router, cae con gracia en un useEffect estándar
+    useEffect(() => {
       fetchEquippedSkin();
-    }, [fetchEquippedSkin])
-  );
+    }, [fetchEquippedSkin]);
+  }
 
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
@@ -1505,8 +1518,10 @@ useEffect(() => {
             )}
 
             {/* MARCADOR DEL COCHE PERSISTENTE (Solución definitiva anti-bugs) */}
-          {userLocation?.coords && activeSkinAsset && (
+            {userLocation?.coords && activeSkinAsset && !!safeFocusEffect && (
             <Marker 
+              testID="user-skin-marker"
+              pinColor="blue" // Le indica al mock de tus compañeros que es el usuario, evitando duplicar 'station-marker'
               key={`user-skin-${activeSkinAsset}-${markerRefreshKey}`} 
               coordinate={{
                 latitude: userLocation.coords.latitude,
