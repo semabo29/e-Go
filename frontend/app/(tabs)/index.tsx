@@ -696,25 +696,30 @@ export default function InicioScreen() {
       setActiveSkinAsset('cotxe_basic');
     }
   }, [user?.id]);
+  
+  // 1. Declaramos el callback de forma totalmente incondicional al inicio
+  const handleFocusSkinFetch = useCallback(() => {
+    fetchEquippedSkin();
+  }, [fetchEquippedSkin]);
 
+  // 2. Leemos expo-router de manera segura para contingencias de testing
   const expoRouterObj = require('expo-router');
   const safeFocusEffect = expoRouterObj && typeof expoRouterObj.useFocusEffect === 'function' 
     ? expoRouterObj.useFocusEffect 
     : null;
 
+  // 3. Si existe safeFocusEffect (producción), lo llamamos pasando la función pura
   if (safeFocusEffect) {
-    // En producción: Ejecuta useFocusEffect cada vez que la pantalla gana el foco del usuario
-    safeFocusEffect(
-      useCallback(() => {
-        fetchEquippedSkin();
-      }, [fetchEquippedSkin])
-    );
-  } else {
-    // En tests antiguos: Si el archivo recortó el mock del router, cae con gracia en un useEffect estándar
-    useEffect(() => {
-      fetchEquippedSkin();
-    }, [fetchEquippedSkin]);
+    safeFocusEffect(handleFocusSkinFetch);
   }
+
+  // 4. Declaramos el useEffect de contingencia de forma totalmente incondicional.
+  // Internamente decidirá si se ejecuta dependiendo de si safeFocusEffect está activo o no.
+  useEffect(() => {
+    if (!safeFocusEffect) {
+      fetchEquippedSkin();
+    }
+  }, [fetchEquippedSkin, safeFocusEffect]);
 
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
