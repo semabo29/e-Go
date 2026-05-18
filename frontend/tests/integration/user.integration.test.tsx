@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, Alert } from 'react-native';
 
 import PerfilScreen from '@/app/user';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,6 +76,7 @@ describe('PerfilScreen (user.tsx) integration', () => {
             premium: false,
             admin: false,
             empresa: false,
+            valoracio: 4.5,
           }),
         } as any;
       }
@@ -127,6 +128,7 @@ describe('PerfilScreen (user.tsx) integration', () => {
       expect(getByText('TestUser')).toBeTruthy();
       expect(getByText('user@test.com')).toBeTruthy();
       expect(getByText('250')).toBeTruthy();
+      expect(getByText('4.50')).toBeTruthy();
     });
   });
 
@@ -1222,6 +1224,267 @@ describe('PerfilScreen (user.tsx) integration', () => {
       expect(getByText('Solicitudes enviadas (2)')).toBeTruthy();
       expect(getByText('UserX')).toBeTruthy();
       expect(getByText('UserY')).toBeTruthy();
+    });
+  });
+
+  // Prueba animación rainbow para usuarios premium
+  it('actualiza rainbow shift para usuarios premium', async () => {
+    jest.useFakeTimers();
+
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (...args: unknown[]) => {
+        const [url, options] = args as [string, RequestInit | undefined];
+
+        if (url.includes('/user?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: 1,
+              username: 'PremiumUser',
+              email: 'premium@test.com',
+              punts: 500,
+              created_at: '2024-01-01T00:00:00Z',
+              premium: true,
+              admin: false,
+              empresa: false,
+            }),
+          };
+        }
+
+        if (url.includes('/friends?usuari_id=1') && (!options || options.method === undefined)) {
+          return { ok: true, json: async () => [] };
+        }
+
+        return { ok: false, status: 404 };
+      }
+    );
+
+    const { getByText } = render(<PerfilScreen />);
+
+    await waitFor(() => {
+      expect(getByText('P')).toBeTruthy();
+    });
+
+    // Avanzamos el timer para verificar que el intervalo funciona
+    jest.advanceTimersByTime(150);
+
+    jest.useRealTimers();
+  });
+
+  // Prueba manejo de datos no array en fetchAmics
+  it('maneja datos no array en fetchAmics estableciendo lista vacía', async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (...args: unknown[]) => {
+        const [url, options] = args as [string, RequestInit | undefined];
+
+        if (url.includes('/user?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: 1,
+              username: 'TestUser',
+              email: 'user@test.com',
+              punts: 250,
+              created_at: '2024-01-01T00:00:00Z',
+              premium: false,
+              admin: false,
+              empresa: false,
+            }),
+          };
+        }
+
+        // Retorna un objeto en lugar de un array
+        if (url.includes('/friends?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => ({ error: 'Invalid data' }),
+          };
+        }
+
+        return { ok: false, status: 404 };
+      }
+    );
+
+    const { getByText, queryByText } = render(<PerfilScreen />);
+
+    await waitFor(() => {
+      expect(getByText('TestUser')).toBeTruthy();
+    });
+
+    // Verificar que no se muestra sección de solicitudes (lista vacía)
+    expect(queryByText('Solicitudes recibidas')).toBeNull();
+    expect(queryByText('Solicitudes enviadas')).toBeNull();
+  });
+
+  // Prueba error cuando sendFriendRequest falla
+  it('maneja error cuando sendFriendRequest falla con response not ok', async () => {
+    mockParams = { userId: 2 };
+
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (...args: unknown[]) => {
+        const [url, options] = args as [string, RequestInit | undefined];
+
+        if (url.includes('/user?usuari_id=2') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: 2,
+              username: 'OtherUser',
+              email: 'other@test.com',
+              punts: 100,
+              created_at: '2024-01-02T00:00:00Z',
+              premium: false,
+              admin: false,
+              empresa: false,
+            }),
+          };
+        }
+
+        if (url.includes('/friends?usuari_id=2') && (!options || options.method === undefined)) {
+          return { ok: true, json: async () => [] };
+        }
+
+        // Simular error en POST - response not ok
+        if (url.includes('/friends') && options?.method === 'POST') {
+          return { ok: false, status: 400 };
+        }
+
+        return { ok: false, status: 404 };
+      }
+    );
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { getByText } = render(<PerfilScreen />);
+
+    await waitFor(() => {
+      expect(getByText('OtherUser')).toBeTruthy();
+    });
+
+    // Clicamos en "Enviar solicitud"
+    fireEvent.press(getByText('Enviar solicitud'));
+
+    // Comprobamos que se registra el error
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error enviando solicitud:',
+        expect.any(Error)
+      );
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  // Prueba botones de aceptar y rechazar en lista de solicitudes
+  it('muestra botones de aceptar y rechazar en solicitudes recibidas', async () => {
+    mockParams = { userId: 1 };
+
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (...args: unknown[]) => {
+        const [url, options] = args as [string, RequestInit | undefined];
+
+        if (url.includes('/user?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: 1,
+              username: 'TestUser',
+              email: 'user@test.com',
+              punts: 250,
+              created_at: '2024-01-01T00:00:00Z',
+              premium: false,
+              admin: false,
+              empresa: false,
+            }),
+          };
+        }
+
+        if (url.includes('/friends?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => [
+              {
+                id: 5,
+                username: 'RequesterUser',
+                per_acceptar: 1,
+              },
+            ],
+          };
+        }
+
+        if (url.includes('/friends') && options?.method === 'PUT') {
+          return { ok: true };
+        }
+
+        if (url.includes('/friends') && options?.method === 'DELETE') {
+          return { ok: true };
+        }
+
+        return { ok: false, status: 404 };
+      }
+    );
+
+    const { getByText } = render(<PerfilScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Solicitudes recibidas (1)')).toBeTruthy();
+      expect(getByText('RequesterUser')).toBeTruthy();
+      expect(getByText('check')).toBeTruthy(); // Icono de aceptar
+      expect(getByText('close')).toBeTruthy(); // Icono de rechazar
+    });
+  });
+
+  // Prueba botón de cancelar en lista de solicitudes enviadas
+  it('muestra botón de cancelar en solicitudes enviadas', async () => {
+    mockParams = { userId: 1 };
+
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (...args: unknown[]) => {
+        const [url, options] = args as [string, RequestInit | undefined];
+
+        if (url.includes('/user?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: 1,
+              username: 'TestUser',
+              email: 'user@test.com',
+              punts: 250,
+              created_at: '2024-01-01T00:00:00Z',
+              premium: false,
+              admin: false,
+              empresa: false,
+            }),
+          };
+        }
+
+        if (url.includes('/friends?usuari_id=1') && (!options || options.method === undefined)) {
+          return {
+            ok: true,
+            json: async () => [
+              {
+                id: 7,
+                username: 'PendingUser',
+                per_acceptar: 7,
+              },
+            ],
+          };
+        }
+
+        if (url.includes('/friends') && options?.method === 'DELETE') {
+          return { ok: true };
+        }
+
+        return { ok: false, status: 404 };
+      }
+    );
+
+    const { getByText } = render(<PerfilScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Solicitudes enviadas (1)')).toBeTruthy();
+      expect(getByText('PendingUser')).toBeTruthy();
+      expect(getByText('close')).toBeTruthy(); // Icono de cancelar
     });
   });
 });

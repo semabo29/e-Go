@@ -29,6 +29,7 @@ const DB_TABLE_ADMINS = normalizeIdentifier(process.env.DB_TABLE_ADMINS, 'admins
 const DB_TABLE_EMPRESAS = normalizeIdentifier(process.env.DB_TABLE_EMPRESAS, 'empresas');
 const DB_TABLE_STATION_REQUESTS = normalizeIdentifier(process.env.DB_TABLE_STATION_REQUESTS, 'station_requests');
 const DB_TABLE_SUBSCRIPTIONS = normalizeIdentifier(process.env.DB_TABLE_SUBSCRIPTIONS, 'subscription');
+const DB_TABLE_RESENYES = normalizeIdentifier(process.env.DB_TABLE_RESENYES, 'resenyes');
 const USUARIOS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_USUARIOS}"`;
 const AMIGOS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_AMIGOS}"`;
 const CONDUCTORES_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_CONDUCTORES}"`;
@@ -36,6 +37,7 @@ const ADMINS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_ADMINS}"`;
 const EMPRESAS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_EMPRESAS}"`;
 const STATION_REQUESTS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_STATION_REQUESTS}"`;
 const SUBSCRIPTIONS_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_SUBSCRIPTIONS}"`;
+const RESENYES_TABLE = `"${DB_SCHEMA}"."${DB_TABLE_RESENYES}"`;
 
 module.exports = {
   pool,
@@ -46,4 +48,5 @@ module.exports = {
   EMPRESAS_TABLE,
   STATION_REQUESTS_TABLE,
   SUBSCRIPTIONS_TABLE,
+  RESENYES_TABLE
 };
