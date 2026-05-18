@@ -77,6 +77,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <MaterialIcons name="emoji-events" size={28} color={color} />,
         }}
       />
+
+      <Tabs.Screen
+        name="shop"
+        options={{
+          title: '',
+          tabBarIcon: ({ color }) => <MaterialIcons name="storefront" size={28} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

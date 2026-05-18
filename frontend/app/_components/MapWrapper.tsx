@@ -6,7 +6,6 @@ import { View, Text, StyleSheet } from 'react-native';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
-// Exportamos Marker y Callout para que el index.tsx los use normalmente
 export { Marker, Callout };
 
 function formatClusterCount(points: number) {
@@ -18,50 +17,50 @@ export const MapView = forwardRef((props: any, ref: any) => {
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
 
   return (
-    <MapViewCluster
-      // La llibreria no torna a pintar clusters si només canvia el context; cal remuntar.
-      key={colorblindFriendly ? 'accessible' : 'default'}
-      ref={ref} // <--- ¡ESTA LÍNEA ES VITAL PARA LA NAVEGACIÓN!
-      {...props}
-      radius={50} // Radio de agrupación
-      // Personalización del círculo del cluster
-      renderCluster={(cluster: any) => {
-        const { id, geometry, onPress, properties } = cluster;
-        const points = properties.point_count;
-        const label = formatClusterCount(points);
+    <View style={{ flex: 1 }}>
+      <MapViewCluster
+        key={colorblindFriendly ? 'accessible' : 'default'}
+        ref={ref} 
+        {...props}
+        radius={50} 
+        renderCluster={(cluster: any) => {
+          const { id, geometry, onPress, properties } = cluster;
+          const points = properties.point_count;
+          const label = formatClusterCount(points);
 
-        const size = points >= 100 ? 58 : points >= 30 ? 52 : 46;
-        return (
-          <Marker
-            key={`cluster-${id}-${sem.accent}`}
-            coordinate={{
-              longitude: geometry.coordinates[0],
-              latitude: geometry.coordinates[1],
-            }}
-            onPress={onPress}
-          >
-            <View
-              style={[
-                styles.clusterContainer,
-                { backgroundColor: sem.accent, minWidth: size, minHeight: size },
-              ]}
+          const size = points >= 100 ? 58 : points >= 30 ? 52 : 46;
+          return (
+            <Marker
+              key={`cluster-${id}-${sem.accent}`}
+              coordinate={{
+                longitude: geometry.coordinates[0],
+                latitude: geometry.coordinates[1],
+              }}
+              onPress={onPress}
             >
-              <Text style={styles.clusterText}>
-                {label}
-              </Text>
-            </View>
-          </Marker>
-        );
-      }}
-    >
-      {props.children}
-    </MapViewCluster>
+              <View
+                style={[
+                  styles.clusterContainer,
+                  { backgroundColor: sem.accent, minWidth: size, minHeight: size },
+                ]}
+              >
+                <Text style={styles.clusterText}>
+                  {label}
+                </Text>
+              </View>
+            </Marker>
+          );
+        }}
+      >
+        {/* Aquí va TODO: estaciones y tu coche */}
+        {props.children}
+      </MapViewCluster>
+    </View>
   );
 });
 
 MapView.displayName = 'MapView';
 
-// Export por defecto para evitar errores de Expo Router
 export default function MapWrapper() {
   return null;
 }

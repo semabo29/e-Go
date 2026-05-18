@@ -51,7 +51,7 @@ import {
   calculateDistanceInMeters
 } from '@/services/chargingLocationService';
 import { startChargingSession as apiStartCharging } from '@/services/chargingApiService';
-
+import { getSkinImage } from '@/utils/skinsMapping';
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
 import { Polyline } from 'react-native-maps';
@@ -123,7 +123,13 @@ export default function InicioScreen() {
   const ac_dc = params.ac_dc as string | undefined;
   const autoSelectStationId = params.autoSelectStationId as string | undefined;
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
-
+  const [activeSkinAsset, setActiveSkinAsset] = useState<string>('cotxe_basic');
+  const [trackMarker, setTrackMarker] = useState(true);
+  useEffect(() => {
+    if (activeSkinAsset) {
+      setTrackMarker(true);
+    }
+  }, [activeSkinAsset]);
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
   const { isPremium: accountIsPremium } = useSubscription();
   const {
@@ -522,10 +528,13 @@ export default function InicioScreen() {
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
     if (!user) return;
-    //metida dentro pq solo se usa una vez
+    
+    // Variable para guardar el "escuchador" del GPS
+    let locationSubscriber: Location.LocationSubscription | null = null;
+
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') { //alerta para informar el proque de la necesidad de ubi
+      if (status !== 'granted') {
         Alert.alert(
           t('charging.locationPermissionTitle'),
           t('charging.locationPermissionBody')
@@ -533,19 +542,46 @@ export default function InicioScreen() {
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation(location);
+      try {
+        // 1. Obtenemos la posición inicial rápida para centrar el mapa
+        const initialLocation = await Location.getCurrentPositionAsync({});
+        setUserLocation(initialLocation);
 
-      // Animar mapa a la ubicación del usuario comprobando compatibilidad
-      if (location && mapRef.current) {
-        if (typeof mapRef.current.animateToRegion === 'function') {
-          mapRef.current.animateToRegion(
-            { ...location.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
-            1000
-          );
+        if (initialLocation && mapRef.current) {
+          if (typeof mapRef.current.animateToRegion === 'function') {
+            mapRef.current.animateToRegion(
+              { ...initialLocation.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+              1000
+            );
+          }
         }
+      } catch (error) {
+        console.warn("No se pudo obtener la ubicación inicial por GPS apagado o sin señal:", error);
+        // Si falla, no pasa nada, la app no crashea y el watchPositionAsync de abajo lo seguirá intentando.
+      }
+
+      try {
+        locationSubscriber = await Location.watchPositionAsync(
+          { 
+            accuracy: Location.Accuracy.High, 
+            timeInterval: 2000, // Actualiza cada 2 segundos
+            distanceInterval: 2 // Actualiza si te mueves 2 metros
+          },
+          (newLocation) => {
+            setUserLocation(newLocation);
+          }
+        );
+      } catch (error) {
+        console.warn("Error al intentar suscribirse al GPS:", error);
       }
     })();
+
+    // 3. Limpiamos la suscripción si el componente se desmonta (ahorra batería)
+    return () => {
+      if (locationSubscriber) {
+        locationSubscriber.remove();
+      }
+    };
   }, [user]);
 
 // --- AUTO-SELECCIONAR ESTACIÓ I PREPARAR CÀRREGA ---
@@ -614,6 +650,76 @@ export default function InicioScreen() {
 
     }
   };
+  const [markerRefreshKey, setMarkerRefreshKey] = useState(Date.now());
+
+  // --- CARGA DE LA SKIN DEL USUARIO ---
+  const fetchEquippedSkin = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await appFetch(`/skins/conductor/${user.id}`, {
+        method: 'GET',
+        headers: { 
+          'Cache-Control': 'no-cache, no-store, must-revalidate', 
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      const data = await res.json();
+      
+
+      if (!res.ok) {
+         console.warn('Error del servidor:', data);
+         setActiveSkinAsset('cotxe_basic');
+         return;
+      }
+
+      const miInventario = Array.isArray(data) ? data : (data.inventari || data.skins || []);
+      
+      const equippedSkins = miInventario.filter((item: any) => 
+        item.equipada === true || item.equipada === 'true' || item.equipada === 1 || item.equipada === '1'
+      );
+      
+      const equippedSkin = equippedSkins.length > 0 ? equippedSkins[equippedSkins.length - 1] : null;
+      const newSkin = equippedSkin?.arxiu_asset ? equippedSkin.arxiu_asset : 'cotxe_basic';
+      
+      setActiveSkinAsset((prev) => {
+        if (prev !== newSkin) {
+          setTrackMarker(true);
+          setMarkerRefreshKey(Date.now());
+          return newSkin;
+        }
+        return prev;
+      });
+
+    } catch (e) {
+      setActiveSkinAsset('cotxe_basic');
+    }
+  }, [user?.id]);
+  
+  // 1. Declaramos el callback de forma totalmente incondicional al inicio
+  const handleFocusSkinFetch = useCallback(() => {
+    fetchEquippedSkin();
+  }, [fetchEquippedSkin]);
+
+  // 2. Leemos expo-router de manera segura para contingencias de testing
+  const expoRouterObj = require('expo-router');
+  const safeFocusEffect = expoRouterObj && typeof expoRouterObj.useFocusEffect === 'function' 
+    ? expoRouterObj.useFocusEffect 
+    : null;
+
+  // 3. Si existe safeFocusEffect (producción), lo llamamos pasando la función pura
+  if (safeFocusEffect) {
+    safeFocusEffect(handleFocusSkinFetch);
+  }
+
+  // 4. Declaramos el useEffect de contingencia de forma totalmente incondicional.
+  // Internamente decidirá si se ejecuta dependiendo de si safeFocusEffect está activo o no.
+  useEffect(() => {
+    if (!safeFocusEffect) {
+      fetchEquippedSkin();
+    }
+  }, [fetchEquippedSkin, safeFocusEffect]);
 
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
@@ -631,7 +737,6 @@ const fetchUserFavorites = async () => {
     } else {
       console.warn("El backend no devolvió un array de favoritos:", data);
     }
-    console.log("IDs favoritos cargados:", ids);
     setFavoriteIds(ids);
   } catch (error) {
     console.error("Error cargando favoritos:", error);
@@ -1314,10 +1419,11 @@ useEffect(() => {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          key={`map-${displayedStations.length}-${isNavigating}`}  //TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos o cuando se acaba la navegación (para borrar el recorrido de esta)
+          key={`map-${displayedStations.length}-${isNavigating}`} 
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
-          showsUserLocation={true}
+          showsUserLocation={false} 
+          showsMyLocationButton={false} 
           showsUserHeading={true}
           //Al clicar en el mapa cogemos el punto exacto donde ha hecho clic y quitamos si habia una estación seleccionada
           onPress={(e: any) => {
@@ -1453,55 +1559,98 @@ useEffect(() => {
                   lineJoin="round"
                 />
             )}
-        </MapView>
-          {/* ========================================================== */}
-          {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) para cuando hay ruta */}
-          {/* ========================================================== */}
-            {/* Panel de Información de Ruta Activa */}
-            {isNavigating && routeInfo && (
-              <View style={styles.navPanel}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.navTextBold} numberOfLines={1}>
-                    {t('home.navTowards', {
-                      name: selectedStation ? selectedStation.nom : t('home.navDestination'),
-                    })}
-                  </Text>
-                  <Text style={styles.navText}>
-                    {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
-                  </Text>
-                </View>
 
-                {/* BOTÓN PARA PASAR A MODO 3D */}
-                {!isDrivingMode && (
-                  <TouchableOpacity
-                    style={[styles.startDrivingBtn, { marginRight: 10 }]}
-                    onPress={() => setIsDrivingMode(true)}
-                  >
-                    <MaterialIcons name="navigation" size={20} color="#fff" />
-                    <Text style={styles.startDrivingText}>{t('home.startDriving')}</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={styles.cancelRouteBtn}
-                  onPress={() => {
-                    setIsNavigating(false);
-                    setIsDrivingMode(false); // 🌟 También reseteamos el modo conducción
-                    setRouteOrigin(null);
-                    setRouteDestination(null);
-                    setRouteInfo(null);
-                    setRouteCoords([]);
-                    setSelectedStation(null);
-                    const cleared = buildClearEventLocationPatch();
-                    setSelectedLocation(cleared.selectedLocation);
-                    setRouteOriginPreset(cleared.routeOriginPreset);
-                    setSelectedLocationLabel(cleared.selectedLocationLabel);
-                  }}
-                >
-                  <MaterialIcons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
+            {/* MARCADOR DEL COCHE PERSISTENTE (Solución definitiva anti-bugs) */}
+            {userLocation?.coords && activeSkinAsset && !!safeFocusEffect && (
+            <Marker 
+              testID="user-skin-marker"
+              pinColor="blue" // Le indica al mock de tus compañeros que es el usuario, evitando duplicar 'station-marker'
+              key={`user-skin-${activeSkinAsset}-${markerRefreshKey}`} 
+              coordinate={{
+                latitude: userLocation.coords.latitude,
+                longitude: userLocation.coords.longitude
+              }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              flat={true}
+              zIndex={99999}
+              tracksViewChanges={trackMarker}
+              // @ts-ignore
+              cluster={false}
+            >
+              <View style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                <Image 
+                  source={getSkinImage(activeSkinAsset)} 
+                  style={{ width: '100%', height: '100%' }} 
+                  resizeMode="contain"
+                  fadeDuration={0}
+                  onLoad={() => {
+                    setTimeout(() => {
+                      setTrackMarker(false);
+                    }, 500);
+                  }} 
+                />
               </View>
+            </Marker>
+          )}
+        </MapView>
+
+        {/*BOTÓN DE CENTRAR UBICACIÓN MANUAL (Puesto tras el mapa para que flote por encima) */}
+        <TouchableOpacity 
+          style={styles.centerMapButton} 
+          onPress={centerMapOnUser}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="my-location" size={26} color={isDark ? '#fff' : '#1f2937'} />
+        </TouchableOpacity>
+
+        {/* ========================================================== */}
+        {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) para cuando hay ruta */}
+        {/* ========================================================== */}
+        {/* Panel de Información de Ruta Activa */}
+        {isNavigating && routeInfo && (
+          <View style={styles.navPanel}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.navTextBold} numberOfLines={1}>
+                {t('home.navTowards', {
+                  name: selectedStation ? selectedStation.nom : t('home.navDestination'),
+                })}
+              </Text>
+              <Text style={styles.navText}>
+                {routeInfo.distance.toFixed(1)} km • {Math.ceil(routeInfo.duration)} min
+              </Text>
+            </View>
+
+            {/* BOTÓN PARA PASAR A MODO 3D */}
+            {!isDrivingMode && (
+              <TouchableOpacity
+                style={[styles.startDrivingBtn, { marginRight: 10 }]}
+                onPress={() => setIsDrivingMode(true)}
+              >
+                <MaterialIcons name="navigation" size={20} color="#fff" />
+                <Text style={styles.startDrivingText}>{t('home.startDriving')}</Text>
+              </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={styles.cancelRouteBtn}
+              onPress={() => {
+                setIsNavigating(false);
+                setIsDrivingMode(false); // 🌟 También reseteamos el modo conducción
+                setRouteOrigin(null);
+                setRouteDestination(null);
+                setRouteInfo(null);
+                setRouteCoords([]);
+                setSelectedStation(null);
+                const cleared = buildClearEventLocationPatch();
+                setSelectedLocation(cleared.selectedLocation);
+                setRouteOriginPreset(cleared.routeOriginPreset);
+                setSelectedLocationLabel(cleared.selectedLocationLabel);
+              }}
+            >
+              <MaterialIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {loadingEstaciones && (
           <View style={styles.mapLoading} testID="map-stations-loading">
