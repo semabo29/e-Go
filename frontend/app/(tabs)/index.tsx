@@ -105,6 +105,56 @@ type ChargingResultPayload = {
   reason: string;
 };
 
+// Funció per calcular la distància en metres des de l'usuari fins a la ruta traçada
+const getDistanceToRoute = (
+  userCoord: { latitude: number; longitude: number },
+  routeCoords: { latitude: number; longitude: number }[]
+) => {
+  if (!routeCoords || routeCoords.length === 0) return { distance: 0, index: 0 };
+
+  const R = 6371000;
+  const toRad = Math.PI / 180;
+  const pLat = userCoord.latitude * toRad;
+  const pLon = userCoord.longitude * toRad;
+
+  let minDistance = Infinity;
+  let closestIndex = 0; // Guardarem l'índex aquí
+
+  for (let i = 0; i < routeCoords.length - 1; i++) {
+    const aLat = routeCoords[i].latitude * toRad;
+    const aLon = routeCoords[i].longitude * toRad;
+    const bLat = routeCoords[i + 1].latitude * toRad;
+    const bLon = routeCoords[i + 1].longitude * toRad;
+
+    const xA = (aLon - pLon) * Math.cos(pLat) * R;
+    const yA = (aLat - pLat) * R;
+    const xB = (bLon - pLon) * Math.cos(pLat) * R;
+    const yB = (bLat - pLat) * R;
+
+    const dx = xB - xA;
+    const dy = yB - yA;
+    const lengthSquared = dx * dx + dy * dy;
+
+    let distance;
+    if (lengthSquared === 0) {
+      distance = Math.sqrt(xA * xA + yA * yA);
+    } else {
+      let t = -(xA * dx + yA * dy) / lengthSquared;
+      t = Math.max(0, Math.min(1, t));
+      const closestX = xA + t * dx;
+      const closestY = yA + t * dy;
+      distance = Math.sqrt(closestX * closestX + closestY * closestY);
+    }
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestIndex = i; // Actualitzem el millor índex
+    }
+  }
+
+  return { distance: minDistance, index: closestIndex };
+};
+
 export default function InicioScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -224,12 +274,13 @@ export default function InicioScreen() {
   // Referencia para guardar la suscripción al GPS y poder apagarla
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
-  //NAVEGACIÓN 3D (Waze / Google Maps)
+  //NAVEGACIÓN Y RECALCULO DE RUTAS
   useEffect(() => {
     let isMounted = true;
 
-    const start3DTracking = async () => {
-      if (isDrivingMode) { 
+    const startTracking = async () => {
+      // Ara també activem el GPS si s'està navegant, encara que no estiguem al mode 3D
+      if (isDrivingMode || isNavigating) {
         locationSubscription.current = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
@@ -240,12 +291,38 @@ export default function InicioScreen() {
             if (!isMounted) return;
             const { latitude, longitude, heading } = location.coords;
 
-            if (mapRef.current && typeof mapRef.current.animateCamera === 'function') {
+            // Mantenim l'estat del globus d'usuari actualitzat al mapa
+            setUserLocation(location);
+
+            // --- LÒGICA DE RECÀLCUL I ESMORZAR DE RUTA ---
+            if (isNavigating && routeCoordsRef.current.length > 0) {
+              const routeData = getDistanceToRoute(
+                { latitude, longitude },
+                routeCoordsRef.current
+              );
+
+              if (routeData.distance > 50) {
+                // Es desvia molt: Esborrem i recalculem tota la ruta
+                setRouteCoords([]);
+                setVisibleRouteCoords([]);
+                setRouteOrigin({ latitude, longitude });
+              } else {
+                // Va bé pel camí: Retallem la part del darrere
+                // Creem un nou traçat que vagi des d'on som ara, enganxat amb el següent punt del camí
+                setVisibleRouteCoords([
+                  { latitude, longitude }, // El primer punt de la línia verda serà el cotxe/punt blau
+                  ...routeCoordsRef.current.slice(routeData.index + 1) // Li sumem tota la resta del camí
+                ]);
+              }
+            }
+
+            // --- LÒGICA CÀMERA 3D (Mode Conducció) ---
+            if (isDrivingMode && mapRef.current && typeof mapRef.current.animateCamera === 'function') {
               mapRef.current.animateCamera(
                 {
                   center: { latitude, longitude },
                   heading: heading || 0,
-                  pitch: 60, 
+                  pitch: 60,
                   zoom: 18,
                 },
                 { duration: 1000 }
@@ -254,7 +331,7 @@ export default function InicioScreen() {
           }
         );
       } else {
-        // Si no estamos en modo conducción, nos aseguramos de apagar el GPS
+        // Apaguem el GPS si no estem ni navegant ni en mode conducció
         if (locationSubscription.current) {
           locationSubscription.current.remove();
           locationSubscription.current = null;
@@ -262,13 +339,13 @@ export default function InicioScreen() {
       }
     };
 
-    start3DTracking();
+    startTracking();
 
     return () => {
       isMounted = false;
       if (locationSubscription.current) locationSubscription.current.remove();
     };
-  }, [isDrivingMode]);
+  }, [isDrivingMode, isNavigating]);
   const [routeOrigin, setRouteOrigin] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeDestination, setRouteDestination] = useState<{latitude: number, longitude: number} | null>(null);
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number} | null>(null);
@@ -281,6 +358,13 @@ export default function InicioScreen() {
   const [routeCoords, setRouteCoords] = useState<{latitude: number, longitude: number}[]>([]);
   //Estado para saber si estamos seleccionando nosotros mismos el origen de la ruta
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
+  // Referència per llegir la ruta dins del Location.watchPositionAsync
+  const routeCoordsRef = useRef<{latitude: number, longitude: number}[]>([]);
+  useEffect(() => {
+    routeCoordsRef.current = routeCoords;
+  }, [routeCoords]);
+  // Aquesta és la ruta que realment dibuixarem, i s'anirà retallant
+  const [visibleRouteCoords, setVisibleRouteCoords] = useState<{latitude: number, longitude: number}[]>([]);
 
   const handleFocusEventOnMap = useCallback(
     (
@@ -1429,6 +1513,7 @@ useEffect(() => {
                     duration: result.duration
                   });
                   setRouteCoords(result.coordinates);
+                  setVisibleRouteCoords(result.coordinates); // Inicialitzem la visible
 
                   if (!isDrivingMode && mapRef.current) {
                     mapRef.current.fitToCoordinates(result.coordinates, {
@@ -1443,15 +1528,15 @@ useEffect(() => {
                 }}
               />
             )}
-            {/*Nuestro propio trazado de la ruta (100% controlable) */}
-              {isNavigating && routeCoords.length > 0 && (
-                <Polyline
-                  key={`polyline-${routeCoords.length}`}
-                  coordinates={routeCoords}
-                  strokeWidth={4}
-                  strokeColor={sem.routeLine}
-                  lineJoin="round"
-                />
+            {/* Nuestro propio trazado de la ruta (100% controlable) */}
+            {isNavigating && (
+              <Polyline
+                key="active-route-polyline"
+                coordinates={visibleRouteCoords}
+                strokeWidth={routeCoords.length > 0 ? 4 : 0}
+                strokeColor={sem.routeLine}
+                lineJoin="round"
+              />
             )}
         </MapView>
           {/* ========================================================== */}
@@ -1491,6 +1576,7 @@ useEffect(() => {
                     setRouteDestination(null);
                     setRouteInfo(null);
                     setRouteCoords([]);
+                    setVisibleRouteCoords([]);
                     setSelectedStation(null);
                     const cleared = buildClearEventLocationPatch();
                     setSelectedLocation(cleared.selectedLocation);
