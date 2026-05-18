@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import SvgComponent from '../app/_assets/logo.jsx'
 
 /** Fila de resultat: estació (backend) o adreça (Places via backend). */
 export type MapSearchListItem =
@@ -45,11 +46,7 @@ export default function TopBar({
     <View style={styles.wrapper}>
       <View style={styles.headerContainer}>
         <TouchableOpacity style={styles.logoContainer}>
-          <Image
-            source={require('../assets/images/favicon.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <SvgComponent width={56} height={56} />
         </TouchableOpacity>
 
         <View style={styles.searchContainer}>
@@ -171,7 +168,6 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => StyleSheet.create
     zIndex: 10,
   },
   logoContainer: { justifyContent: 'center', alignItems: 'center', width: 56 },
-  logo: { width: 56, height: 36, transform: [{ scale: 1.15 }] },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',

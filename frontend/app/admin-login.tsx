@@ -20,10 +20,10 @@ import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { savePrivilegedSession } from '@/services/privilegedAuth';
+import SvgComponent from './_assets/logo.jsx'
 
 WebBrowser.maybeCompleteAuthSession();
 
-const LOGO = require('./_assets/favicon.png');
 const IS_WEB = Platform.OS === 'web';
 
 GoogleSignin.configure({
@@ -200,7 +200,7 @@ export default function AdminLoginScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+        <SvgComponent width={150} height={125} />
         <Text style={styles.title}>Acceso Admin</Text>
         <Text style={styles.subtitle}>Backoffice de e-Go</Text>
 
@@ -320,11 +320,6 @@ const createAdminLoginStyles = (sem: SemanticColors) => StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
-  },
-  logo: {
-    width: 160,
-    height: 160,
-    marginBottom: 16,
   },
   title: {
     fontSize: 24,

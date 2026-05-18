@@ -63,8 +63,8 @@ import {
   resolveNavigationOrigin,
 } from '@/utils/eventMapFocus';
 import { useTranslation } from 'react-i18next';
+import SvgComponent from '../_assets/logo.jsx'
 
-const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
 try {
   ImagePickerModule = require('expo-image-picker');
@@ -1185,7 +1185,7 @@ useEffect(() => {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
         >
           <View style={styles.cardCompact}>
-            <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+            <SvgComponent width={150} height={125} />
             <Text style={styles.title}>{t('home.welcomeTitle')}</Text>
             <Text style={styles.subtitle}>
               {t('home.welcomeSubtitle')}
@@ -2090,11 +2090,6 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => {
     alignItems: 'center',
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
     elevation: 4,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 12,
   },
   title: {
     fontSize: 26,
