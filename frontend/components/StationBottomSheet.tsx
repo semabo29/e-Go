@@ -701,7 +701,6 @@ export const StationBottomSheet: React.FC<StationBottomSheetProps> = ({
 
   return (
     <BottomSheet
-      testID="station-bottom-sheet"
       ref={bottomSheetRef}
       index={1}
       snapPoints={snapPoints}
@@ -710,7 +709,10 @@ export const StationBottomSheet: React.FC<StationBottomSheetProps> = ({
       backgroundStyle={styles.bottomSheetBackground}
       handleIndicatorStyle={{ backgroundColor: isDark ? '#94a3b8' : '#cbd5e1' }}
     >
-      <BottomSheetScrollView contentContainerStyle={styles.contentContainer}>
+      <BottomSheetScrollView
+        testID="station-bottom-sheet"
+        contentContainerStyle={styles.contentContainer}
+      >
         <StationSheetHeader
           station={station}
           isFavorite={isFavorite}
