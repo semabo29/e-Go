@@ -833,7 +833,7 @@ useEffect(() => {
     [searchMode, minKw, maxKw, connectorType, ac_dc, showFavoritesFilter, favoriteIds]
   );
 
-  // Cerca mentre s'escriu (debounce 400 ms, mínim 3 caràcters)
+  // Cerca mentre s'escriu (debounce 500 ms, mínim 3 caràcters)
   useEffect(() => {
     if (searchQuery.length < 3) {
       setSearchResults([]);
@@ -843,7 +843,7 @@ useEffect(() => {
 
     const delayDebounceFn = setTimeout(() => {
       void runMapSearch(searchQuery);
-    }, 400);
+    }, 500);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, runMapSearch]);

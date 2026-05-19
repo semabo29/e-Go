@@ -163,7 +163,7 @@ function layoutEventosCarousel(getByTestId: (id: string) => unknown) {
 
 async function advanceSearchDebounce() {
   await act(async () => {
-    jest.advanceTimersByTime(450);
+    jest.advanceTimersByTime(500);
   });
   for (let i = 0; i < 8; i++) await Promise.resolve();
 }

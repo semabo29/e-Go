@@ -110,7 +110,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
   return { MapView, Marker };
 });
 
-/** Avanza el debounce de búsqueda (500 ms) con timers falsos. */
+/** Avanza el debounce de búsqueda (500 ms en index.tsx) con timers falsos. */
 async function runSearchDebounce() {
   await act(async () => {
     jest.advanceTimersByTime(500);
@@ -364,7 +364,7 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
     }, { timeout: 5000 });
   });
 
-  // la llamada a `/stations/search` solo ocurre tras 500ms desde el ultimo cambio de texto.
+  // la llamada a `/stations/search` solo ocurre tras 500 ms desde el último cambio de texto.
   test('search debounce: calls /stations/search? only after 500ms', async () => {
     jest.useFakeTimers();
 

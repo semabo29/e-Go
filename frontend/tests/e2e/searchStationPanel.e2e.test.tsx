@@ -111,10 +111,10 @@ const mockStation = {
   operatiu: true,
 };
 
-/** Avanza el debounce de búsqueda (400 ms en index.tsx) para disparar la petición sin esperar en real. */
+/** Avanza el debounce de búsqueda (500 ms en index.tsx) para disparar la petición sin esperar en real. */
 async function advanceSearchDebounce() {
   await act(async () => {
-    jest.advanceTimersByTime(450);
+    jest.advanceTimersByTime(500);
   });
   for (let i = 0; i < 8; i++) await Promise.resolve();
 }
