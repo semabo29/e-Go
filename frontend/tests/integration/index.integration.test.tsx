@@ -30,6 +30,7 @@ jest.mock('expo-router', () => ({
     setParams: jest.fn(),
   }),
   useLocalSearchParams: () => mockUseLocalSearchParams(),
+  useFocusEffect: jest.fn((cb: any) => cb()), 
 }));
 
 jest.mock('expo-location', () => ({
@@ -86,17 +87,17 @@ jest.mock('@/app/_components/MapWrapper', () => {
     );
   });
 
-  const Marker = ({ onPress, pinColor }: any) => (
+  const Marker = ({ onPress, pinColor, testID: propTestID }: any) => (
     (() => {
-      let testID = 'station-marker';
+      let testID = propTestID || 'station-marker'; // Ahora lee el propTestID si existe
       if (pinColor === 'blue') testID = 'user-marker';
       else if (pinColor === 'red') testID = 'favorite-station-marker';
 
       return (
-    <TouchableOpacity
-      testID={testID}
-      onPress={() => onPress?.({ stopPropagation: jest.fn() })}
-    />
+        <TouchableOpacity
+          testID={testID}
+          onPress={() => onPress?.({ stopPropagation: jest.fn() })}
+        />
       );
     })()
   );
@@ -152,6 +153,15 @@ describe('InicioScreen map and station panel', () => {
               tipus_connexio: 'CCS',
             },
           ],
+        } as Response);
+      }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
         } as Response);
       }
       return Promise.resolve({ json: async () => [] } as Response);
@@ -262,6 +272,15 @@ describe('InicioScreen map and station panel', () => {
           ],
         } as Response);
       }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
+        } as Response);
+      }
 
       return Promise.resolve({ json: async () => [] } as Response);
     }) as unknown as typeof fetch;
@@ -282,6 +301,15 @@ describe('InicioScreen map and station panel', () => {
       }
       if (url.includes('/stations')) {
         return Promise.resolve({ json: async () => [] } as Response);
+      }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
+        } as Response);
       }
       return Promise.resolve({ json: async () => [] } as Response);
     }) as unknown as typeof fetch;
@@ -304,6 +332,15 @@ describe('InicioScreen map and station panel', () => {
       }
       if (url.includes('/stations')) {
         return Promise.reject(new Error('network failed'));
+      }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
+        } as Response);
       }
       return Promise.resolve({ json: async () => [] } as Response);
     }) as unknown as typeof fetch;
@@ -401,6 +438,15 @@ describe('InicioScreen map and station panel', () => {
           ],
         } as Response);
       }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
+        } as Response);
+      }
       if (url.includes('/incidencias')) {
         return Promise.resolve({
           ok: true,
@@ -462,6 +508,15 @@ describe('InicioScreen map and station panel', () => {
           ],
         } as Response);
       }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
+        } as Response);
+      }
       return Promise.resolve({ ok: true, json: async () => [] } as Response);
     }) as unknown as typeof fetch;
 
@@ -506,6 +561,15 @@ describe('InicioScreen map and station panel', () => {
               operatiu: false,
             },
           ],
+        } as Response);
+      }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
         } as Response);
       }
       if (url.includes('/incidencias')) {
@@ -591,6 +655,15 @@ function installFetchWithEventos() {
             tipus_connexio: 'CCS',
           },
         ],
+      } as Response);
+    }
+    if (href.includes('/skins/conductor/')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+          punts: 1000
+        })
       } as Response);
     }
     return Promise.resolve({ json: async () => [] } as Response);
@@ -689,5 +762,47 @@ describe('InicioScreen - evento en mapa y ruta desde estación', () => {
     });
 
     alertSpy.mockRestore();
+  });
+
+  it('renderiza el marcador del coche del usuario y hace fallback si la API falla', async () => {
+    mockRequestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    mockGetCurrentPositionAsync.mockResolvedValue({
+      coords: { latitude: 41.38, longitude: 2.17 },
+    });
+
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url.includes('/skins/conductor/')) {
+        return Promise.reject(new Error('Backend error'));
+      }
+      if (url.includes('/favorites')) {
+        return Promise.resolve({ json: async () => [{ id: 1 }] } as Response);
+      }
+      if (url.includes('/stations')) {
+        return Promise.resolve({
+          json: async () => [
+            {
+              id: 1,
+              nom: 'Punt 1',
+              latitud: '41.3901',
+              longitud: '2.1540',
+              municipi: 'Barcelona',
+              adreca: 'Carrer de Test',
+              kw: '50',
+              promotor: 'Ajuntament',
+              ac_dc: 'DC',
+              tipus_connexio: 'CCS',
+            },
+          ],
+        } as Response);
+      }
+      return Promise.resolve({ json: async () => [] } as Response);
+    }) as unknown as typeof fetch;
+
+    const { getByTestId } = render(<InicioScreen />);
+
+    // Debido al prop pinColor="blue", el mock del mapa expone el coche como 'user-marker'
+    await waitFor(() => {
+      expect(getByTestId('user-marker')).toBeTruthy();
+    });
   });
 });

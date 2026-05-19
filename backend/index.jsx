@@ -21,6 +21,7 @@ const userRoutes = require('./routes/users');
 const friendsRoutes = require('./routes/amics');
 const incidenciaRoutes = require('./routes/incidencias');
 const geocodeRoutes = require('./routes/geocode');
+const skinRoutes = require('./routes/skinRoutes');
 const { handleWebhook } = require('./controllers/stripeWebhookController');
 const { canReach } = require('./services/rangeCalculationService');
 
@@ -80,6 +81,7 @@ app.use('/user', userRoutes);
 app.use('/friends', friendsRoutes);
 app.use('/incidencias', incidenciaRoutes);
 app.use('/geocode', geocodeRoutes);
+app.use('/skins', skinRoutes);
 
 // Can Reach endpoint (range calculation)
 app.get('/can-reach', async (req, res) => {

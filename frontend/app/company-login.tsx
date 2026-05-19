@@ -20,10 +20,10 @@ import { GOOGLE_WEB_CLIENT_ID, getApiUrl } from '@/constants/api';
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { savePrivilegedSession } from '@/services/privilegedAuth';
+import SvgComponent from './_assets/logo.jsx'
 
 WebBrowser.maybeCompleteAuthSession();
 
-const LOGO = require('./_assets/favicon.png');
 const IS_WEB = Platform.OS === 'web';
 
 GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
@@ -184,7 +184,7 @@ export default function CompanyLoginScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+        <SvgComponent width={150} height={125} />
         <Text style={styles.title}>Acceso Empresa</Text>
         <Text style={styles.subtitle}>Gestion de solicitudes de estaciones</Text>
 
@@ -298,7 +298,6 @@ const createCompanyLoginStyles = (sem: SemanticColors) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  logo: { width: 160, height: 160, marginBottom: 16 },
   title: { fontSize: 24, fontWeight: '700', color: '#1f2937', textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center', marginBottom: 24 },
   hintText: {

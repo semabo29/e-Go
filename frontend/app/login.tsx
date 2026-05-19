@@ -21,8 +21,7 @@ import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { appFetch } from '@/services/appFetch';
 import { Colors } from '@/constants/theme';
 import { getSemanticColors } from '@/constants/accessibilityColors';
-
-const LOGO = require('./_assets/favicon.png');
+import SvgComponent from './_assets/logo.jsx'
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -229,7 +228,7 @@ export default function LoginScreen() {
     return (
       <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
         <View style={styles.card}>
-          <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+          <SvgComponent width={150} height={125} />
           <Text style={styles.title}>{t('login.chooseUsernameTitle')}</Text>
           <Text style={styles.subtitle}>{t('login.chooseUsernameSubtitle')}</Text>
           <TextInput
@@ -252,11 +251,7 @@ export default function LoginScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={[styles.card, authMode === 'local-register' && styles.cardCompact]}>
-        <Image
-          source={LOGO}
-          style={[styles.logo, authMode === 'local-register' && styles.logoCompact]}
-          resizeMode="contain"
-        />
+        <SvgComponent width={150} height={125} />
         <Text style={styles.title}>{t('login.welcome')}</Text>
 
         <View style={styles.linksRow}>
@@ -437,8 +432,6 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20, paddingVertical: 20 },
   card: { width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', elevation: 3 },
   cardCompact: { paddingVertical: 18, paddingHorizontal: 20 },
-  logo: { width: 132, height: 132, marginBottom: 10 },
-  logoCompact: { width: 100, height: 100, marginBottom: 6 },
   title: { fontSize: 24, fontWeight: '700', color: '#1f2937', textAlign: 'center', marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center', marginBottom: 20 },
   googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb' },

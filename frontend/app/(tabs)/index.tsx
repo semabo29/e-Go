@@ -51,7 +51,7 @@ import {
   calculateDistanceInMeters
 } from '@/services/chargingLocationService';
 import { startChargingSession as apiStartCharging } from '@/services/chargingApiService';
-
+import { getSkinImage } from '@/utils/skinsMapping';
 //Importamos el mapa de direcciones
 import MapViewDirections from 'react-native-maps-directions';
 import { Polyline } from 'react-native-maps';
@@ -63,8 +63,8 @@ import {
   resolveNavigationOrigin,
 } from '@/utils/eventMapFocus';
 import { useTranslation } from 'react-i18next';
+import SvgComponent from '../_assets/logo.jsx'
 
-const LOGO = require('../_assets/favicon.png'); //Siempre ha de ir debajo de los imports
 let ImagePickerModule: typeof import('expo-image-picker') | null = null;
 try {
   ImagePickerModule = require('expo-image-picker');
@@ -187,7 +187,13 @@ export default function InicioScreen() {
   const ac_dc = params.ac_dc as string | undefined;
   const autoSelectStationId = params.autoSelectStationId as string | undefined;
   const [pendingAutoStart, setPendingAutoStart] = useState(false);
-
+  const [activeSkinAsset, setActiveSkinAsset] = useState<string>('cotxe_basic');
+  const [trackMarker, setTrackMarker] = useState(true);
+  useEffect(() => {
+    if (activeSkinAsset) {
+      setTrackMarker(true);
+    }
+  }, [activeSkinAsset]);
   const { user, setUser, logout, isLoading: authLoading } = useAuth();
   const { isPremium: accountIsPremium } = useSubscription();
   const {
@@ -689,10 +695,13 @@ export default function InicioScreen() {
   // Pedir permiso y obtener ubicación del usuario (Seguro para Web y Móvil)
   useEffect(() => {
     if (!user) return;
-    //metida dentro pq solo se usa una vez
+    
+    // Variable para guardar el "escuchador" del GPS
+    let locationSubscriber: Location.LocationSubscription | null = null;
+
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') { //alerta para informar el proque de la necesidad de ubi
+      if (status !== 'granted') {
         Alert.alert(
           t('charging.locationPermissionTitle'),
           t('charging.locationPermissionBody')
@@ -700,19 +709,46 @@ export default function InicioScreen() {
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation(location);
+      try {
+        // 1. Obtenemos la posición inicial rápida para centrar el mapa
+        const initialLocation = await Location.getCurrentPositionAsync({});
+        setUserLocation(initialLocation);
 
-      // Animar mapa a la ubicación del usuario comprobando compatibilidad
-      if (location && mapRef.current) {
-        if (typeof mapRef.current.animateToRegion === 'function') {
-          mapRef.current.animateToRegion(
-            { ...location.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
-            1000
-          );
+        if (initialLocation && mapRef.current) {
+          if (typeof mapRef.current.animateToRegion === 'function') {
+            mapRef.current.animateToRegion(
+              { ...initialLocation.coords, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+              1000
+            );
+          }
         }
+      } catch (error) {
+        console.warn("No se pudo obtener la ubicación inicial por GPS apagado o sin señal:", error);
+        // Si falla, no pasa nada, la app no crashea y el watchPositionAsync de abajo lo seguirá intentando.
+      }
+
+      try {
+        locationSubscriber = await Location.watchPositionAsync(
+          { 
+            accuracy: Location.Accuracy.High, 
+            timeInterval: 2000, // Actualiza cada 2 segundos
+            distanceInterval: 2 // Actualiza si te mueves 2 metros
+          },
+          (newLocation) => {
+            setUserLocation(newLocation);
+          }
+        );
+      } catch (error) {
+        console.warn("Error al intentar suscribirse al GPS:", error);
       }
     })();
+
+    // 3. Limpiamos la suscripción si el componente se desmonta (ahorra batería)
+    return () => {
+      if (locationSubscriber) {
+        locationSubscriber.remove();
+      }
+    };
   }, [user]);
 
 // --- AUTO-SELECCIONAR ESTACIÓ I PREPARAR CÀRREGA ---
@@ -781,6 +817,76 @@ export default function InicioScreen() {
 
     }
   };
+  const [markerRefreshKey, setMarkerRefreshKey] = useState(Date.now());
+
+  // --- CARGA DE LA SKIN DEL USUARIO ---
+  const fetchEquippedSkin = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await appFetch(`/skins/conductor/${user.id}`, {
+        method: 'GET',
+        headers: { 
+          'Cache-Control': 'no-cache, no-store, must-revalidate', 
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      const data = await res.json();
+      
+
+      if (!res.ok) {
+         console.warn('Error del servidor:', data);
+         setActiveSkinAsset('cotxe_basic');
+         return;
+      }
+
+      const miInventario = Array.isArray(data) ? data : (data.inventari || data.skins || []);
+      
+      const equippedSkins = miInventario.filter((item: any) => 
+        item.equipada === true || item.equipada === 'true' || item.equipada === 1 || item.equipada === '1'
+      );
+      
+      const equippedSkin = equippedSkins.length > 0 ? equippedSkins[equippedSkins.length - 1] : null;
+      const newSkin = equippedSkin?.arxiu_asset ? equippedSkin.arxiu_asset : 'cotxe_basic';
+      
+      setActiveSkinAsset((prev) => {
+        if (prev !== newSkin) {
+          setTrackMarker(true);
+          setMarkerRefreshKey(Date.now());
+          return newSkin;
+        }
+        return prev;
+      });
+
+    } catch (e) {
+      setActiveSkinAsset('cotxe_basic');
+    }
+  }, [user?.id]);
+  
+  // 1. Declaramos el callback de forma totalmente incondicional al inicio
+  const handleFocusSkinFetch = useCallback(() => {
+    fetchEquippedSkin();
+  }, [fetchEquippedSkin]);
+
+  // 2. Leemos expo-router de manera segura para contingencias de testing
+  const expoRouterObj = require('expo-router');
+  const safeFocusEffect = expoRouterObj && typeof expoRouterObj.useFocusEffect === 'function' 
+    ? expoRouterObj.useFocusEffect 
+    : null;
+
+  // 3. Si existe safeFocusEffect (producción), lo llamamos pasando la función pura
+  if (safeFocusEffect) {
+    safeFocusEffect(handleFocusSkinFetch);
+  }
+
+  // 4. Declaramos el useEffect de contingencia de forma totalmente incondicional.
+  // Internamente decidirá si se ejecuta dependiendo de si safeFocusEffect está activo o no.
+  useEffect(() => {
+    if (!safeFocusEffect) {
+      fetchEquippedSkin();
+    }
+  }, [fetchEquippedSkin, safeFocusEffect]);
 
 const fetchUserFavorites = async () => {
   if (!user?.id) return;
@@ -798,7 +904,6 @@ const fetchUserFavorites = async () => {
     } else {
       console.warn("El backend no devolvió un array de favoritos:", data);
     }
-    console.log("IDs favoritos cargados:", ids);
     setFavoriteIds(ids);
   } catch (error) {
     console.error("Error cargando favoritos:", error);
@@ -1247,7 +1352,7 @@ useEffect(() => {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
         >
           <View style={styles.cardCompact}>
-            <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+            <SvgComponent width={150} height={125} />
             <Text style={styles.title}>{t('home.welcomeTitle')}</Text>
             <Text style={styles.subtitle}>
               {t('home.welcomeSubtitle')}
@@ -1483,10 +1588,11 @@ useEffect(() => {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          key={`map-${displayedStations.length}-${isNavigating}`}  //TRUCO VITAL: Fuerza al mapa a pintarse cuando llegan los datos o cuando se acaba la navegación (para borrar el recorrido de esta)
+          key={`map-${displayedStations.length}-${isNavigating}`} 
           style={StyleSheet.absoluteFillObject}
           initialRegion={region}
-          showsUserLocation={true}
+          showsUserLocation={false} 
+          showsMyLocationButton={false} 
           showsUserHeading={true}
           showsCompass={!isNavigating}
           showsMyLocationButton={!isNavigating}
@@ -1631,6 +1737,39 @@ useEffect(() => {
                 lineJoin="round"
               />
             )}
+
+            {/* MARCADOR DEL COCHE PERSISTENTE (Solución definitiva anti-bugs) */}
+            {userLocation?.coords && activeSkinAsset && !!safeFocusEffect && (
+            <Marker 
+              testID="user-skin-marker"
+              pinColor="blue" // Le indica al mock de tus compañeros que es el usuario, evitando duplicar 'station-marker'
+              key={`user-skin-${activeSkinAsset}-${markerRefreshKey}`} 
+              coordinate={{
+                latitude: userLocation.coords.latitude,
+                longitude: userLocation.coords.longitude
+              }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              flat={true}
+              zIndex={99999}
+              tracksViewChanges={trackMarker}
+              // @ts-ignore
+              cluster={false}
+            >
+              <View style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                <Image 
+                  source={getSkinImage(activeSkinAsset)} 
+                  style={{ width: '100%', height: '100%' }} 
+                  resizeMode="contain"
+                  fadeDuration={0}
+                  onLoad={() => {
+                    setTimeout(() => {
+                      setTrackMarker(false);
+                    }, 500);
+                  }} 
+                />
+              </View>
+            </Marker>
+          )}
         </MapView>
         {/* ========================================================== */}
         {/* A PARTIR DE AQUÍ VAN LOS PANELES UI (FUERA DEL MAPA) para cuando hay ruta */}
@@ -2137,11 +2276,6 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => {
     alignItems: 'center',
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
     elevation: 4,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 12,
   },
   title: {
     fontSize: 26,

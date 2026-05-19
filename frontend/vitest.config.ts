@@ -22,6 +22,7 @@ export default defineConfig({
       exclude: [
         '**/*.test.*',
         '**/*.testHelpers.ts',
+        '**/*.harness.test.ts',
         '**/node_modules/**',
         '**/dist/**',
       ],

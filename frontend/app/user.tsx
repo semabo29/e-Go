@@ -10,6 +10,7 @@ import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext'
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { waitFor } from '@testing-library/react-native';
 
 const LOGO = require('./_assets/favicon.png'); // Ruta a tu imagen de perfil (el logo de momento)
 const RAINBOW_BASE_COLORS = ['#3b82f6', '#a855f7', '#ec4899', '#f97316', '#facc15', '#3fad17', '#14b8b0', '#3b82f6'];
@@ -65,6 +66,7 @@ interface PerfilUser {
   premium: boolean;
   admin: boolean;
   empresa: boolean;
+  valoracio: number;
 }
 
 export default function PerfilScreen() {
@@ -539,7 +541,6 @@ export default function PerfilScreen() {
             )}
             </View>
           </View>
-        </ViewShot>  
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
@@ -548,16 +549,23 @@ export default function PerfilScreen() {
             </View>
           ) : perfil ? (
             <>
-            <View style={[styles.statsCard, styles.centered]}>
-              <Text style={styles.points}>{perfil.punts}</Text>
-              <Text style={styles.ptsLabel}>Puntos</Text>
-            </View>
-            {perfil?.id === user?.id && renderFriendRequests()}
+              <View style={[styles.statsCard, styles.centered]}>
+                <Text style={styles.points}>{perfil.punts}</Text>
+                <Text style={styles.ptsLabel}>Puntos</Text>
+              </View>
+              <View style={[styles.statsCard, styles.centered]}>
+                {perfil.valoracio ?
+                <>
+                  <Text style={styles.points}>{Number(perfil.valoracio).toFixed(2)}</Text>
+                  <Text style={styles.ptsLabel}>Valoración media de estaciones</Text>
+                </> : <Text style={styles.points}>Sin valoraciones</Text>}
+              </View>
             </>
           ) : (
             <Text style={styles.emptyText}>No existe el usuario</Text>
           )}
-
+        </ViewShot>
+          {!isLoading && perfil?.id === user?.id && renderFriendRequests()}
 
         {/* AFEGIM EL BOTÓ D'INSTAGRAM */}
         <TouchableOpacity
@@ -726,6 +734,7 @@ const createUserStyles = (sem: SemanticColors) => StyleSheet.create({
     backgroundColor: '#e0f2fe',
     borderRadius: 18,
     padding: 24,
+    marginBottom: 16,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -964,7 +973,7 @@ const createUserStyles = (sem: SemanticColors) => StyleSheet.create({
     backgroundColor: sem.accent,
     paddingVertical: 14,
     borderRadius: 14,
-    marginTop: 20, // Ajusta l'espai com necessitis
+    marginBottom: 16, // Ajusta l'espai com necessitis
     gap: 8,
   },
   instagramButtonText: {
