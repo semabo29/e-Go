@@ -3,9 +3,14 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 
+jest.mock('@/utils/expoPlatform', () => ({
+  shouldUseNativeInAppBrowser: jest.fn(),
+}));
+
 jest.unmock('@/components/external-link');
 
 import { ExternalLink } from '@/components/external-link';
+import { shouldUseNativeInAppBrowser } from '@/utils/expoPlatform';
 
 const mockPreventDefault = jest.fn();
 
@@ -48,6 +53,7 @@ describe('ExternalLink', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (openBrowserAsync as jest.Mock<any>).mockResolvedValue({ type: 'opened' });
+    (shouldUseNativeInAppBrowser as jest.Mock).mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -55,7 +61,7 @@ describe('ExternalLink', () => {
   });
 
   test('en nativo abre in-app browser y previene el enlace por defecto', async () => {
-    process.env.EXPO_OS = 'ios';
+    (shouldUseNativeInAppBrowser as jest.Mock).mockReturnValue(true);
     const { getByTestId } = render(
       <ExternalLink href="https://example.com">Abrir</ExternalLink>
     );
@@ -70,4 +76,17 @@ describe('ExternalLink', () => {
     });
   });
 
+  test('en web no intercepta el enlace', async () => {
+    (shouldUseNativeInAppBrowser as jest.Mock).mockReturnValue(false);
+    const { getByTestId } = render(
+      <ExternalLink href="https://example.com">Web</ExternalLink>
+    );
+
+    fireEvent.press(getByTestId('external-link'));
+
+    await waitFor(() => {
+      expect(mockPreventDefault).not.toHaveBeenCalled();
+      expect(openBrowserAsync).not.toHaveBeenCalled();
+    });
+  });
 });

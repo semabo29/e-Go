@@ -3,9 +3,14 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import * as Haptics from 'expo-haptics';
 
+jest.mock('@/utils/expoPlatform', () => ({
+  shouldUseIosTabHaptic: jest.fn(),
+}));
+
 jest.unmock('@/components/haptic-tab');
 
 import { HapticTab } from '@/components/haptic-tab';
+import { shouldUseIosTabHaptic } from '@/utils/expoPlatform';
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
@@ -39,6 +44,7 @@ describe('HapticTab', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (shouldUseIosTabHaptic as jest.Mock).mockReturnValue(true);
     process.env.EXPO_OS = 'ios';
   });
 
@@ -59,8 +65,17 @@ describe('HapticTab', () => {
     expect(onPressIn).toHaveBeenCalled();
   });
 
+  test('no dispara haptic si no es iOS', () => {
+    (shouldUseIosTabHaptic as jest.Mock).mockReturnValue(false);
+    const { getByTestId } = render(
+      <HapticTab accessibilityRole="button">{null}</HapticTab>
+    );
+    fireEvent(getByTestId('platform-pressable'), 'pressIn', { nativeEvent: {} });
+    expect(Haptics.impactAsync).not.toHaveBeenCalled();
+  });
+
   test('funciona sin onPressIn del padre', () => {
-    process.env.EXPO_OS = 'ios';
+    (shouldUseIosTabHaptic as jest.Mock).mockReturnValue(true);
     const { getByTestId } = render(
       <HapticTab accessibilityRole="button">{null}</HapticTab>
     );

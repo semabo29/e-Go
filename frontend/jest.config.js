@@ -22,6 +22,7 @@ module.exports = {
     'hooks/**/*.{ts,tsx}',
     'i18n/**/*.{ts,tsx}',
     'features/**/*.{ts,tsx}',
+    '!features/**/*.testHelpers.ts',
     'screens/**/*.{ts,tsx}',
     '!**/*.test.{ts,tsx}',
     '!**/*.d.ts',
