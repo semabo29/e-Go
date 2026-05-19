@@ -24,6 +24,8 @@ describe('subscriptionHelpers', () => {
     expect(isPremiumStatus('active')).toBe(true);
     expect(isPremiumStatus('trialing')).toBe(true);
     expect(isPremiumStatus('canceled')).toBe(false);
+    expect(isPremiumStatus('past_due')).toBe(false);
     expect(isPremiumStatus('')).toBe(false);
+    expect(isPremiumStatus('inactive')).toBe(false);
   });
 });

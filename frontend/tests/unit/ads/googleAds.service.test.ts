@@ -203,4 +203,25 @@ describe('features/ads/googleAds', () => {
   test('showInterstitialAd es alias de showFullscreenAd', () => {
     expect(showInterstitialAd).toBe(showFullscreenAd);
   });
+
+  test('getHarness lanza sin harness global', () => {
+    const prev = globalThis.__adTestHarness;
+    delete globalThis.__adTestHarness;
+    expect(() => getHarness()).toThrow('Ad test harness no inicializado');
+    globalThis.__adTestHarness = prev;
+  });
+
+  test('invokeHandler lanza si falta el evento', () => {
+    const { interstitialAd } = getHarness();
+    expect(() => invokeHandler(interstitialAd, 'no-such-event')).toThrow(
+      'No listener for no-such-event'
+    );
+  });
+
+  test('clearHarnessStores elimina listeners registrados', () => {
+    const harness = getHarness();
+    harness.interstitialStore.loaded = [jest.fn()];
+    clearHarnessStores();
+    expect(Object.keys(harness.interstitialStore)).toHaveLength(0);
+  });
 });
