@@ -774,19 +774,18 @@ useEffect(() => {
     }
   };
 
-// Efecte per buscar quan l'usuari escriu (amb debounce de 500ms)
-  useEffect(() => {
-    if (searchQuery.length < 3) {
-      setSearchResults([]);
-      return;
-    }
+  const runMapSearch = useCallback(
+    async (query: string) => {
+      if (query.length < 3) {
+        setSearchResults([]);
+        return;
+      }
 
-    const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
       try {
         if (searchMode === 'addresses') {
           const response = await fetch(
-            `${getApiUrl()}/geocode/autocomplete?input=${encodeURIComponent(searchQuery)}`
+            `${getApiUrl()}/geocode/autocomplete?input=${encodeURIComponent(query)}`
           );
           const data = await response.json();
           if (!response.ok) {
@@ -807,21 +806,16 @@ useEffect(() => {
           return;
         }
 
-        let queryParams = [`q=${encodeURIComponent(searchQuery)}`];
-
+        const queryParams = [`q=${encodeURIComponent(query)}`];
         if (minKw) queryParams.push(`minKw=${minKw}`);
         if (maxKw) queryParams.push(`maxKw=${maxKw}`);
         if (connectorType) queryParams.push(`connectorType=${encodeURIComponent(connectorType)}`);
         if (ac_dc) queryParams.push(`ac_dc=${ac_dc}`);
 
-        // Ajuntem tots els paràmetres amb un "&"
         const queryString = queryParams.join('&');
-
-        // CANVIA AQUESTA URL PER LA TEVA RUTA DE CERCA DEL BACKEND!
         const response = await appFetch(`/stations/search?${queryString}`);
         const data = await response.json();
 
-        // --- APLIQUEM EL FILTRE DE FAVORITS LOCALMENT ---
         let resultatsFinals = Array.isArray(data) ? data : [];
         if (showFavoritesFilter) {
           resultatsFinals = resultatsFinals.filter((est: Estacion) => favoriteIds.includes(est.id));
@@ -831,13 +825,32 @@ useEffect(() => {
         );
       } catch (error) {
         console.error('Error cercant estacions:', error);
+        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
-    }, 500); // Espera mig segon després de parar d'escriure
+    },
+    [searchMode, minKw, maxKw, connectorType, ac_dc, showFavoritesFilter, favoriteIds]
+  );
+
+  // Cerca mentre s'escriu (debounce 400 ms, mínim 3 caràcters)
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      void runMapSearch(searchQuery);
+    }, 400);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, searchMode, minKw, maxKw, connectorType, ac_dc, showFavoritesFilter, favoriteIds]);
+  }, [searchQuery, runMapSearch]);
+
+  const handleSubmitMapSearch = useCallback(() => {
+    void runMapSearch(searchQuery);
+  }, [runMapSearch, searchQuery]);
 
 
   const toggleSearchMode = () => {
@@ -1329,6 +1342,7 @@ useEffect(() => {
         isSearching={isSearching}
         searchMode={searchMode}
         onToggleSearchMode={toggleSearchMode}
+        onSubmitSearch={handleSubmitMapSearch}
       />
 
       {/* Aviso de selección de origen para cuando estamos seleccionando el punto de origen de una ruta */}

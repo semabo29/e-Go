@@ -50,7 +50,7 @@ describe('TopBar (búsqueda mapa / estaciones)', () => {
       station: { id: 9, nom: 'E1', adreca: 'C A', municipi: 'BCN' },
     };
     const { getByText } = render(
-      <TopBar {...baseProps} searchQuery="xx" searchResults={[item]} onSelectResult={onSelectResult} />
+      <TopBar {...baseProps} searchQuery="xxx" searchResults={[item]} onSelectResult={onSelectResult} />
     );
     fireEvent.press(getByText('E1'));
     expect(onSelectResult).toHaveBeenCalledWith(item);
@@ -69,7 +69,7 @@ describe('TopBar (búsqueda mapa / estaciones)', () => {
       <TopBar
         {...baseProps}
         searchMode="addresses"
-        searchQuery="xx"
+        searchQuery="xxx"
         searchResults={[item]}
         onSelectResult={onSelectResult}
       />
@@ -125,6 +125,28 @@ describe('TopBar (búsqueda mapa / estaciones)', () => {
     expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
   });
 
+  test('submit del teclado llama onSubmitSearch', () => {
+    const onSubmitSearch = jest.fn();
+    const { getByTestId } = render(
+      <TopBar {...baseProps} searchQuery="Barcelona" onSubmitSearch={onSubmitSearch} />
+    );
+    fireEvent(getByTestId('topbar-search-input'), 'submitEditing');
+    expect(onSubmitSearch).toHaveBeenCalled();
+  });
+
+  test('no muestra desplegable con menos de 3 caracteres', () => {
+    const { queryByText } = render(
+      <TopBar
+        {...baseProps}
+        searchQuery="ab"
+        searchResults={[
+          { kind: 'station', station: { id: 1, nom: 'Visible', adreca: 'A', municipi: 'B' } },
+        ]}
+      />
+    );
+    expect(queryByText('Visible')).toBeNull();
+  });
+
   // Con consulta vacía no debe mostrarse resultados de búsqueda
   test('no muestra desplegable si searchQuery está vacío', () => {
     const { queryByText } = render(
@@ -153,7 +175,7 @@ describe('TopBar (búsqueda mapa / estaciones)', () => {
       station: { id: 2, adreca: 'C/ Test', municipi: 'Girona' },
     };
     const { getByText } = render(
-      <TopBar {...baseProps} searchQuery="x" searchResults={[item]} />
+      <TopBar {...baseProps} searchQuery="xxx" searchResults={[item]} />
     );
     expect(getByText('Punto de carga')).toBeTruthy();
   });
@@ -167,7 +189,7 @@ describe('TopBar (búsqueda mapa / estaciones)', () => {
       subtitle: '',
     };
     const { getByText, queryByText } = render(
-      <TopBar {...baseProps} searchMode="addresses" searchQuery="x" searchResults={[item]} />
+      <TopBar {...baseProps} searchMode="addresses" searchQuery="xxx" searchResults={[item]} />
     );
     expect(getByText('Plaça Catalunya')).toBeTruthy();
     expect(queryByText(',')).toBeNull();
@@ -181,7 +203,7 @@ describe('TopBar (búsqueda mapa / estaciones)', () => {
       { kind: 'station', station: { id: 2, nom: 'Est B', adreca: 'B', municipi: 'Y' } },
     ];
     const { getByText } = render(
-      <TopBar {...baseProps} searchQuery="e" searchResults={items} onSelectResult={onSelectResult} />
+      <TopBar {...baseProps} searchQuery="est" searchResults={items} onSelectResult={onSelectResult} />
     );
     fireEvent.press(getByText('Est B'));
     expect(onSelectResult).toHaveBeenCalledWith(items[1]);

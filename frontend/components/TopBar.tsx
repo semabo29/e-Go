@@ -22,6 +22,8 @@ interface TopBarProps {
   isSearching: boolean;
   searchMode: 'stations' | 'addresses';
   onToggleSearchMode: () => void;
+  /** Ejecuta la búsqueda al pulsar Enter (p. ej. si el debounce aún no ha disparado). */
+  onSubmitSearch?: () => void;
 }
 
 export default function TopBar({
@@ -33,6 +35,7 @@ export default function TopBar({
   isSearching,
   searchMode,
   onToggleSearchMode,
+  onSubmitSearch,
 }: TopBarProps) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -41,6 +44,10 @@ export default function TopBar({
   const sem = React.useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const styles = React.useMemo(() => createStyles(isDark, sem), [isDark, colorblindFriendly]);
   const isAddressMode = searchMode === 'addresses';
+
+  const handleSearchTextChange = (text: string) => {
+    setSearchQuery(text);
+  };
 
   return (
     <View style={styles.wrapper}>
@@ -57,11 +64,23 @@ export default function TopBar({
             style={styles.searchIcon}
           />
           <TextInput
+            testID="topbar-search-input"
             style={[styles.searchInput, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
             placeholder={isAddressMode ? t('topBar.searchAddress') : t('topBar.searchStations')}
             placeholderTextColor={isDark ? '#94a3b8' : '#888'}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchTextChange}
+            onChange={(event) => {
+              // En web, onChangeText a veces solo sincroniza al pulsar Enter.
+              if (Platform.OS === 'web') {
+                handleSearchTextChange(event.nativeEvent.text);
+              }
+            }}
+            onSubmitEditing={onSubmitSearch}
+            blurOnSubmit={false}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
             underlineColorAndroid="transparent"
           />
           {isSearching && <ActivityIndicator size="small" color={sem.accent} />}
@@ -95,7 +114,7 @@ export default function TopBar({
         </TouchableOpacity>
       </View>
 
-      {searchQuery.length > 0 && (
+      {(searchQuery.length >= 3 || isSearching) && (
         <View style={styles.dropdownContainer}>
           {searchResults.length > 0 ? (
             <FlatList
