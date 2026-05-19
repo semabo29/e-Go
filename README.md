@@ -137,24 +137,20 @@ npm run test:integration
 
 ## 🧪 E2E Testing (Frontend)
 
-### Jest (recomendado en CI)
-
-Prueba el flux **cercar punt de càrrega → clicar resultat → panell de l’estació** amb components reals (`TopBar`, `StationBottomSheet`):
+Desde la terminal (Jest, sin emulador ni backend en marcha):
 
 ```bash
 cd frontend
 npm run test:e2e
 ```
 
-Fitxers:
-- `frontend/tests/e2e/searchStationPanel.e2e.test.tsx` — cerca → panell estació
-- `frontend/tests/e2e/eventNavigationFlow.e2e.test.tsx` — panell → events → mapa → navegació
-
-### Maestro (dispositiu / emulador)
-
-Requereix usuari autenticat i app instal·lada. Veure `frontend/.maestro/README.md`.
+Un solo test:
 
 ```bash
-cd frontend
-maestro test .maestro/flows/search-station-opens-panel.yaml
+npm run test:e2e -- searchStationPanel
+npm run test:e2e -- eventNavigationFlow
 ```
+
+Archivos en `frontend/tests/e2e/`:
+- `searchStationPanel.e2e.test.tsx` — búsqueda → panel de estación
+- `eventNavigationFlow.e2e.test.tsx` — panel → eventos → mapa → navegación

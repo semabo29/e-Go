@@ -5,7 +5,6 @@
  * Aquí mockeamos lo que Jest no puede ejecutar (mapa nativo, GPS, login) y el fetch HTTP,
  * pero el flujo pasa por TopBar y StationBottomSheet reales (no mock del buscador).
  *
- * E2E en dispositivo sin mocks de UI: ver frontend/.maestro/ (opcional, requiere Maestro).
  */
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
