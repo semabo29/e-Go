@@ -356,7 +356,7 @@ export default function InicioScreen() {
       if (isNavigating) {
         locationSubscription.current = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.BestForNavigation,
+            accuracy: Location.Accuracy.BestForNavigation ?? 6,
             timeInterval: 1000,
             distanceInterval: 2,
           },

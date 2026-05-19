@@ -255,7 +255,7 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
   });
 
   // TC5
-  test('TC5: Iniciar el modo conducción 3D oculta el botón "Iniciar"', async () => {
+  test('TC5: Al iniciar ruta se entra automáticamente en modo navegación sin botón Iniciar', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert');
     const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
 
@@ -283,21 +283,11 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
       if (miUbicacionBtn?.onPress) miUbicacionBtn.onPress();
     });
 
-    // 4. El mock de MapViewDirections dispara el onReady y aparece el panel con "Iniciar"
-    const iniciarBtn = await waitFor(() => getByText('Iniciar'), { timeout: 5000 });
-    expect(iniciarBtn).toBeTruthy();
+    // 4. Verificamos que arranca la navegación automáticamente comprobando el botón de cerrar (close)
+    const closeBtn = await waitFor(() => getByText('close'), { timeout: 5000 });
+    expect(closeBtn).toBeTruthy();
 
-    // 5. Pulsamos "Iniciar" para pasar al modo 3D (isDrivingMode = true)
-    await act(async () => {
-      fireEvent.press(iniciarBtn);
-    });
-
-    // 6. Verificamos que el botón "Iniciar" desaparece de la interfaz
-    await waitFor(
-      () => {
-        expect(queryByText('Iniciar')).toBeNull();
-      },
-      { timeout: 5000 }
-    );
+    // 5. Verificamos que NO existe el botón "Iniciar" (ya que la vista 3D es automática)
+    expect(queryByText('Iniciar')).toBeNull();
   });
 });

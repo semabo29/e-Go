@@ -35,6 +35,10 @@ jest.mock('expo-router', () => ({
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: () => mockRequestForegroundPermissionsAsync(),
   getCurrentPositionAsync: () => mockGetCurrentPositionAsync(),
+  watchPositionAsync: () => Promise.resolve({ remove: jest.fn() }), // Afegit pel test de ruta
+  Accuracy: {
+    BestForNavigation: 6,
+  }
 }));
 
 // Mock explícito para controlar selección de imagen en tests del formulario de incidencias.
