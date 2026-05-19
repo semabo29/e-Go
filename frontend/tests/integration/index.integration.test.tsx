@@ -597,6 +597,80 @@ describe('InicioScreen map and station panel', () => {
     expect(queryByText('Comentario')).toBeNull();
     alertSpy.mockRestore();
   });
+
+  it('refresca estaciones y cambia el botón tras incidencia solucionada si operatiu pasa a true', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    let stationsFetchCount = 0;
+
+    const stationBase = {
+      id: 1,
+      nom: 'Punt 1',
+      latitud: '41.3901',
+      longitud: '2.1540',
+      municipi: 'Barcelona',
+      adreca: 'Carrer de Test',
+      kw: '50',
+      promotor: 'Ajuntament',
+      ac_dc: 'DC',
+      tipus_connexio: 'CCS',
+    };
+
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url.includes('/favorites')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        } as Response);
+      }
+      if (url.includes('/stations')) {
+        stationsFetchCount += 1;
+        const operatiu = stationsFetchCount >= 2;
+        return Promise.resolve({
+          ok: true,
+          json: async () => [{ ...stationBase, operatiu }],
+        } as Response);
+      }
+      if (url.includes('/skins/conductor/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000,
+          }),
+        } as Response);
+      }
+      if (url.includes('/incidencias')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ id: 321 }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    }) as unknown as typeof fetch;
+
+    const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('station-marker')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('station-marker'));
+    expect(getByText('Reportar incidencia solucionada')).toBeTruthy();
+
+    fireEvent.press(getByText('Reportar incidencia solucionada'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Incidencia reportada',
+        'Se ha marcado la estación como operativa.'
+      );
+      expect(stationsFetchCount).toBeGreaterThanOrEqual(2);
+      expect(getByText('Reportar incidencia')).toBeTruthy();
+      expect(queryByText('Reportar incidencia solucionada')).toBeNull();
+    });
+
+    alertSpy.mockRestore();
+  });
 });
 
 /** Simula layout del carrusel de eventos */

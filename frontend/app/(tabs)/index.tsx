@@ -625,7 +625,7 @@ export default function InicioScreen() {
     }
   }, [pendingAutoStart, selectedStation, userLocation, isCharging]);
 
-  const fetchEstaciones = async () => {
+  const fetchEstaciones = async (): Promise<Estacion[]> => {
     setLoadingEstaciones(true);
     try {
       let queryParams = [];
@@ -640,14 +640,24 @@ export default function InicioScreen() {
       const response = await appFetch(`/stations${queryString}`);
       const data = await response.json();
 
-      setEstaciones(Array.isArray(data) ? data : []);
-
+      const stations = Array.isArray(data) ? data : [];
+      setEstaciones(stations);
+      return stations;
     } catch (error) {
       console.error('Error cargando estaciones:', error);
       setEstaciones([]); // Si falla la red, vaciamos para evitar errores de .map()
+      return [];
     } finally {
         setLoadingEstaciones(false);
 
+    }
+  };
+
+  const refreshStationsAfterIncidencia = async (stationId: number) => {
+    const stations = await fetchEstaciones();
+    const updated = stations.find((e) => e.id === stationId);
+    if (updated) {
+      setSelectedStation(updated);
     }
   };
   const [markerRefreshKey, setMarkerRefreshKey] = useState(Date.now());
@@ -1078,11 +1088,12 @@ useEffect(() => {
       return;
     }
 
+    const stationId = selectedStation.id;
     setIncidenciaSubmitting(true);
     try {
       const formData = buildIncidenciaFormData({
         conductor: user.id,
-        estacio: selectedStation.id,
+        estacio: stationId,
         comentari: incidenciaComentario.trim(),
         tipus: incidenciaTipo,
       });
@@ -1104,6 +1115,7 @@ useEffect(() => {
         throw new Error(result.error || t('incident.registerError'));
       }
 
+      await refreshStationsAfterIncidencia(stationId);
       Alert.alert(t('incident.sentTitle'), t('incident.sentBody'));
       handleCloseIncidenciaForm();
     } catch (error) {
@@ -1117,8 +1129,9 @@ useEffect(() => {
   const handleSolvedIncidenciaSubmit = async () => {
     if (!user || !selectedStation) return;
 
+    const stationId = selectedStation.id;
     try {
-      const result = await submitSolvedIncidencia(user.id, selectedStation.id);
+      const result = await submitSolvedIncidencia(user.id, stationId);
       if (!result.ok && result.conflict) {
         Alert.alert(t('incident.alreadyReportedTitle'), t('incident.alreadyReported'));
         return;
@@ -1127,6 +1140,7 @@ useEffect(() => {
         throw new Error(result.error || t('incident.solvedRegisterError'));
       }
 
+      await refreshStationsAfterIncidencia(stationId);
       Alert.alert(t('incident.reportedTitle'), t('incident.reportedBody'));
     } catch (error) {
       const message = error instanceof Error ? error.message : t('incident.solvedReportError');
