@@ -216,6 +216,26 @@ const getClosestStepIndex = (
   return closestStepIdx;
 };
 
+// Funció totalment segura que neteja l'HTML sense usar Expressions Regulars.
+// Resol el Security Hotspot del SonarQube evitant vulnerabilitats ReDoS.
+const stripHtmlTags = (text: string): string => {
+  if (!text) return '';
+  let cleanText = '';
+  let insideTag = false;
+
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '<') {
+      insideTag = true;
+    } else if (text[i] === '>' && insideTag) {
+      insideTag = false;
+    } else if (!insideTag) {
+      cleanText += text[i];
+    }
+  }
+
+  return cleanText;
+};
+
 export default function InicioScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -379,7 +399,7 @@ export default function InicioScreen() {
         const leg = data.routes[0].legs[0]; // <--- Capturem la branca de la ruta
 
         const steps = leg.steps.map((step: any) => ({
-          instruction: step.html_instructions.replace(/<[^>]*>/g, ''),
+          instruction: stripHtmlTags(step.html_instructions),
           maneuver: step.maneuver || '',
           location: {
             latitude: step.start_location.lat,
