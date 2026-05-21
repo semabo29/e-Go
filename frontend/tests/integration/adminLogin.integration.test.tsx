@@ -116,10 +116,10 @@ describe('AdminLoginScreen', () => {
     await findByText(/servidor/);
   });
 
-  test('back link navigates to login', async () => {
+  test('back link navigates to app root', async () => {
     const { getByText } = render(<AdminLoginScreen />);
     fireEvent.press(getByText('Volver al login'));
-    expect(mockReplace).toHaveBeenCalledWith('/login');
+    expect(mockReplace).toHaveBeenCalledWith('/');
   });
 
   test('login does not call API when token not in response', async () => {

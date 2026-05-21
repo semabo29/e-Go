@@ -117,10 +117,10 @@ describe('CompanyLoginScreen', () => {
     await findByText(/servidor/);
   });
 
-  test('back link navigates to login', () => {
+  test('back link navigates to app root', () => {
     const { getByText } = render(<CompanyLoginScreen />);
     fireEvent.press(getByText('Volver al login'));
-    expect(mockReplace).toHaveBeenCalledWith('/login');
+    expect(mockReplace).toHaveBeenCalledWith('/');
   });
 
   test('login without company in response does not navigate', async () => {
