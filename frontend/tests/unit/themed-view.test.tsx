@@ -3,7 +3,7 @@ import { ThemedView } from '../../components/themed-view';
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 
 // Mockeamos solo el hook, no el componente, para que el componente sea el REAL
 jest.mock('@/hooks/use-theme-color', () => ({

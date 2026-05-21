@@ -248,6 +248,7 @@ export default function VehiclesScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('car.name')}</Text>
             <TextInput
+              testID="vehicle-name-input"
               style={[
                 styles.input, focusedInput === 'nom' && styles.inputFocused,
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
@@ -266,6 +267,7 @@ export default function VehiclesScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('car.maxPower')}</Text>
             <TextInput
+              testID="vehicle-power-input"
               style={[
                 styles.input, focusedInput === 'max' && styles.inputFocused,
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
@@ -288,6 +290,7 @@ export default function VehiclesScreen() {
               {['AC', 'DC'].map((type) => (
                 <TouchableOpacity
                   key={type}
+                  testID={`current-type-${type.toLowerCase()}`}
                   style={[
                     styles.typeBtn,
                     acDc === type && styles.typeBtnActive
@@ -313,6 +316,7 @@ export default function VehiclesScreen() {
               {CONNECTOR_TYPES.map((type) => (
                 <TouchableOpacity
                   key={type}
+                  testID={`connector-type-${type.replace(/\s+/g, '-').toLowerCase()}`}
                   style={[
                     styles.chip,
                     connectorType === type && styles.chipActive
@@ -362,6 +366,7 @@ export default function VehiclesScreen() {
 
             {/* Botó per tancar / Creueta */}
             <TouchableOpacity
+              testID="modal-close-button"
               style={styles.modalCloseButton}
               onPress={() => setErrorMessage('')}
             >
