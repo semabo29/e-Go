@@ -148,10 +148,16 @@ export default function MyFavoriteStationsScreen() {
 
   // --- BOTONS D'ACCIÓ ---
 
-  const handleComoLlegar = () => {
-    // Aquest botó està temporalment desactivat
-    // L'altre desenvolupador implementarà aquesta funció
-    console.log('Botón "Cómo llegar" en desarrollo');
+  // Funció per demanar ruta des de la llista de favorits
+  const handleStartRoute = (station: Station) => {
+    router.navigate({
+      pathname: '/', // Això ens porta a la pantalla principal (index.tsx)
+      params: {
+        action: 'start_route_from_fav',
+        destLat: station.latitud,
+        destLng: station.longitud,
+      }
+    });
   };
 
   const handleCargarVehiculo = (station: Station) => {
@@ -207,10 +213,10 @@ export default function MyFavoriteStationsScreen() {
 
         {/* --- FILA DE BOTONS D'ACCIÓ --- */}
         <View style={styles.actionButtonsRow}>
-          {/* Botó Cómo Llegar (Actualment inactiu) */}
+          {/* Botó Cómo Llegar */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.routeBtn]}
-            onPress={handleComoLlegar}
+            onPress={() => handleStartRoute(item)}
             activeOpacity={0.8}
           >
             <MaterialIcons name="directions" size={16} color={sem.accent} />

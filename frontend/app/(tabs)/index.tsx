@@ -541,49 +541,82 @@ export default function InicioScreen() {
 
   //Funcion para empezar la navegacion
   const handleStartNavigation = (coordenadas: {latitude: number, longitude: number}) => {
-      setRouteCoords([]);
-      setRouteInfo(null);
-      setRouteDestination(coordenadas);
-      const originResolution = resolveNavigationOrigin(routeOriginPreset);
-      if (originResolution.type === 'preset') {
-        setRouteOrigin(originResolution.origin);
-        setRouteOriginPreset(null);
-        setSelectedLocationLabel(null);
-        setIsNavigating(true);
-        return;
-      }
-      //Preguntamos al usuario el origen
-      Alert.alert(
-        t('navigation.startRouteTitle'),
-        t('navigation.startRouteBody'),
-        [
-          {
-            text: t('navigation.myLocation'),
-            onPress: () => {
-              if (userLocation && userLocation.coords) {
-                void activateNavigation(() => {
-                  setRouteOrigin({
-                    latitude: userLocation.coords.latitude,
-                    longitude: userLocation.coords.longitude,
-                  });
-                  setIsNavigating(true);
-                });
-              } else {
-                Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
+    setRouteCoords([]);
+    setRouteInfo(null);
+    setRouteDestination(coordenadas);
+    const originResolution = resolveNavigationOrigin(routeOriginPreset);
+    if (originResolution.type === 'preset') {
+      setRouteOrigin(originResolution.origin);
+      setRouteOriginPreset(null);
+      setSelectedLocationLabel(null);
+      setIsNavigating(true);
+      return;
+    }
+    //Preguntamos al usuario el origen
+    Alert.alert(
+      t('navigation.startRouteTitle'),
+      t('navigation.startRouteBody'),
+      [
+        {
+          text: t('navigation.myLocation'),
+          onPress: async () => {
+            // Si ja tenim la ubicació carregada la fem servir ràpid
+            let locToUse = userLocation;
+
+            // Si està buida (venim de favorits o el GPS va lent), la demanem de forma forçada
+            if (!locToUse || !locToUse.coords) {
+              try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                  // getLastKnown és gairebé instantani i evita l'error de l'emulador
+                  locToUse = await Location.getLastKnownPositionAsync({}) || await Location.getCurrentPositionAsync({});
+                }
+              } catch (e) {
+                console.warn("Fallo obteniendo GPS on-demand:", e);
               }
-            },
-          },
-          {
-            text: t('navigation.searchOtherOrigin'),
-            onPress: () => {
-              setIsSelectingOrigin(true); //Activamos el modo selección de punto de origen
-              //Alert.alert("Modo búsqueda", "Busca un lugar en la barra superior para usarlo como origen.");
+            }
+
+            // Un cop assegurats, llancem la ruta
+            if (locToUse && locToUse.coords) {
+              void activateNavigation(() => {
+                setRouteOrigin({
+                  latitude: locToUse.coords!.latitude, // L'exclamació diu a TypeScript que és segur
+                  longitude: locToUse.coords!.longitude,
+                });
+                setIsNavigating(true);
+              });
+            } else {
+              Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
             }
           },
-          { text: t('common.cancel'), style: "cancel" }
-        ]
-      );
+        },
+        {
+          text: t('navigation.searchOtherOrigin'),
+          onPress: () => {
+            setIsSelectingOrigin(true); //Activamos el modo selección de punto de origen
+            //Alert.alert("Modo búsqueda", "Busca un lugar en la barra superior para usarlo como origen.");
+          }
+        },
+        { text: t('common.cancel'), style: "cancel" }
+      ]
+    );
   };
+
+  // --- INICIAR RUTA DES DE LA LLISTA DE FAVORITS ---
+  useEffect(() => {
+    if (params.action === 'start_route_from_fav' && params.destLat && params.destLng) {
+
+      // 1. Aprofitem la TEVA funció existent que ja fa tota la màgia del pop-up i neteja!
+      handleStartNavigation({
+        latitude: parseFloat(params.destLat as string),
+        longitude: parseFloat(params.destLng as string)
+      });
+
+      // 2. Netejem el paràmetre ràpidament perquè no salti l'alerta en bucle
+      router.setParams({ action: '' });
+    }
+  }, [params.action, params.destLat, params.destLng]);
+
   // Función para manejar el inicio de una sesión de carga
   const handleStartCharging = async (): Promise<boolean> => {
     if (!user || !selectedStation || !userLocation) {
@@ -1745,16 +1778,18 @@ useEffect(() => {
                   coordinate={selectedLocation}
                   pinColor={sem.mapCustomLocation}
                   title={selectedLocationLabel || t('home.selectedLocationTitle')}
+                  cluster={false}
                 />
             )}
 
             {/*EL DESTINO de la ruta: Para que se vea a dónde vamos cuando se ocultan los demás */}
-                {isNavigating && routeDestination && (
-                  <Marker
-                    coordinate={routeDestination}
-                    title={t('home.selectedLocationTitle')}
-                    pinColor={sem.mapRouteDestination}
-                  />
+            {isNavigating && routeDestination && (
+              <Marker
+                coordinate={routeDestination}
+                title={t('home.selectedLocationTitle')}
+                pinColor={sem.mapRouteDestination}
+                cluster={false}
+              />
             )}
 
             {/* Trazado de la ruta (Solo visible si estamos navegando) */}
@@ -1823,6 +1858,39 @@ useEffect(() => {
               tracksViewChanges={trackMarker}
               // @ts-ignore
               cluster={false}
+
+              // --- NOU: Clic intel·ligent del cotxe ---
+              onPress={(e: any) => {
+                e.stopPropagation(); // Evitem que el clic passi al mapa i crei un pin lliure
+
+                let closestStation = null;
+                let minDistance = Infinity;
+
+                // Busquem si hi ha alguna estació enganxada a on som ara mateix
+                for (const est of displayedStations) {
+                  const dist = calculateDistanceInMeters(
+                    userLocation.coords.latitude,
+                    userLocation.coords.longitude,
+                    parseFloat(est.latitud),
+                    parseFloat(est.longitud)
+                  );
+                  if (dist < minDistance) {
+                    minDistance = dist;
+                    closestStation = est;
+                  }
+                }
+
+                // Si l'estació és a menys de 30 metres, l'obrim de cop!
+                if (closestStation && minDistance < 30) {
+                  setSelectedStation(closestStation);
+                  setSelectedLocation(null);
+                  setRouteOriginPreset(null);
+                  setSelectedLocationLabel(null);
+                  setRouteCoords([]);
+                  setIsNavigating(false);
+                  setRouteInfo(null);
+                }
+              }}
             >
               <View style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
                 <Image 
@@ -1842,7 +1910,7 @@ useEffect(() => {
         </MapView>
 
         {/* Botó flotant per centrar el mapa en la teva ubicació actual */}
-        {!isNavigating && (
+        {!isNavigating && !selectedStation && (
           <TouchableOpacity
             style={styles.centerMapButton}
             onPress={centerMapOnUser}
@@ -2493,7 +2561,7 @@ const createStyles = (isDark: boolean, sem: SemanticColors) => {
   },
   centerMapButton: {
     position: 'absolute',
-    top: 16,
+    top: 120,
     right: 16,
     zIndex: 10,
     width: 48,
