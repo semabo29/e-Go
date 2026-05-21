@@ -594,6 +594,14 @@ export default {
     validationIncomplete:
       'Els vehicles han d’estar completament especificats (nom, potència, tipus de connector i de corrent)',
   },
+  egg: {
+    score: 'Puntuació',
+    tap: 'Toca per canviar de carril',
+    avoid: 'Evita els obstacles!',
+    start: 'INICIA',
+    gameOver: 'FI DEL JOC',
+    playAgain: 'TORNAR A JUGAR',
+  },
   favorites: {
     loadError: 'No s’han pogut carregar els preferits',
     connectionError: 'Error de connexió',

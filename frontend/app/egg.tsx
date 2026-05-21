@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
+  Image,
   Text,
   TouchableOpacity,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 const LANE_WIDTH = (width*0.9) / 2;
@@ -33,6 +35,7 @@ interface VoltixGameProps {
 }
 
 export default function egg({ visible, onClose, theme }: VoltixGameProps) {
+  const { t } = useTranslation();
   const [playerLane, setPlayerLane] = useState(0);
   const [obstacles, setObstacles] = useState<Obstacle[]>([]);
   const [score, setScore] = useState(0);
@@ -171,7 +174,7 @@ export default function egg({ visible, onClose, theme }: VoltixGameProps) {
         <View style={[styles.gameContainer, { backgroundColor: theme.surface }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.score, { color: theme.title }]}>Score: {score}</Text>
+            <Text style={[styles.score, { color: theme.title }]}>{t('egg.score')}: {score}</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <MaterialIcons name="close" size={24} color={theme.title} />
             </TouchableOpacity>
@@ -186,20 +189,6 @@ export default function egg({ visible, onClose, theme }: VoltixGameProps) {
             {/* Lane dividers */}
             <View style={[styles.laneDivider, { left: LANE_WIDTH }]} />
 
-            {/* Player Car */}
-            <View
-              style={[
-                styles.car,
-                {
-                  left: playerLane === 0 ? LANE_WIDTH / 2 - CAR_SIZE / 2 : LANE_WIDTH + LANE_WIDTH / 2 - CAR_SIZE / 2,
-                  bottom: 15,
-                  backgroundColor: theme.accent,
-                },
-              ]}
-            >
-              <MaterialIcons name="directions-car" size={30} color="#fff" />
-            </View>
-
             {/* Obstacles */}
             {obstacles.map(obs => (
               <View
@@ -213,22 +202,40 @@ export default function egg({ visible, onClose, theme }: VoltixGameProps) {
                   },
                 ]}
               >
-                <MaterialIcons name="warning" size={24} color="#fff" />
+                <MaterialIcons name="oil-barrel" size={24} color="#fff" />
               </View>
             ))}
+
+            {/* Player Car */}
+            <View
+              style={[
+                styles.car,
+                {
+                  left: playerLane === 0 ? LANE_WIDTH / 2 - CAR_SIZE / 2 : LANE_WIDTH + LANE_WIDTH / 2 - CAR_SIZE / 2,
+                  bottom: 15,
+                },
+              ]}
+            >
+              <Image 
+                source={require('../assets/images/voltix.png')} 
+                style={{ width: '135%', height: '135%' }} 
+                resizeMode="contain"
+                fadeDuration={0}
+              />
+            </View>
 
             {/* Start Screen */}
             {!gameStarted && (
               <View style={styles.overlay}>
                 <Text style={[styles.overlayTitle, { color: theme.title }]}>VOLTIX</Text>
                 <Text style={[styles.overlayText, { color: theme.title }]}>
-                  Tap to switch lanes
+                  {t('egg.tap')}
                 </Text>
                 <Text style={[styles.overlayText, { color: theme.title }]}>
-                  Avoid the obstacles!
+                  {t('egg.avoid')}
                 </Text>
                 <TouchableOpacity style={[styles.startButton, { backgroundColor: theme.accent }]} onPress={handlePress}>
-                  <Text style={styles.startButtonText}>START</Text>
+                  <Text style={styles.startButtonText}>{t('egg.start')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -236,12 +243,12 @@ export default function egg({ visible, onClose, theme }: VoltixGameProps) {
             {/* Game Over Screen */}
             {gameOver && (
               <View style={styles.overlay}>
-                <Text style={[styles.overlayTitle, { color: theme.danger }]}>GAME OVER</Text>
+                <Text style={[styles.overlayTitle, { color: theme.danger }]}>{t('egg.gameOver')}</Text>
                 <Text style={[styles.overlayText, { color: theme.title }]}>
-                  Score: {score}
+                  {t('egg.score')}: {score}
                 </Text>
                 <TouchableOpacity style={[styles.startButton, { backgroundColor: theme.accent }]} onPress={handlePress}>
-                  <Text style={styles.startButtonText}>PLAY AGAIN</Text>
+                  <Text style={styles.startButtonText}>{t('egg.playAgain')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -312,7 +319,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.54)',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,

@@ -20,7 +20,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
-import egg from '../egg';
 import Egg from '../egg';
 
 interface Vehicle {

@@ -593,6 +593,14 @@ export default {
     validationIncomplete:
       'Los vehículos deben estar completamente especificados (nombre, potencia, tipo de conector y de corriente)',
   },
+  egg: {
+    score: 'Puntuación',
+    tap: 'Toca para cambiar de carril',
+    avoid: 'Evita los obstáculos!',
+    start: 'EMPEZAR',
+    gameOver: 'FIN DEL JUEGO',
+    playAgain: 'VOLVER A JUGAR',
+  },
   favorites: {
     loadError: 'No se pudieron cargar los favoritos',
     connectionError: 'Error de conexión',

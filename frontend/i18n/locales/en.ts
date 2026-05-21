@@ -593,6 +593,14 @@ export default {
     validationIncomplete:
       'Vehicles must be fully specified (name, power, connector type and current type)',
   },
+  egg: {
+    score: 'Score',
+    tap: 'Tap to switch lanes',
+    avoid: 'Avoid the obstacles!',
+    start: 'START',
+    gameOver: 'GAME OVER',
+    playAgain: 'PLAY AGAIN',
+  },
   favorites: {
     loadError: 'Could not load favorites',
     connectionError: 'Connection error',
