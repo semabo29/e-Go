@@ -485,7 +485,7 @@ export default function InicioScreen() {
     ) => {
     try {
       const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${apiKey}&language=ca`;
+      let url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${apiKey}&language=ca`;
       if (waypoint) {//Añadimos la parada a la URL si hay
           url += `&waypoints=${waypoint.latitude},${waypoint.longitude}`;
       }
@@ -1904,7 +1904,7 @@ useEffect(() => {
 
             {/* Trazado de la ruta (Solo visible si estamos navegando) */}
                 {isNavigating && routeOrigin && routeDestination && (
-                  <> {/* <--- ¡AQUÍ ABRIMOS EL FRAGMENTO! */}
+                  <>
                     <MapViewDirections
                       key={`directions-${routeOrigin.latitude}-${routeOrigin.longitude}`}
                       origin={routeOrigin}
@@ -2462,7 +2462,6 @@ useEffect(() => {
             </View>
           </View>
         </Modal>
-
     </View>
   );
 }
