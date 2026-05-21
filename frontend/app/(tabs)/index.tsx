@@ -1778,6 +1778,7 @@ useEffect(() => {
                   coordinate={selectedLocation}
                   pinColor={sem.mapCustomLocation}
                   title={selectedLocationLabel || t('home.selectedLocationTitle')}
+                  // @ts-expect-error
                   cluster={false}
                 />
             )}
@@ -1788,6 +1789,7 @@ useEffect(() => {
                 coordinate={routeDestination}
                 title={t('home.selectedLocationTitle')}
                 pinColor={sem.mapRouteDestination}
+                // @ts-expect-error
                 cluster={false}
               />
             )}
