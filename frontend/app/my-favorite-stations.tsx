@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { appFetch } from '@/services/appFetch';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
@@ -31,6 +32,7 @@ interface Station {
 }
 
 export default function MyFavoriteStationsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
   const [favorites, setFavorites] = useState<Station[]>([]);
@@ -65,11 +67,11 @@ export default function MyFavoriteStationsScreen() {
         setFavorites(Array.isArray(data) ? data : []);
         setSelectedIds(new Set());
       } else {
-        Alert.alert('Error', 'No se pudieron cargar los favoritos');
+        Alert.alert(t('common.error'), t('favorites.loadError'));
       }
     } catch (error) {
       console.error('Error fetching favorites:', error);
-      Alert.alert('Error', 'Error de conexión');
+      Alert.alert(t('common.error'), t('favorites.connectionError'));
     } finally {
       setLoading(false);
     }
@@ -101,17 +103,19 @@ export default function MyFavoriteStationsScreen() {
 
   const removeSelected = async () => {
     if (selectedIds.size === 0) {
-      Alert.alert('Atención', 'Selecciona al menos una estación');
+      Alert.alert(t('common.attention'), t('favorites.selectOne'));
       return;
     }
 
     Alert.alert(
-      'Confirmar eliminación',
-      `¿Eliminar ${selectedIds.size} ${selectedIds.size > 1 ? 'estaciones' : 'estación'}?`,
+      t('favorites.confirmDeleteTitle'),
+      selectedIds.size > 1
+        ? t('favorites.confirmDeleteMany', { count: selectedIds.size })
+        : t('favorites.confirmDeleteOne'),
       [
-        { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
+        { text: t('common.cancel'), onPress: () => {}, style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           onPress: async () => {
             setDeleting(true);
             try {
@@ -129,13 +133,13 @@ export default function MyFavoriteStationsScreen() {
               if (allSuccess) {
                 setFavorites(favorites.filter((f) => !selectedIds.has(f.id)));
                 setSelectedIds(new Set());
-                Alert.alert('Éxito', 'Estaciones eliminadas correctamente');
+                Alert.alert(t('common.success'), t('favorites.deletedOk'));
               } else {
-                Alert.alert('Error', 'Algunas estaciones no se pudieron eliminar');
+                Alert.alert(t('common.error'), t('favorites.partialDelete'));
               }
             } catch (error) {
               console.error('Error removing favorites:', error);
-              Alert.alert('Error', 'Error al eliminar estaciones');
+              Alert.alert(t('common.error'), t('favorites.deleteFailed'));
             } finally {
               setDeleting(false);
             }
@@ -191,7 +195,7 @@ export default function MyFavoriteStationsScreen() {
 
           <View style={styles.stationInfo}>
             <Text style={styles.stationName} numberOfLines={1}>
-              {item.nom || 'Estación sin nombre'}
+              {item.nom || t('home.stationNoName')}
             </Text>
             {item.municipi && (
               <Text style={styles.stationDetail} numberOfLines={1}>
@@ -220,7 +224,7 @@ export default function MyFavoriteStationsScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="directions" size={16} color={sem.accent} />
-            <Text style={styles.routeBtnText}>Cómo llegar</Text>
+            <Text style={styles.routeBtnText}>{t('favorites.howToArrive')}</Text>
           </TouchableOpacity>
 
           {/* Botó Cargar Vehículo */}
@@ -230,7 +234,7 @@ export default function MyFavoriteStationsScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="bolt" size={16} color="#fff" />
-            <Text style={styles.chargeBtnText}>Cargar</Text>
+            <Text style={styles.chargeBtnText}>{t('favorites.charge')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -243,7 +247,7 @@ export default function MyFavoriteStationsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={sem.accent} />
-          <Text style={styles.loadingText}>Cargando estaciones...</Text>
+          <Text style={styles.loadingText}>{t('favorites.loading')}</Text>
         </View>
       </View>
     );
@@ -261,9 +265,9 @@ export default function MyFavoriteStationsScreen() {
           <MaterialIcons name="close" size={24} color="#1f2937" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Mis Estaciones de Carga</Text>
+          <Text style={styles.headerTitle}>{t('favorites.title')}</Text>
           <Text style={styles.headerSubtitle}>
-            {favorites.length} {favorites.length !== 1 ? 'estaciones' : 'estación'}
+            {t('favorites.headerSubtitle', { count: favorites.length })}
           </Text>
         </View>
       </View>
@@ -272,10 +276,8 @@ export default function MyFavoriteStationsScreen() {
       {favorites.length === 0 ? (
         <View style={styles.centerContent}>
           <MaterialIcons name="favorite-border" size={64} color="#cbd5e1" />
-          <Text style={styles.emptyText}>No tienes estaciones favoritas</Text>
-          <Text style={styles.emptySubtext}>
-            Añade estaciones a favoritos desde el mapa
-          </Text>
+          <Text style={styles.emptyText}>{t('favorites.empty')}</Text>
+          <Text style={styles.emptySubtext}>{t('favorites.emptyHint')}</Text>
         </View>
       ) : (
         <>
@@ -308,8 +310,8 @@ export default function MyFavoriteStationsScreen() {
                 />
                 <Text style={styles.selectAllText}>
                   {selectedIds.size === favorites.length
-                    ? 'Deseleccionar todo'
-                    : 'Seleccionar todo'}
+                    ? t('favorites.deselectAll')
+                    : t('favorites.selectAll')}
                 </Text>
               </TouchableOpacity>
 
@@ -325,7 +327,7 @@ export default function MyFavoriteStationsScreen() {
                     <>
                       <MaterialIcons name="delete" size={20} color="#fff" />
                       <Text style={styles.removeButtonText}>
-                        Eliminar ({selectedIds.size})
+                        {t('favorites.remove', { count: selectedIds.size })}
                       </Text>
                     </>
                   )}

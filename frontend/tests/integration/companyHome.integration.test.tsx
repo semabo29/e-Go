@@ -47,6 +47,9 @@ jest.mock('@/components/stations/ManualStationCard', () => ({
 }));
 
 import CompanyHomeScreen from '@/app/company-home';
+import es from '@/tests/helpers/localeEs';
+
+const L = es.companyHome;
 
 const mockProfile: any = {
   id: 1,
@@ -87,7 +90,7 @@ describe('CompanyHomeScreen', () => {
   test('shows error when no company token', async () => {
     mockGetPrivilegedToken.mockResolvedValue(null);
     const { findByText } = render(<CompanyHomeScreen />);
-    await findByText('No hay sesion de empresa');
+    await findByText(L.noSession);
   });
 
   test('shows company profile after loading', async () => {
@@ -112,7 +115,7 @@ describe('CompanyHomeScreen', () => {
     mockFetchCompanyProfile.mockResolvedValue({ ...mockProfile, nombre: null });
     mockListCompanyStations.mockResolvedValue([]);
     const { findByText } = render(<CompanyHomeScreen />);
-    await findByText('Sin nombre');
+    await findByText(L.noName);
   });
 
   test('shows stations list', async () => {
@@ -138,7 +141,7 @@ describe('CompanyHomeScreen', () => {
     mockClearPrivilegedSession.mockResolvedValue(undefined);
     const { findByText, getByText } = render(<CompanyHomeScreen />);
     await findByText('Mi Empresa');
-    fireEvent.press(getByText(/Cerrar sesion empresa/));
+    fireEvent.press(getByText(L.logout));
     await waitFor(() => {
       expect(mockClearPrivilegedSession).toHaveBeenCalledWith('company');
       expect(mockReplace).toHaveBeenCalledWith('/company-login');
@@ -148,8 +151,8 @@ describe('CompanyHomeScreen', () => {
   test('error button navigates to company-login', async () => {
     mockGetPrivilegedToken.mockResolvedValue(null);
     const { findByText, getByText } = render(<CompanyHomeScreen />);
-    await findByText('No hay sesion de empresa');
-    fireEvent.press(getByText(/Ir al login empresa/));
+    await findByText(L.noSession);
+    fireEvent.press(getByText(L.goLogin));
     expect(mockReplace).toHaveBeenCalledWith('/company-login');
   });
 

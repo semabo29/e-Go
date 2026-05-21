@@ -24,6 +24,9 @@ jest.mock('@/services/adminUserModeration', () => ({
 }));
 
 import AdminUsersScreen from '@/app/admin-users';
+import es from '@/tests/helpers/localeEs';
+
+const L = es.adminUsers;
 
 const mockUser = {
   id: 1,
@@ -57,7 +60,7 @@ describe('AdminUsersScreen', () => {
   test('shows error when no admin token', async () => {
     mockGetPrivilegedToken.mockResolvedValue(null);
     const { findByText } = render(<AdminUsersScreen />);
-    await findByText('No hay sesion admin');
+    await findByText(L.noSession);
   });
 
   test('shows error when privilegedFetch returns unauthorized', async () => {
@@ -128,7 +131,7 @@ describe('AdminUsersScreen', () => {
     await findByText('testuser');
     fireEvent.changeText(getByPlaceholderText(/Nombre, email/), 'zzznomatch');
     await waitFor(() => {
-      expect(getByText(/Ningun usuario/)).toBeTruthy();
+      expect(getByText(L.noSearchResults)).toBeTruthy();
     });
   });
 
@@ -207,7 +210,7 @@ describe('AdminUsersScreen', () => {
   test('error login button navigates to admin-login', async () => {
     mockGetPrivilegedToken.mockResolvedValue(null);
     const { findByText, getByText } = render(<AdminUsersScreen />);
-    await findByText('No hay sesion admin');
+    await findByText(L.noSession);
     fireEvent.press(getByText('Ir al login admin'));
     expect(mockReplace).toHaveBeenCalledWith('/admin-login');
   });

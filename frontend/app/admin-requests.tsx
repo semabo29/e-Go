@@ -1,25 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { StationRequestCard } from '@/components/stations/StationRequestCard';
 import { StationRequest } from '@/components/stations/types';
-import { approveRequest, listPendingRequests, rejectRequest } from '@/services/stationModeration';
+import type { TFunction } from 'i18next';
 
-const PAYLOAD_FIELD_LABELS: Record<string, string> = {
-  nom: 'Nombre',
-  latitud: 'Latitud',
-  longitud: 'Longitud',
-  kw: 'Potencia (kW)',
-  ac_dc: 'AC/DC',
-  tipus_connexio: 'Tipo de conexion',
-  tipus_velocitat: 'Tipo de velocidad',
-  adreca: 'Direccion',
-  municipi: 'Municipio',
-  provincia: 'Provincia',
-  promotor: 'Promotor/gestor',
-  acces: 'Acceso',
-};
+import { approveRequest, listPendingRequests, rejectRequest } from '@/services/stationModeration';
 
 /** Orden de visualizacion: provincia arriba (tras direccion/municipio); promotor siempre al final. */
 const PAYLOAD_DISPLAY_ORDER = [
@@ -51,7 +39,7 @@ function formatSinglePayloadValue(v: unknown): string | null {
 }
 
 /** Lista fija de campos en orden; los que no vengan en el payload se muestran como Vacío. */
-function formatPayloadRows(payload: Record<string, unknown> | undefined): {
+function formatPayloadRows(payload: Record<string, unknown> | undefined, t: TFunction): {
   key: string;
   label: string;
   value: string;
@@ -65,8 +53,8 @@ function formatPayloadRows(payload: Record<string, unknown> | undefined): {
     const empty = str === null;
     return {
       key,
-      label: PAYLOAD_FIELD_LABELS[key] ?? key,
-      value: empty ? 'Vacío' : str,
+      label: t(`adminRequests.payloadFields.${key}`, { defaultValue: key }),
+      value: empty ? t('adminRequests.emptyValue') : str,
       isEmpty: empty,
     };
   });
@@ -80,8 +68,8 @@ function formatPayloadRows(payload: Record<string, unknown> | undefined): {
     const empty = str === null;
     rows.push({
       key,
-      label: PAYLOAD_FIELD_LABELS[key] ?? key,
-      value: empty ? 'Vacío' : str,
+      label: t(`adminRequests.payloadFields.${key}`, { defaultValue: key }),
+      value: empty ? t('adminRequests.emptyValue') : str,
       isEmpty: empty,
     });
   }
@@ -89,6 +77,7 @@ function formatPayloadRows(payload: Record<string, unknown> | undefined): {
 }
 
 export default function AdminRequestsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -104,7 +93,11 @@ export default function AdminRequestsScreen() {
     try {
       setRequests(await listPendingRequests());
     } catch (err) {
-      setError(err instanceof Error && err.message === 'NO_SESSION' ? 'No hay sesion admin' : 'No se pudieron cargar las solicitudes');
+      setError(
+        err instanceof Error && err.message === 'NO_SESSION'
+          ? t('adminRequests.noSession')
+          : t('adminRequests.loadError')
+      );
     } finally {
       setLoading(false);
     }
@@ -120,7 +113,7 @@ export default function AdminRequestsScreen() {
       const res = await approveRequest(id);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo aprobar');
+        setError(data.error || t('adminRequests.approveError'));
         return;
       }
       await load();
@@ -136,7 +129,7 @@ export default function AdminRequestsScreen() {
       const res = await rejectRequest(rejecting.id, reason.trim());
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo rechazar');
+        setError(data.error || t('adminRequests.rejectError'));
         return;
       }
       setRejecting(null);
@@ -150,29 +143,29 @@ export default function AdminRequestsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Solicitudes pendientes</Text>
+        <Text style={styles.title}>{t('adminRequests.title')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/admin-home')}>
-          <Text style={styles.backText}>Volver al panel admin</Text>
+          <Text style={styles.backText}>{t('adminRequests.back')}</Text>
         </TouchableOpacity>
         {loading ? (
           <ActivityIndicator size="large" color="#111827" />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : requests.length === 0 ? (
-          <Text style={styles.muted}>No hay solicitudes pendientes.</Text>
+          <Text style={styles.muted}>{t('adminRequests.empty')}</Text>
         ) : (
           requests.map((request) => (
             <View key={request.id}>
               <StationRequestCard request={request} showCompany />
               <TouchableOpacity style={styles.detailsButton} onPress={() => setDetailRequest(request)} activeOpacity={0.8}>
-                <Text style={styles.detailsButtonText}>Ver detalles</Text>
+                <Text style={styles.detailsButtonText}>{t('adminRequests.viewDetails')}</Text>
               </TouchableOpacity>
               <View style={styles.actions}>
                 <TouchableOpacity style={styles.approve} onPress={() => onApprove(request.id)} disabled={submitting}>
-                  <Text style={styles.approveText}>Aprobar</Text>
+                  <Text style={styles.approveText}>{t('adminRequests.approve')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.reject} onPress={() => setRejecting(request)} disabled={submitting}>
-                  <Text style={styles.rejectText}>Rechazar</Text>
+                  <Text style={styles.rejectText}>{t('adminRequests.reject')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -183,49 +176,49 @@ export default function AdminRequestsScreen() {
         <View style={styles.overlay}>
           <View style={styles.detailModalCard}>
             <Text style={styles.modalTitle}>
-              Solicitud #{detailRequest?.id ?? ''}
+              {t('adminRequests.modalTitle', { id: detailRequest?.id ?? '' })}
             </Text>
             {detailRequest ? (
               <ScrollView style={styles.detailScroll} keyboardShouldPersistTaps="handled">
                 <Text style={styles.detailLine}>
-                  <Text style={styles.detailKey}>Accion: </Text>
+                  <Text style={styles.detailKey}>{t('adminRequests.detail.action')}: </Text>
                   {detailRequest.action.toUpperCase()}
                 </Text>
                 <Text style={styles.detailLine}>
-                  <Text style={styles.detailKey}>Fecha: </Text>
+                  <Text style={styles.detailKey}>{t('adminRequests.detail.date')}: </Text>
                   {new Date(detailRequest.created_at).toLocaleString()}
                 </Text>
                 {typeof detailRequest.station_id === 'number' ? (
                   <Text style={styles.detailLine}>
-                    <Text style={styles.detailKey}>Estacion ID: </Text>
+                    <Text style={styles.detailKey}>{t('adminRequests.detail.stationId')}: </Text>
                     {String(detailRequest.station_id)}
                   </Text>
                 ) : null}
-                <Text style={styles.detailSection}>Empresa</Text>
+                <Text style={styles.detailSection}>{t('adminRequests.detail.company')}</Text>
                 <Text style={styles.detailLine}>
-                  <Text style={styles.detailKey}>Empresa (ID): </Text>
+                  <Text style={styles.detailKey}>{t('adminRequests.detail.companyId')}: </Text>
                   {String(detailRequest.empresa_id)}
                 </Text>
                 {detailRequest.empresa_nombre ? (
                   <Text style={styles.detailLine}>
-                    <Text style={styles.detailKey}>Nombre: </Text>
+                    <Text style={styles.detailKey}>{t('adminRequests.detail.name')}: </Text>
                     {detailRequest.empresa_nombre}
                   </Text>
                 ) : null}
                 {detailRequest.empresa_email ? (
                   <Text style={styles.detailLine}>
-                    <Text style={styles.detailKey}>Email: </Text>
+                    <Text style={styles.detailKey}>{t('adminRequests.detail.email')}: </Text>
                     {detailRequest.empresa_email}
                   </Text>
                 ) : null}
                 {detailRequest.empresa_username ? (
                   <Text style={styles.detailLine}>
-                    <Text style={styles.detailKey}>Usuario: </Text>
+                    <Text style={styles.detailKey}>{t('adminRequests.detail.user')}: </Text>
                     {detailRequest.empresa_username}
                   </Text>
                 ) : null}
-                <Text style={styles.detailSection}>Datos de la solicitud</Text>
-                {formatPayloadRows(detailRequest.payload).map((row) => (
+                <Text style={styles.detailSection}>{t('adminRequests.detail.payload')}</Text>
+                {formatPayloadRows(detailRequest.payload, t).map((row) => (
                   <View key={`payload-${row.key}`} style={styles.detailRow}>
                     <Text style={styles.detailFieldLabel}>{row.label}</Text>
                     <Text style={[styles.detailFieldValue, row.isEmpty && styles.detailFieldValueEmpty]}>{row.value}</Text>
@@ -234,7 +227,7 @@ export default function AdminRequestsScreen() {
               </ScrollView>
             ) : null}
             <TouchableOpacity style={styles.detailClose} onPress={() => setDetailRequest(null)}>
-              <Text style={styles.detailCloseText}>Cerrar</Text>
+              <Text style={styles.detailCloseText}>{t('adminRequests.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -242,14 +235,21 @@ export default function AdminRequestsScreen() {
       <Modal visible={!!rejecting} transparent animationType="fade" onRequestClose={() => setRejecting(null)}>
         <View style={styles.overlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Motivo del rechazo</Text>
-            <TextInput style={styles.input} value={reason} onChangeText={setReason} placeholder="Escribe un motivo (opcional)" placeholderTextColor="#9ca3af" multiline />
+            <Text style={styles.modalTitle}>{t('adminRequests.rejectReasonTitle')}</Text>
+            <TextInput
+              style={styles.input}
+              value={reason}
+              onChangeText={setReason}
+              placeholder={t('adminRequests.rejectPlaceholder')}
+              placeholderTextColor="#9ca3af"
+              multiline
+            />
             <View style={styles.actions}>
               <TouchableOpacity style={styles.cancel} onPress={() => setRejecting(null)}>
-                <Text style={styles.cancelText}>Cancelar</Text>
+                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reject} onPress={onReject} disabled={submitting}>
-                <Text style={styles.rejectText}>Enviar rechazo</Text>
+                <Text style={styles.rejectText}>{t('adminRequests.sendReject')}</Text>
               </TouchableOpacity>
             </View>
           </View>

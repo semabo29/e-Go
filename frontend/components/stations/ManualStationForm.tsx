@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Keyboard,
@@ -50,6 +51,7 @@ type Props = {
 };
 
 export function ManualStationForm(props: Props) {
+  const { t } = useTranslation();
   const { title, subtitle, submitLabel, loading, error, success, form, onChange, onSubmit, onBack } = props;
   const scrollRef = useRef<ScrollView>(null);
   const direccionSectionYRef = useRef(0);
@@ -198,29 +200,29 @@ export function ManualStationForm(props: Props) {
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basico</Text>
-          <TextInput style={styles.input} placeholder="Nombre de la estacion" placeholderTextColor="#9ca3af" value={form.nom} onChangeText={(v) => onChange('nom', v)} />
+          <Text style={styles.sectionTitle}>{t('stationForm.sectionBasic')}</Text>
+          <TextInput style={styles.input} placeholder={t('stationForm.stationName')} placeholderTextColor="#9ca3af" value={form.nom} onChangeText={(v) => onChange('nom', v)} />
           <View style={styles.row}>
-            <TextInput style={[styles.input, styles.half]} placeholder="Latitud" placeholderTextColor="#9ca3af" keyboardType="numeric" value={form.latitud} onChangeText={(v) => onChange('latitud', v)} />
-            <TextInput style={[styles.input, styles.half]} placeholder="Longitud" placeholderTextColor="#9ca3af" keyboardType="numeric" value={form.longitud} onChangeText={(v) => onChange('longitud', v)} />
+            <TextInput style={[styles.input, styles.half]} placeholder={t('stationForm.latitude')} placeholderTextColor="#9ca3af" keyboardType="numeric" value={form.latitud} onChangeText={(v) => onChange('latitud', v)} />
+            <TextInput style={[styles.input, styles.half]} placeholder={t('stationForm.longitude')} placeholderTextColor="#9ca3af" keyboardType="numeric" value={form.longitud} onChangeText={(v) => onChange('longitud', v)} />
           </View>
           <TouchableOpacity style={styles.mapButton} onPress={() => setMapOpen(true)}>
-            <Text style={styles.mapButtonText}>Seleccionar en el mapa</Text>
+            <Text style={styles.mapButtonText}>{t('stationForm.selectOnMap')}</Text>
           </TouchableOpacity>
           <View style={styles.row}>
-            <TextInput style={[styles.input, styles.half]} placeholder="Potencia (kW)" placeholderTextColor="#9ca3af" keyboardType="numeric" value={form.kw} onChangeText={(v) => onChange('kw', v)} />
+            <TextInput style={[styles.input, styles.half]} placeholder={t('stationForm.powerKw')} placeholderTextColor="#9ca3af" keyboardType="numeric" value={form.kw} onChangeText={(v) => onChange('kw', v)} />
             <TouchableOpacity style={[styles.input, styles.half, styles.selectInput]} onPress={() => setAcDcPickerOpen(true)} activeOpacity={0.8}>
-              <Text style={form.ac_dc ? styles.selectText : styles.placeholderText}>{form.ac_dc || 'AC/DC'}</Text>
+              <Text style={form.ac_dc ? styles.selectText : styles.placeholderText}>{form.ac_dc || t('stationForm.acDc')}</Text>
             </TouchableOpacity>
           </View>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Conector y velocidad</Text>
+          <Text style={styles.sectionTitle}>{t('stationForm.sectionConnector')}</Text>
           <TouchableOpacity style={[styles.input, styles.selectInput]} onPress={() => setTipusConnexioPickerOpen(true)} activeOpacity={0.8}>
-            <Text style={form.tipus_connexio ? styles.selectText : styles.placeholderText}>{form.tipus_connexio || 'Tipo de conexion'}</Text>
+            <Text style={form.tipus_connexio ? styles.selectText : styles.placeholderText}>{form.tipus_connexio || t('stationForm.connectionType')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.input, styles.selectInput]} onPress={() => setTipusVelocitatPickerOpen(true)} activeOpacity={0.8}>
-            <Text style={form.tipus_velocitat ? styles.selectText : styles.placeholderText}>{form.tipus_velocitat || 'Tipo de velocidad'}</Text>
+            <Text style={form.tipus_velocitat ? styles.selectText : styles.placeholderText}>{form.tipus_velocitat || t('stationForm.speedType')}</Text>
           </TouchableOpacity>
         </View>
         <View
@@ -229,10 +231,10 @@ export function ManualStationForm(props: Props) {
             direccionSectionYRef.current = e.nativeEvent.layout.y;
           }}
         >
-          <Text style={styles.sectionTitle}>Direccion</Text>
+          <Text style={styles.sectionTitle}>{t('stationForm.sectionAddress')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Direccion"
+            placeholder={t('stationForm.address')}
             placeholderTextColor="#9ca3af"
             value={form.adreca}
             onFocus={scrollDireccionSectionIntoView}
@@ -241,7 +243,7 @@ export function ManualStationForm(props: Props) {
               onChange('adreca', v);
             }}
           />
-          {addressLoading ? <Text style={styles.helperText}>Buscando direcciones...</Text> : null}
+          {addressLoading ? <Text style={styles.helperText}>{t('stationForm.searchingAddresses')}</Text> : null}
           {!addressLoading && addressSuggestions.length ? (
             <View style={styles.suggestionList}>
               {addressSuggestions.map((suggestion) => (
@@ -258,7 +260,7 @@ export function ManualStationForm(props: Props) {
           {geoMessage ? <Text style={styles.helperText}>{geoMessage}</Text> : null}
           <View style={styles.row}>
             <TouchableOpacity style={[styles.input, styles.half, styles.selectInput]} onPress={() => setProvincePickerOpen(true)} activeOpacity={0.8}>
-              <Text style={form.provincia ? styles.selectText : styles.placeholderText}>{form.provincia || 'Provincia'}</Text>
+              <Text style={form.provincia ? styles.selectText : styles.placeholderText}>{form.provincia || t('stationForm.province')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.input, styles.half, styles.selectInput, !form.provincia && styles.disabledInput]}
@@ -272,15 +274,17 @@ export function ManualStationForm(props: Props) {
               activeOpacity={0.8}
               disabled={!form.provincia}
             >
-              <Text style={form.municipi ? styles.selectText : styles.placeholderText}>{form.municipi || (form.provincia ? 'Municipio' : 'Selecciona provincia antes')}</Text>
+              <Text style={form.municipi ? styles.selectText : styles.placeholderText}>
+                {form.municipi || (form.provincia ? t('stationForm.municipality') : t('stationForm.selectProvinceFirst'))}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Operador</Text>
+          <Text style={styles.sectionTitle}>{t('stationForm.sectionOperator')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Promotor/gestor"
+            placeholder={t('stationForm.promoter')}
             placeholderTextColor="#9ca3af"
             value={form.promotor}
             onChangeText={(v) => onChange('promotor', v)}
@@ -288,7 +292,7 @@ export function ManualStationForm(props: Props) {
           />
           <TextInput
             style={styles.input}
-            placeholder="Acceso"
+            placeholder={t('stationForm.access')}
             placeholderTextColor="#9ca3af"
             value={form.acces}
             onChangeText={(v) => onChange('acces', v)}
@@ -301,15 +305,15 @@ export function ManualStationForm(props: Props) {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{submitLabel}</Text>}
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryButton} onPress={onBack} disabled={loading}>
-          <Text style={styles.secondaryButtonText}>Volver</Text>
+          <Text style={styles.secondaryButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
       </ScrollView>
       <Modal visible={mapOpen} animationType="slide" onRequestClose={() => setMapOpen(false)}>
         <View style={styles.mapScreen}>
           <View style={styles.mapHeader}>
-            <Text style={styles.mapTitle}>Selecciona ubicacion</Text>
-            <TouchableOpacity onPress={() => setMapOpen(false)}><Text style={styles.mapClose}>Cerrar</Text></TouchableOpacity>
+            <Text style={styles.mapTitle}>{t('stationForm.mapTitle')}</Text>
+            <TouchableOpacity onPress={() => setMapOpen(false)}><Text style={styles.mapClose}>{t('adminIncidents.close')}</Text></TouchableOpacity>
           </View>
           <View style={styles.mapContainer}>
             <MapView
@@ -338,15 +342,11 @@ export function ManualStationForm(props: Props) {
                     if (suggestion) {
                       applyGeoSuggestion(suggestion, false);
                     } else {
-                      setGeoMessage(
-                        'No se encontro direccion para este punto. Puedes escribir la direccion a mano.'
-                      );
+                      setGeoMessage(t('stationForm.noAddressForPoint'));
                     }
                   } catch (e) {
                     setGeoMessage(
-                      e instanceof Error
-                        ? e.message
-                        : 'No se pudo autocompletar la direccion desde el mapa.'
+                      e instanceof Error ? e.message : t('stationForm.reverseGeoError')
                     );
                   } finally {
                     setReverseLoading(false);
@@ -355,25 +355,37 @@ export function ManualStationForm(props: Props) {
                 setMapOpen(false);
               }}
             >
-              <Text style={styles.primaryButtonText}>{reverseLoading ? 'Obteniendo direccion...' : 'Usar esta ubicacion'}</Text>
+              <Text style={styles.primaryButtonText}>
+                {reverseLoading ? t('stationForm.fetchingAddress') : t('stationForm.useLocation')}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
       <Modal visible={acDcPickerOpen} animationType="fade" transparent onRequestClose={() => setAcDcPickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona AC/DC</Text>{AC_DC_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.ac_dc, /\//).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('ac_dc', option, AC_DC_OPTIONS, '/', /\//)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setAcDcPickerOpen(false)}><Text style={styles.secondaryButtonText}>Cerrar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>{t('stationForm.pickAcDc')}</Text>{AC_DC_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.ac_dc, /\//).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('ac_dc', option, AC_DC_OPTIONS, '/', /\//)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setAcDcPickerOpen(false)}><Text style={styles.secondaryButtonText}>{t('adminIncidents.close')}</Text></TouchableOpacity></View></View>
       </Modal>
       <Modal visible={tipusConnexioPickerOpen} animationType="fade" transparent onRequestClose={() => setTipusConnexioPickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona tipo de conexion</Text><ScrollView style={styles.pickerList}>{TIPUS_CONNEXIO_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.tipus_connexio, /\+/).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('tipus_connexio', option, TIPUS_CONNEXIO_OPTIONS, '+', /\+/)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}</ScrollView><TouchableOpacity style={styles.secondaryButton} onPress={() => setTipusConnexioPickerOpen(false)}><Text style={styles.secondaryButtonText}>Cerrar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>{t('stationForm.pickConnection')}</Text><ScrollView style={styles.pickerList}>{TIPUS_CONNEXIO_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.tipus_connexio, /\+/).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('tipus_connexio', option, TIPUS_CONNEXIO_OPTIONS, '+', /\+/)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}</ScrollView><TouchableOpacity style={styles.secondaryButton} onPress={() => setTipusConnexioPickerOpen(false)}><Text style={styles.secondaryButtonText}>{t('adminIncidents.close')}</Text></TouchableOpacity></View></View>
       </Modal>
       <Modal visible={tipusVelocitatPickerOpen} animationType="fade" transparent onRequestClose={() => setTipusVelocitatPickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona tipo de velocidad</Text>{TIPUS_VELOCITAT_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.tipus_velocitat, /\si\s/).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('tipus_velocitat', option, TIPUS_VELOCITAT_OPTIONS, ' i ', /\si\s/)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setTipusVelocitatPickerOpen(false)}><Text style={styles.secondaryButtonText}>Cerrar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>{t('stationForm.pickSpeed')}</Text>{TIPUS_VELOCITAT_OPTIONS.map((option) => <TouchableOpacity key={option} style={[styles.pickerOption, splitMultiValue(form.tipus_velocitat, /\si\s/).includes(option) && styles.pickerOptionSelected]} onPress={() => toggleMultiSelection('tipus_velocitat', option, TIPUS_VELOCITAT_OPTIONS, ' i ', /\si\s/)}><Text style={styles.pickerOptionText}>{option}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setTipusVelocitatPickerOpen(false)}><Text style={styles.secondaryButtonText}>{t('adminIncidents.close')}</Text></TouchableOpacity></View></View>
       </Modal>
       <Modal visible={provincePickerOpen} animationType="fade" transparent onRequestClose={() => setProvincePickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona provincia</Text>{CATALUNYA_PROVINCES.map((province) => <TouchableOpacity key={province} style={styles.pickerOption} onPress={() => { manualProvinceRef.current = true; onChange('provincia', province); if (form.provincia !== province) onChange('municipi', ''); setProvincePickerOpen(false); setMunicipalityQuery(''); }}><Text style={styles.pickerOptionText}>{province}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setProvincePickerOpen(false)}><Text style={styles.secondaryButtonText}>Cancelar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>{t('stationForm.pickProvince')}</Text>{CATALUNYA_PROVINCES.map((province) => <TouchableOpacity key={province} style={styles.pickerOption} onPress={() => {
+                  manualProvinceRef.current = true;
+                  onChange('provincia', province);
+                  if (form.provincia !== province) {
+                    onChange('municipi', '');
+                  }
+                  setProvincePickerOpen(false);
+                  setMunicipalityQuery('');
+                }}><Text style={styles.pickerOptionText}>{province}</Text></TouchableOpacity>)}<TouchableOpacity style={styles.secondaryButton} onPress={() => setProvincePickerOpen(false)}><Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text></TouchableOpacity></View></View>
       </Modal>
       <Modal visible={municipalityPickerOpen} animationType="fade" transparent onRequestClose={() => setMunicipalityPickerOpen(false)}>
-        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>Selecciona municipio</Text><TextInput style={styles.input} placeholder="Buscar municipio" placeholderTextColor="#9ca3af" value={municipalityQuery} onChangeText={setMunicipalityQuery} /><ScrollView style={styles.pickerList}>{filteredMunicipalityOptions.map((municipality) => <TouchableOpacity key={municipality} style={styles.pickerOption} onPress={() => { manualMunicipalityRef.current = true; onChange('municipi', municipality); setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.pickerOptionText}>{municipality}</Text></TouchableOpacity>)}{!filteredMunicipalityOptions.length ? <Text style={styles.emptyText}>No se han encontrado municipios</Text> : null}</ScrollView><TouchableOpacity style={styles.secondaryButton} onPress={() => { setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.secondaryButtonText}>Cancelar</Text></TouchableOpacity></View></View>
+        <View style={styles.overlay}><View style={styles.pickerCard}><Text style={styles.pickerTitle}>{t('stationForm.pickMunicipality')}</Text><TextInput style={styles.input} placeholder={t('stationForm.searchMunicipality')} placeholderTextColor="#9ca3af" value={municipalityQuery} onChangeText={setMunicipalityQuery} /><ScrollView style={styles.pickerList}>{filteredMunicipalityOptions.map((municipality) => <TouchableOpacity key={municipality} style={styles.pickerOption} onPress={() => { manualMunicipalityRef.current = true; onChange('municipi', municipality); setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.pickerOptionText}>{municipality}</Text></TouchableOpacity>)}{filteredMunicipalityOptions.length === 0 ? (
+          <Text style={styles.emptyText}>{t('stationForm.noMunicipalities')}</Text>
+        ) : null}</ScrollView><TouchableOpacity style={styles.secondaryButton} onPress={() => { setMunicipalityQuery(''); setMunicipalityPickerOpen(false); }}><Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text></TouchableOpacity></View></View>
       </Modal>
     </KeyboardAvoidingView>
   );

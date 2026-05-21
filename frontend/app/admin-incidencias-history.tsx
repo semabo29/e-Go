@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   ActivityIndicator,
@@ -22,51 +23,16 @@ import {
   rejectIncidencia,
   resolveIncidencia,
 } from '@/services/incidenciaAdminService';
+import {
+  ADMIN_INCIDENT_TIPUS,
+  incidentStatusColor,
+  incidentStatusLabel,
+  incidentTypeLabel,
+  TIPUS_COLORS,
+  TIPUS_TEXT_COLORS,
+} from '@/utils/adminIncidentUi';
 
-const TIPUS_LABELS: Record<string, string> = {
-  Avariat: 'Averiada',
-  Inexistent: 'Inexistente',
-  DadesIncorrectes: 'Datos incorrectos',
-  Altres: 'Otros',
-  Operatiu: 'Operativa',
-};
-
-const ALL_TIPUS: IncidenciaTipus[] = ['Avariat', 'Inexistent', 'DadesIncorrectes', 'Altres', 'Operatiu'];
-const ALL_ESTADOS: { key: IncidenciaEstado; label: string }[] = [
-  { key: 'pending', label: 'Pendiente' },
-  { key: 'validated', label: 'Validada' },
-  { key: 'resolved', label: 'Resuelta' },
-  { key: 'rejected', label: 'Rechazada' },
-];
-
-const STATUS_COLORS: Record<string, string> = {
-  Pendiente: '#f59e0b',
-  Validada: '#3b82f6',
-  Resuelta: '#10b981',
-  Rechazada: '#ef4444',
-};
-
-const TIPUS_COLORS: Record<string, string> = {
-  Avariat: '#fef3c7',
-  Inexistent: '#fee2e2',
-  DadesIncorrectes: '#ede9fe',
-  Altres: '#f3f4f6',
-  Operatiu: '#dcfce7',
-};
-const TIPUS_TEXT_COLORS: Record<string, string> = {
-  Avariat: '#92400e',
-  Inexistent: '#b91c1c',
-  DadesIncorrectes: '#5b21b6',
-  Altres: '#374151',
-  Operatiu: '#166534',
-};
-
-function statusLabel(inc: Incidencia): string {
-  if (inc.rebutjada) return 'Rechazada';
-  if (inc.resolta) return 'Resuelta';
-  if (inc.validada) return 'Validada';
-  return 'Pendiente';
-}
+const ALL_ESTADO_KEYS: IncidenciaEstado[] = ['pending', 'validated', 'resolved', 'rejected'];
 
 function toLocalDateString(date: Date): string {
   const y = date.getFullYear();
@@ -92,7 +58,16 @@ function parseYmd(s: string): Date | null {
 const PAGE_SIZE = 20;
 
 export default function AdminIncidenciasHistoryScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const estadoFilters = useMemo(
+    () =>
+      ALL_ESTADO_KEYS.map((key) => ({
+        key,
+        label: t(`adminIncidents.status.${key}`),
+      })),
+    [t]
+  );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -132,7 +107,7 @@ export default function AdminIncidenciasHistoryScreen() {
       setOffset(newOffset);
       setIncidencias(replace ? page : (prev) => [...prev, ...page]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cargando histórico');
+      setError(err instanceof Error ? err.message : t('adminIncidents.loadHistoryError'));
     } finally {
       setLoading(false);
     }
@@ -204,15 +179,15 @@ export default function AdminIncidenciasHistoryScreen() {
     try {
       const result = await validateIncidencia(id);
       const pts = result.pointsAwarded;
-      const premiumSuffix = pts?.isPremium ? ' (premium x2)' : '';
+      const premiumSuffix = pts?.isPremium ? t('adminIncidents.alerts.premiumSuffix') : '';
       const msg = pts
-        ? `Validada. Se otorgaron ${pts.points} puntos${premiumSuffix}.`
-        : 'Incidencia validada.';
+        ? t('adminIncidents.alerts.validatedShort', { points: pts.points, premium: premiumSuffix })
+        : t('adminIncidents.alerts.validatedSimple');
       setIncidencias((prev) => prev.map((i) => (i.id === id ? result.incidencia : i)));
       setDetailInc(null);
       alert(msg);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo validar');
+      setError(err instanceof Error ? err.message : t('adminIncidents.alerts.validateError'));
     } finally {
       setSubmitting(false);
     }
@@ -228,7 +203,7 @@ export default function AdminIncidenciasHistoryScreen() {
       setRejectMotiu('');
       setDetailInc(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo rechazar');
+      setError(err instanceof Error ? err.message : t('adminIncidents.alerts.rejectError'));
     } finally {
       setSubmitting(false);
     }
@@ -241,7 +216,7 @@ export default function AdminIncidenciasHistoryScreen() {
       setIncidencias((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
       setDetailInc(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo resolver');
+      setError(err instanceof Error ? err.message : t('adminIncidents.alerts.resolveError'));
     } finally {
       setSubmitting(false);
     }
@@ -250,38 +225,35 @@ export default function AdminIncidenciasHistoryScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.container}>
-        <Text style={styles.title}>Histórico de incidencias</Text>
+        <Text style={styles.title}>{t('adminIncidents.historyTitle')}</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/admin-home')}>
-          <Text style={styles.backBtnText}>Volver al panel admin</Text>
+          <Text style={styles.backBtnText}>{t('adminIncidents.backToPanel')}</Text>
         </TouchableOpacity>
 
-        {/* Filtros */}
         <View style={styles.filterBox}>
-          <Text style={styles.filterTitle}>Filtros</Text>
+          <Text style={styles.filterTitle}>{t('adminIncidents.filter.title')}</Text>
 
-          {/* Atajos de rango */}
           <View style={styles.chipRow}>
             <TouchableOpacity style={styles.shortcutChip} onPress={setLastWeek}>
-              <Text style={styles.shortcutChipText}>Última semana</Text>
+              <Text style={styles.shortcutChipText}>{t('adminIncidents.filter.lastWeek')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shortcutChip} onPress={setLastMonth}>
-              <Text style={styles.shortcutChipText}>Último mes</Text>
+              <Text style={styles.shortcutChipText}>{t('adminIncidents.filter.lastMonth')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shortcutChipClear} onPress={clearFilters}>
-              <Text style={styles.shortcutChipClearText}>Limpiar</Text>
+              <Text style={styles.shortcutChipClearText}>{t('adminIncidents.filter.clear')}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Rango de fechas (calendario nativo en iOS/Android; texto en web) */}
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>Desde</Text>
+              <Text style={styles.dateLabel}>{t('adminIncidents.filter.fromDate')}</Text>
               {Platform.OS === 'web' ? (
                 <TextInput
                   style={styles.dateInput}
                   value={from}
                   onChangeText={setFrom}
-                  placeholder="AAAA-MM-DD"
+                  placeholder="2026-01-01"
                   placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   maxLength={10}
@@ -293,19 +265,19 @@ export default function AdminIncidenciasHistoryScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.dateInputText, !from && styles.dateInputPlaceholder]}>
-                    {from || 'Toca para elegir'}
+                    {from || t('adminIncidents.filter.tapToPick')}
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>Hasta</Text>
+              <Text style={styles.dateLabel}>{t('adminIncidents.filter.toDate')}</Text>
               {Platform.OS === 'web' ? (
                 <TextInput
                   style={styles.dateInput}
                   value={to}
                   onChangeText={setTo}
-                  placeholder="AAAA-MM-DD"
+                  placeholder="2026-12-31"
                   placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                   maxLength={10}
@@ -317,7 +289,7 @@ export default function AdminIncidenciasHistoryScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.dateInputText, !to && styles.dateInputPlaceholder]}>
-                    {to || 'Toca para elegir'}
+                    {to || t('adminIncidents.filter.tapToPick')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -325,25 +297,24 @@ export default function AdminIncidenciasHistoryScreen() {
           </View>
 
           {/* Filtro por tipo */}
-          <Text style={styles.filterSectionLabel}>Tipo</Text>
+          <Text style={styles.filterSectionLabel}>{t('adminIncidents.filter.type')}</Text>
           <View style={styles.chipRow}>
-            {ALL_TIPUS.map((t) => (
+            {ADMIN_INCIDENT_TIPUS.map((tipus) => (
               <TouchableOpacity
-                key={t}
-                style={[styles.filterChip, selectedTipus === t && styles.filterChipActive]}
-                onPress={() => setSelectedTipus(selectedTipus === t ? '' : t)}
+                key={tipus}
+                style={[styles.filterChip, selectedTipus === tipus && styles.filterChipActive]}
+                onPress={() => setSelectedTipus(selectedTipus === tipus ? '' : tipus)}
               >
-                <Text style={[styles.filterChipText, selectedTipus === t && styles.filterChipTextActive]}>
-                  {TIPUS_LABELS[t]}
+                <Text style={[styles.filterChipText, selectedTipus === tipus && styles.filterChipTextActive]}>
+                  {incidentTypeLabel(tipus, t)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Filtro por estado */}
-          <Text style={styles.filterSectionLabel}>Estado</Text>
+          <Text style={styles.filterSectionLabel}>{t('adminIncidents.filter.status')}</Text>
           <View style={styles.chipRow}>
-            {ALL_ESTADOS.map((e) => (
+            {estadoFilters.map((e) => (
               <TouchableOpacity
                 key={e.key}
                 style={[styles.filterChip, selectedEstado === e.key && styles.filterChipActive]}
@@ -357,7 +328,9 @@ export default function AdminIncidenciasHistoryScreen() {
           </View>
 
           <TouchableOpacity style={styles.applyBtn} onPress={applyFilters} disabled={loading}>
-            <Text style={styles.applyBtnText}>{loading ? 'Buscando…' : 'Aplicar filtros'}</Text>
+            <Text style={styles.applyBtnText}>
+              {loading ? t('adminIncidents.filter.searching') : t('adminIncidents.filter.apply')}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -367,12 +340,11 @@ export default function AdminIncidenciasHistoryScreen() {
           <ActivityIndicator size="large" color="#111827" style={{ marginTop: 24 }} />
         )}
         {!loading && incidencias.length === 0 && (
-          <Text style={styles.muted}>No se encontraron incidencias con los filtros aplicados.</Text>
+          <Text style={styles.muted}>{t('adminIncidents.emptyFiltered')}</Text>
         )}
         {incidencias.length > 0 && (
           <>
             {incidencias.map((inc) => {
-              const st = statusLabel(inc);
               const canValidate = !inc.validada && !inc.rebutjada;
               const canReject = !inc.validada && !inc.rebutjada && !inc.resolta;
               const canResolve = inc.validada && !inc.resolta && !inc.rebutjada;
@@ -381,15 +353,15 @@ export default function AdminIncidenciasHistoryScreen() {
                   <View style={styles.cardHeader}>
                     <View style={[styles.typeBadge, { backgroundColor: TIPUS_COLORS[inc.tipus] ?? '#f3f4f6' }]}>
                       <Text style={[styles.typeBadgeText, { color: TIPUS_TEXT_COLORS[inc.tipus] ?? '#374151' }]}>
-                        {TIPUS_LABELS[inc.tipus] ?? inc.tipus}
+                        {incidentTypeLabel(inc.tipus, t)}
                       </Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[st] ?? '#9ca3af' }]}>
-                      <Text style={styles.statusBadgeText}>{st}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: incidentStatusColor(inc) }]}>
+                      <Text style={styles.statusBadgeText}>{incidentStatusLabel(inc, t)}</Text>
                     </View>
                   </View>
                   <Text style={styles.stationName}>
-                    {inc.estacio_nom ?? `Estación #${inc.estacio}`}
+                    {inc.estacio_nom ?? t('adminIncidents.stationFallback', { id: inc.estacio })}
                     {inc.estacio_municipi ? ` · ${inc.estacio_municipi}` : ''}
                   </Text>
                   <Text style={styles.meta}>
@@ -397,22 +369,22 @@ export default function AdminIncidenciasHistoryScreen() {
                   </Text>
                   <Text style={styles.comment} numberOfLines={2}>{inc.comentari}</Text>
                   <TouchableOpacity style={styles.detailBtn} onPress={() => setDetailInc(inc)}>
-                    <Text style={styles.detailBtnText}>Ver detalles</Text>
+                    <Text style={styles.detailBtnText}>{t('adminIncidents.viewDetails')}</Text>
                   </TouchableOpacity>
                   <View style={styles.actions}>
                     {canValidate && (
                       <TouchableOpacity style={styles.btnValidate} onPress={() => handleValidate(inc.id)} disabled={submitting}>
-                        <Text style={styles.btnValidateText}>Validar</Text>
+                        <Text style={styles.btnValidateText}>{t('adminIncidents.validate')}</Text>
                       </TouchableOpacity>
                     )}
                     {canReject && (
                       <TouchableOpacity style={styles.btnReject} onPress={() => { setRejectingInc(inc); setRejectMotiu(''); }} disabled={submitting}>
-                        <Text style={styles.btnRejectText}>Rechazar</Text>
+                        <Text style={styles.btnRejectText}>{t('adminIncidents.reject')}</Text>
                       </TouchableOpacity>
                     )}
                     {canResolve && (
                       <TouchableOpacity style={styles.btnResolve} onPress={() => handleResolve(inc.id)} disabled={submitting}>
-                        <Text style={styles.btnResolveText}>Marcar resuelta</Text>
+                        <Text style={styles.btnResolveText}>{t('adminIncidents.markResolved')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -425,7 +397,9 @@ export default function AdminIncidenciasHistoryScreen() {
                 onPress={() => load(offset + PAGE_SIZE, false)}
                 disabled={loading}
               >
-                <Text style={styles.loadMoreBtnText}>{loading ? 'Cargando…' : 'Cargar más'}</Text>
+                <Text style={styles.loadMoreBtnText}>
+                  {loading ? t('adminIncidents.loading') : t('adminIncidents.loadMore')}
+                </Text>
               </TouchableOpacity>
             )}
           </>
@@ -436,41 +410,66 @@ export default function AdminIncidenciasHistoryScreen() {
       <Modal visible={!!detailInc} transparent animationType="fade" onRequestClose={() => setDetailInc(null)}>
         <View style={styles.overlay}>
           <View style={styles.detailCard}>
-            <Text style={styles.modalTitle}>Incidencia #{detailInc?.id}</Text>
+            <Text style={styles.modalTitle}>{t('adminIncidents.modalTitle', { id: detailInc?.id })}</Text>
             {detailInc && (
               <ScrollView style={styles.detailScroll}>
-                <DetailRow label="Tipo" value={TIPUS_LABELS[detailInc.tipus] ?? detailInc.tipus} />
-                <DetailRow label="Estado" value={statusLabel(detailInc)} />
-                <DetailRow label="Estación" value={detailInc.estacio_nom ?? `#${detailInc.estacio}`} />
-                {detailInc.estacio_municipi ? <DetailRow label="Municipio" value={detailInc.estacio_municipi} /> : null}
-                <DetailRow label="Conductor" value={detailInc.conductor_username} />
-                <DetailRow label="Email" value={detailInc.conductor_email} />
-                <DetailRow label="Fecha reporte" value={new Date(detailInc.data_inici).toLocaleString()} />
-                <DetailRow label="Comentario" value={detailInc.comentari} />
-                {detailInc.motiu_rebuig ? <DetailRow label="Motivo rechazo" value={detailInc.motiu_rebuig} /> : null}
-                {detailInc.data_validacio ? <DetailRow label="Fecha validación" value={new Date(detailInc.data_validacio).toLocaleString()} /> : null}
-                {detailInc.data_resolucio ? <DetailRow label="Fecha resolución" value={new Date(detailInc.data_resolucio).toLocaleString()} /> : null}
-                {detailInc.data_rebuig ? <DetailRow label="Fecha rechazo" value={new Date(detailInc.data_rebuig).toLocaleString()} /> : null}
-                <DetailRow label="Puntos otorgados" value={detailInc.punts_atorgats ? 'Sí' : 'No'} />
+                <DetailRow label={t('adminIncidents.fields.type')} value={incidentTypeLabel(detailInc.tipus, t)} />
+                <DetailRow label={t('adminIncidents.fields.status')} value={incidentStatusLabel(detailInc, t)} />
+                <DetailRow label={t('adminIncidents.fields.station')} value={detailInc.estacio_nom ?? `#${detailInc.estacio}`} />
+                {detailInc.estacio_municipi ? (
+                  <DetailRow label={t('adminIncidents.fields.municipality')} value={detailInc.estacio_municipi} />
+                ) : null}
+                <DetailRow label={t('adminIncidents.fields.driver')} value={detailInc.conductor_username} />
+                <DetailRow label={t('adminIncidents.fields.email')} value={detailInc.conductor_email} />
+                <DetailRow
+                  label={t('adminIncidents.fields.reportDate')}
+                  value={new Date(detailInc.data_inici).toLocaleString()}
+                />
+                <DetailRow label={t('adminIncidents.fields.comment')} value={detailInc.comentari} />
+                {detailInc.motiu_rebuig ? (
+                  <DetailRow label={t('adminIncidents.fields.rejectReason')} value={detailInc.motiu_rebuig} />
+                ) : null}
+                {detailInc.data_validacio ? (
+                  <DetailRow
+                    label={t('adminIncidents.fields.validationDate')}
+                    value={new Date(detailInc.data_validacio).toLocaleString()}
+                  />
+                ) : null}
+                {detailInc.data_resolucio ? (
+                  <DetailRow
+                    label={t('adminIncidents.fields.resolutionDate')}
+                    value={new Date(detailInc.data_resolucio).toLocaleString()}
+                  />
+                ) : null}
+                {detailInc.data_rebuig ? (
+                  <DetailRow
+                    label={t('adminIncidents.fields.rejectionDate')}
+                    value={new Date(detailInc.data_rebuig).toLocaleString()}
+                  />
+                ) : null}
+                <DetailRow
+                  label={t('adminIncidents.fields.pointsAwarded')}
+                  value={detailInc.punts_atorgats ? t('adminIncidents.pointsYes') : t('adminIncidents.pointsNo')}
+                />
               </ScrollView>
             )}
             {detailInc && !detailInc.validada && !detailInc.rebutjada && (
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.btnValidate} onPress={() => handleValidate(detailInc.id)} disabled={submitting}>
-                  <Text style={styles.btnValidateText}>Validar</Text>
+                  <Text style={styles.btnValidateText}>{t('adminIncidents.validate')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.btnReject} onPress={() => { setRejectingInc(detailInc); setRejectMotiu(''); }} disabled={submitting}>
-                  <Text style={styles.btnRejectText}>Rechazar</Text>
+                  <Text style={styles.btnRejectText}>{t('adminIncidents.reject')}</Text>
                 </TouchableOpacity>
               </View>
             )}
             {detailInc?.validada && !detailInc.resolta && !detailInc.rebutjada && (
               <TouchableOpacity style={[styles.btnResolve, { marginBottom: 8 }]} onPress={() => handleResolve(detailInc.id)} disabled={submitting}>
-                <Text style={styles.btnResolveText}>Marcar resuelta</Text>
+                <Text style={styles.btnResolveText}>{t('adminIncidents.markResolved')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.closeBtn} onPress={() => setDetailInc(null)}>
-              <Text style={styles.closeBtnText}>Cerrar</Text>
+              <Text style={styles.closeBtnText}>{t('adminIncidents.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -488,13 +487,17 @@ export default function AdminIncidenciasHistoryScreen() {
           <View style={styles.datePickerSheet}>
             <View style={styles.datePickerToolbar}>
               <TouchableOpacity onPress={() => setIosPicker(null)} hitSlop={12}>
-                <Text style={styles.datePickerToolbarBtn}>Cancelar</Text>
+                <Text style={styles.datePickerToolbarBtn}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <Text style={styles.datePickerToolbarTitle}>
-                {iosPicker?.field === 'from' ? 'Fecha desde' : 'Fecha hasta'}
+                {iosPicker?.field === 'from'
+                  ? t('adminIncidents.filter.dateFromTitle')
+                  : t('adminIncidents.filter.dateToTitle')}
               </Text>
               <TouchableOpacity onPress={confirmIosPicker} hitSlop={12}>
-                <Text style={[styles.datePickerToolbarBtn, styles.datePickerToolbarBtnPrimary]}>Listo</Text>
+                <Text style={[styles.datePickerToolbarBtn, styles.datePickerToolbarBtnPrimary]}>
+                  {t('adminIncidents.filter.datePickerDone')}
+                </Text>
               </TouchableOpacity>
             </View>
             {iosPicker ? (
@@ -526,21 +529,21 @@ export default function AdminIncidenciasHistoryScreen() {
       <Modal visible={!!rejectingInc} transparent animationType="fade" onRequestClose={() => setRejectingInc(null)}>
         <View style={styles.overlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Rechazar #{rejectingInc?.id}</Text>
+            <Text style={styles.modalTitle}>{t('adminIncidents.rejectModalShort', { id: rejectingInc?.id })}</Text>
             <TextInput
               style={styles.textArea}
               value={rejectMotiu}
               onChangeText={setRejectMotiu}
-              placeholder="Motivo del rechazo (opcional)"
+              placeholder={t('adminIncidents.rejectPlaceholder')}
               placeholderTextColor="#9ca3af"
               multiline
             />
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setRejectingInc(null)}>
-                <Text style={styles.cancelBtnText}>Cancelar</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.btnReject} onPress={handleReject} disabled={submitting}>
-                <Text style={styles.btnRejectText}>Rechazar</Text>
+                <Text style={styles.btnRejectText}>{t('adminIncidents.reject')}</Text>
               </TouchableOpacity>
             </View>
           </View>

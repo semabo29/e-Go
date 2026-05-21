@@ -114,7 +114,7 @@ export default function RankingScreen() {
             <View style={styles.titleText}>
               <Text style={styles.title}>{t('ranking.title')}</Text>
               <Text style={styles.subtitle}>
-                {isGlobalRanking ? 'Los conductores más sostenibles' : 'Tus amigos'}
+                {isGlobalRanking ? t('ranking.subtitle') : t('ranking.friendsSubtitle')}
               </Text>
             </View>
           </View>
@@ -128,7 +128,7 @@ export default function RankingScreen() {
               color={isGlobalRanking ? '#fff' : theme.title}
             />
             <Text style={[styles.tabButtonText, isGlobalRanking && styles.tabButtonTextActive]}>
-              {isGlobalRanking ? 'Global' : 'Amigos'}
+              {isGlobalRanking ? t('ranking.tabGlobal') : t('ranking.tabFriends')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -164,7 +164,7 @@ export default function RankingScreen() {
         )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            {isGlobalRanking ? 'Aún no hay puntuaciones.' : 'No tienes amigos aún o no hay puntuaciones entre tus amigos.'}
+            {isGlobalRanking ? t('ranking.empty') : t('ranking.emptyFriends')}
           </Text>
         }
       />

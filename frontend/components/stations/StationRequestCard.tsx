@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { StationRequest } from '@/components/stations/types';
 import { StationRequestStatusBadge } from '@/components/stations/StationRequestStatusBadge';
@@ -9,21 +10,22 @@ type Props = {
 };
 
 export function StationRequestCard({ request, showCompany = false }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.card}>
       <View style={styles.row}>
-        <Text style={styles.title}>Solicitud #{request.id}</Text>
+        <Text style={styles.title}>{t('stationRequest.title', { id: request.id })}</Text>
         <StationRequestStatusBadge status={request.status} />
       </View>
-      <Text style={styles.meta}>Accion: {request.action.toUpperCase()}</Text>
+      <Text style={styles.meta}>{t('stationRequest.action', { action: request.action.toUpperCase() })}</Text>
       <Text style={styles.meta}>
-        Fecha: {new Date(request.created_at).toLocaleString()}
+        {t('stationRequest.date', { date: new Date(request.created_at).toLocaleString() })}
       </Text>
       {showCompany && request.empresa_nombre ? (
-        <Text style={styles.meta}>Empresa: {request.empresa_nombre}</Text>
+        <Text style={styles.meta}>{t('stationRequest.company', { name: request.empresa_nombre })}</Text>
       ) : null}
       {request.rejection_reason ? (
-        <Text style={styles.reason}>Motivo: {request.rejection_reason}</Text>
+        <Text style={styles.reason}>{t('stationRequest.reason', { reason: request.rejection_reason })}</Text>
       ) : null}
     </View>
   );

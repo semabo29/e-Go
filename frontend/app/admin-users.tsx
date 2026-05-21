@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +17,7 @@ import { getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
 import { AdminUser, listAdminUsers, setUserBanStatus } from '@/services/adminUserModeration';
 
 export default function AdminUsersScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,12 +48,12 @@ export default function AdminUsersScreen() {
     try {
       const token = await getPrivilegedToken('admin');
       if (!token) {
-        setError('No hay sesion admin');
+        setError(t('adminUsers.noSession'));
         return;
       }
       setUsers(await listAdminUsers());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cargar usuarios');
+      setError(err instanceof Error ? err.message : t('adminUsers.loadError'));
     } finally {
       setLoadingUsers(false);
     }
@@ -64,18 +66,18 @@ export default function AdminUsersScreen() {
       try {
         const token = await getPrivilegedToken('admin');
         if (!token) {
-          setError('No hay sesion admin');
+          setError(t('adminUsers.noSession'));
           return;
         }
         const res = await privilegedFetch('admin', '/admin/me');
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'No autorizado');
+          setError(data.error || t('adminUsers.unauthorized'));
           return;
         }
         await loadUsers();
       } catch {
-        setError('No se pudo conectar con el servidor');
+        setError(t('adminUsers.connectionError'));
       } finally {
         setLoading(false);
       }
@@ -92,7 +94,7 @@ export default function AdminUsersScreen() {
       );
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo actualizar el usuario');
+      setError(err instanceof Error ? err.message : t('adminUsers.updateError'));
     } finally {
       setLoadingUsers(false);
     }
@@ -106,38 +108,40 @@ export default function AdminUsersScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Usuarios</Text>
+        <Text style={styles.title}>{t('adminUsers.title')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/admin-home')}>
-          <Text style={styles.backText}>Volver al panel admin</Text>
+          <Text style={styles.backText}>{t('adminUsers.backToPanel')}</Text>
         </TouchableOpacity>
 
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#111827" />
-            <Text style={styles.muted}>Cargando…</Text>
+            <Text style={styles.muted}>{t('adminUsers.loading')}</Text>
           </View>
         ) : error && users.length === 0 ? (
           <>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/admin-login')}>
-              <Text style={styles.primaryButtonText}>Ir al login admin</Text>
+              <Text style={styles.primaryButtonText}>{t('adminUsers.goLogin')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Lista</Text>
+              <Text style={styles.sectionTitle}>{t('adminUsers.list')}</Text>
               <TouchableOpacity onPress={loadUsers} disabled={loadingUsers}>
-                <Text style={styles.sectionLink}>{loadingUsers ? 'Actualizando…' : 'Actualizar'}</Text>
+                <Text style={styles.sectionLink}>
+                  {loadingUsers ? t('adminUsers.updating') : t('adminUsers.refresh')}
+                </Text>
               </TouchableOpacity>
             </View>
             {users.length > 0 ? (
               <View style={styles.searchBlock}>
-                <Text style={styles.searchLabel}>Buscar</Text>
+                <Text style={styles.searchLabel}>{t('adminUsers.search')}</Text>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Nombre, email, id o motivo de baneo"
+                  placeholder={t('adminUsers.searchPlaceholder')}
                   placeholderTextColor="#9ca3af"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -149,11 +153,11 @@ export default function AdminUsersScreen() {
               </View>
             ) : null}
             {loadingUsers && users.length === 0 ? (
-              <Text style={styles.muted}>Cargando usuarios…</Text>
+              <Text style={styles.muted}>{t('adminUsers.loadingUsers')}</Text>
             ) : users.length === 0 ? (
-              <Text style={styles.muted}>No hay usuarios para mostrar.</Text>
+              <Text style={styles.muted}>{t('adminUsers.empty')}</Text>
             ) : filteredUsers.length === 0 ? (
-              <Text style={styles.muted}>Ningun usuario coincide con la busqueda.</Text>
+              <Text style={styles.muted}>{t('adminUsers.noSearchResults')}</Text>
             ) : (
               filteredUsers.map((u) => (
                 <View key={u.id} style={styles.userRow}>
@@ -161,11 +165,11 @@ export default function AdminUsersScreen() {
                     <Text style={styles.userName}>{u.username}</Text>
                     <Text style={styles.userEmail}>{u.email}</Text>
                     <Text style={u.is_banned ? styles.userStatusBanned : styles.userStatusActive}>
-                      {u.is_banned ? 'Baneado' : 'Activo'}
+                      {u.is_banned ? t('adminUsers.banned') : t('adminUsers.active')}
                     </Text>
                     {u.is_banned && u.banned_reason ? (
                       <Text style={styles.userBanReason} numberOfLines={3}>
-                        Motivo: {u.banned_reason}
+                        {t('adminUsers.banReason', { reason: u.banned_reason })}
                       </Text>
                     ) : null}
                   </View>
@@ -177,7 +181,7 @@ export default function AdminUsersScreen() {
                     }}
                     disabled={loadingUsers}
                   >
-                    <Text style={styles.banButtonText}>{u.is_banned ? 'Desbanear' : 'Banear'}</Text>
+                    <Text style={styles.banButtonText}>{u.is_banned ? t('adminUsers.unban') : t('adminUsers.ban')}</Text>
                   </TouchableOpacity>
                 </View>
               ))
@@ -190,19 +194,17 @@ export default function AdminUsersScreen() {
         <View style={styles.confirmBackdrop}>
           <View style={styles.confirmCardWide}>
             <Text style={styles.confirmTitle}>
-              {confirmBanUser?.is_banned ? 'Desbanear usuario' : 'Banear usuario'}
+              {confirmBanUser?.is_banned ? t('adminUsers.unbanTitle') : t('adminUsers.banTitle')}
             </Text>
             <Text style={styles.confirmText}>
-              {confirmBanUser?.is_banned
-                ? 'El usuario recuperara acceso a su cuenta.'
-                : 'El usuario perdera acceso inmediato a su cuenta. Indica el motivo del baneo.'}
+              {confirmBanUser?.is_banned ? t('adminUsers.unbanBody') : t('adminUsers.banBody')}
             </Text>
             {confirmBanUser && !confirmBanUser.is_banned ? (
               <>
-                <Text style={styles.banReasonLabel}>Motivo del baneo</Text>
+                <Text style={styles.banReasonLabel}>{t('adminUsers.banReasonLabel')}</Text>
                 <TextInput
                   style={styles.banReasonInput}
-                  placeholder="Ej.: Incumplimiento de normas de la comunidad"
+                  placeholder={t('adminUsers.banReasonPlaceholder')}
                   placeholderTextColor="#9ca3af"
                   value={banReasonInput}
                   onChangeText={setBanReasonInput}
@@ -215,7 +217,7 @@ export default function AdminUsersScreen() {
             ) : null}
             <View style={styles.confirmActions}>
               <TouchableOpacity style={styles.confirmCancel} onPress={closeBanModal}>
-                <Text style={styles.confirmCancelText}>Cancelar</Text>
+                <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={confirmBanUser?.is_banned ? styles.confirmUnban : styles.confirmDelete}
@@ -224,7 +226,7 @@ export default function AdminUsersScreen() {
                   if (!confirmBanUser.is_banned) {
                     const reason = banReasonInput.trim();
                     if (!reason) {
-                      Alert.alert('Motivo obligatorio', 'Escribe un motivo antes de banear al usuario.');
+                      Alert.alert(t('adminUsers.reasonRequiredTitle'), t('adminUsers.reasonRequiredBody'));
                       return;
                     }
                     await handleSetUserBan(confirmBanUser, true, reason);
@@ -236,7 +238,7 @@ export default function AdminUsersScreen() {
                 disabled={loadingUsers}
               >
                 <Text style={styles.confirmDeleteText}>
-                  {confirmBanUser?.is_banned ? 'Desbanear' : 'Banear'}
+                  {confirmBanUser?.is_banned ? t('adminUsers.unban') : t('adminUsers.ban')}
                 </Text>
               </TouchableOpacity>
             </View>

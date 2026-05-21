@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -20,6 +21,7 @@ import { fetchGroqResponse } from '../services/groqService';
 const ASSISTANT_AVATAR = require('../assets/images/avatar_asistente_IA.png');
 
 function ChatContent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
@@ -52,7 +54,7 @@ function ChatContent() {
       >
         {/* Cabecera */}
         <View style={styles.header}>
-          <Text style={styles.headerSubtitle}>Soporte e-Go</Text>
+          <Text style={styles.headerSubtitle}>{t('support.header')}</Text>
           <Image source={ASSISTANT_AVATAR} style={styles.headerImage} />
         </View>
 
@@ -72,7 +74,7 @@ function ChatContent() {
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <MaterialIcons name="chat-bubble-outline" size={50} color="#cbd5e1" />
-                <Text style={styles.emptyText}>Hola, soy Voltix, tu asistente virtual de e-Go. ¿En qué puedo ayudarte?</Text>
+                <Text style={styles.emptyText}>{t('support.empty')}</Text>
               </View>
             }
           />
@@ -86,7 +88,7 @@ function ChatContent() {
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder="Escribe aquí..."
+              placeholder={t('support.placeholder')}
               placeholderTextColor="#94a3b8"
               multiline
             />

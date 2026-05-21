@@ -1946,7 +1946,7 @@ useEffect(() => {
               <View style={{ flex: 1 }}>
                 {/* Text de la maniobra pas a pas */}
                 <Text style={styles.navInstructionText} numberOfLines={2}>
-                  {routeSteps[currentStepIndex]?.instruction || "Calculant ruta..."}
+                  {routeSteps[currentStepIndex]?.instruction || t('navigation.calculatingRoute')}
                 </Text>
 
                 {/* Fila inferior con el tiempo, km i ETA */}

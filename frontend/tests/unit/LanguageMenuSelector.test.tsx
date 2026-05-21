@@ -34,6 +34,13 @@ describe('LanguageMenuSelector', () => {
     expect(setAppLocaleSpy).toHaveBeenCalledWith('en');
   });
 
+  test('renderiza cuatro banderas dibujadas (sin emojis)', () => {
+    const { getAllByRole } = render(
+      <LanguageMenuSelector isDark={false} accent="#10b981" />
+    );
+    expect(getAllByRole('button').length).toBe(4);
+  });
+
   test('modo oscuro y bandera catalana renderizan sin error', () => {
     const { getAllByRole, getByLabelText } = render(
       <LanguageMenuSelector isDark accent="#22c55e" />

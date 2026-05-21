@@ -30,4 +30,5 @@ jobs:
             -Dsonar.javascript.lcov.reportPaths=
             -Dsonar.typescript.lcov.reportPaths=
             -Dsonar.coverage.exclusions=**/*
+            -Dsonar.cpd.exclusions=**/i18n/locales/**
             -Dsonar.qualitygate.wait=false

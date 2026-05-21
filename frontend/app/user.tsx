@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { waitFor } from '@testing-library/react-native';
@@ -75,6 +76,7 @@ interface PerfilUser {
 }
 
 export default function PerfilScreen() {
+  const { t } = useTranslation();
   const { user, setUser } = useAuth();
 
   const [perfil, setPerfil] = useState<PerfilUser>();
@@ -115,16 +117,16 @@ export default function PerfilScreen() {
         if (isAvailable) {
           await Sharing.shareAsync(uri, {
             mimeType: 'image/jpeg',
-            dialogTitle: 'Comparte tu perfil de e-Go',
+            dialogTitle: t('userProfile.shareDialogTitle'),
             UTI: 'public.jpeg', // Especial per a iOS
           });
         } else {
-          Alert.alert('Error', 'El uso compartido no está disponible en este dispositivo');
+          Alert.alert(t('common.error'), t('userProfile.shareUnavailable'));
         }
       }
     } catch (error) {
       console.error('Error al compartir:', error);
-      Alert.alert('Error', 'No se ha podido capturar el perfil.');
+      Alert.alert(t('common.error'), t('userProfile.shareCaptureError'));
     }
   };
 
@@ -305,7 +307,7 @@ export default function PerfilScreen() {
   };
 
   const renderProfileName = () => {
-    const name = perfil?.username ?? 'Usuario';
+    const name = perfil?.username ?? t('userProfile.defaultUser');
     if (!perfil?.premium) {
       return <Text style={styles.profileName}>{name}</Text>;
     }
@@ -333,11 +335,15 @@ export default function PerfilScreen() {
       <>
         {receivedRequests.length > 0 && (
           <View style={styles.requestsSection}>
-            <Text style={styles.requestsTitle}>Solicitudes recibidas ({receivedRequests.length})</Text>
+            <Text style={styles.requestsTitle}>
+              {t('userProfile.receivedRequests', { count: receivedRequests.length })}
+            </Text>
             <View style={styles.requestsList}>
               {receivedRequests.map((request) => (
                 <View key={request.id} style={styles.requestItem}>
-                  <Text style={styles.requestUsername}>{request.username || `Usuario ${request.id}`}</Text>
+                  <Text style={styles.requestUsername}>
+                    {request.username || t('userProfile.userFallback', { id: request.id })}
+                  </Text>
                   <View style={styles.requestButtonGroup}>
                     <TouchableOpacity
                       style={[styles.requestAcceptButton, loadingFriendRequests[request.id] && styles.buttonDisabled]}
@@ -362,11 +368,15 @@ export default function PerfilScreen() {
 
         {sentRequests.length > 0 && (
           <View style={styles.requestsSection}>
-            <Text style={styles.requestsTitle}>Solicitudes enviadas ({sentRequests.length})</Text>
+            <Text style={styles.requestsTitle}>
+              {t('userProfile.sentRequests', { count: sentRequests.length })}
+            </Text>
             <View style={styles.requestsList}>
               {sentRequests.map((request) => (
                 <View key={request.id} style={styles.requestItem}>
-                  <Text style={styles.requestUsername}>{request.username || `Usuario ${request.id}`}</Text>
+                  <Text style={styles.requestUsername}>
+                    {request.username || t('userProfile.userFallback', { id: request.id })}
+                  </Text>
                   <TouchableOpacity
                     style={[styles.requestCancelButton, loadingFriendRequests[request.id] && styles.buttonDisabled]}
                     onPress={() => handleCancelFriendRequest(request.id)}
@@ -391,7 +401,7 @@ export default function PerfilScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
-        <Text style={styles.title}>Perfil</Text>
+        <Text style={styles.title}>{t('userProfile.title')}</Text>
         {/* Espai buit per centrar el títol */}
         <View style={{ width: 24 }} />
       </View>
@@ -427,7 +437,7 @@ export default function PerfilScreen() {
                             setIsEditing(true);
                           }}
                         >
-                          <Text style={styles.editButtonText}>Modificar perfil</Text>
+                          <Text style={styles.editButtonText}>{t('userProfile.editProfile')}</Text>
                         </TouchableOpacity>
                       </>
                     ) : (
@@ -436,7 +446,7 @@ export default function PerfilScreen() {
                           style={styles.input}
                           value={editedUsername}
                           onChangeText={setEditedUsername}
-                          placeholder="Nombre de usuario"
+                          placeholder={t('common.username')}
                           placeholderTextColor="#94a3b8"
                         />
                       </>
@@ -451,14 +461,16 @@ export default function PerfilScreen() {
                       disabled={isSendingRequest}
                     >
                       <MaterialIcons name="person-add" size={18} color="#fff" />
-                      <Text style={styles.primaryButtonText}>{isSendingRequest ? 'Enviando...' : 'Enviar solicitud'}</Text>
+                      <Text style={styles.primaryButtonText}>
+                        {isSendingRequest ? t('userProfile.sending') : t('userProfile.sendRequest')}
+                      </Text>
                     </TouchableOpacity>
                   )}
                   {esAmic === 1 && (
                     <View style={styles.pendingRequestContainer}>
                       <View>
-                        <Text style={styles.pendingRequestText}>Solicitud pendiente</Text>
-                        <Text style={styles.pendingRequestSubtext}>Tienes una solicitud de amistad de este usuario</Text>
+                        <Text style={styles.pendingRequestText}>{t('userProfile.pendingRequest')}</Text>
+                        <Text style={styles.pendingRequestSubtext}>{t('userProfile.pendingRequestHint')}</Text>
                       </View>
                       <View style={styles.buttonGroup}>
                         <TouchableOpacity
@@ -467,7 +479,9 @@ export default function PerfilScreen() {
                           disabled={isAcceptingFriend || isRejectingRequest}
                         >
                           <MaterialIcons name="check" size={18} color="#fff" />
-                          <Text style={styles.acceptButtonText}>{isAcceptingFriend ? 'Aceptando...' : 'Aceptar'}</Text>
+                          <Text style={styles.acceptButtonText}>
+                            {isAcceptingFriend ? t('userProfile.accepting') : t('userProfile.accept')}
+                          </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.rejectButton, isRejectingRequest && styles.buttonDisabled]}
@@ -475,7 +489,9 @@ export default function PerfilScreen() {
                           disabled={isRejectingRequest || isAcceptingFriend}
                         >
                           <MaterialIcons name="close" size={18} color="#fff" />
-                          <Text style={styles.rejectButtonText}>{isRejectingRequest ? 'Rechazando...' : 'Rechazar'}</Text>
+                          <Text style={styles.rejectButtonText}>
+                            {isRejectingRequest ? t('userProfile.rejecting') : t('userProfile.reject')}
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -484,7 +500,7 @@ export default function PerfilScreen() {
                     <View style={styles.sentRequestContainer}>
                       <View style={styles.sentRequestContent}>
                         <MaterialIcons name="mail-outline" size={16} color="#f59e0b" />
-                        <Text style={styles.sentRequestText}>Solicitud enviada</Text>
+                        <Text style={styles.sentRequestText}>{t('userProfile.sentRequest')}</Text>
                       </View>
                       <TouchableOpacity
                         style={[styles.cancelFriendButton, isSendingRequest && styles.buttonDisabled]}
@@ -499,7 +515,7 @@ export default function PerfilScreen() {
                     <View style={styles.friendStatusContainer}>
                       <View style={styles.friendStatusContent}>
                         <MaterialIcons name="check-circle" size={16} color="#10b981" />
-                        <Text style={styles.friendStatusText}>✓ Amigo</Text>
+                        <Text style={styles.friendStatusText}>{t('userProfile.friend')}</Text>
                       </View>
                       <TouchableOpacity
                         style={[styles.deleteButton, isRemovingFriend && styles.buttonDisabled]}
@@ -519,7 +535,9 @@ export default function PerfilScreen() {
                     onPress={savePerfil}
                     disabled={isSaving}
                   >
-                    <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</Text>
+                    <Text style={styles.saveButtonText}>
+                      {isSaving ? t('userProfile.saving') : t('userProfile.saveChanges')}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.cancelButton}
@@ -529,23 +547,29 @@ export default function PerfilScreen() {
                     }}
                     disabled={isSaving}
                   >
-                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                    <Text style={styles.cancelButtonText}>{t('userProfile.cancel')}</Text>
                   </TouchableOpacity>
                 </>
               )}
-              <Text style={styles.profileSubtitle}>Se unió el {perfil?.created_at ? new Date(perfil.created_at).toLocaleDateString() : 'fecha no disponible'}</Text>
+              <Text style={styles.profileSubtitle}>
+                {t('userProfile.joined', {
+                  date: perfil?.created_at
+                    ? new Date(perfil.created_at).toLocaleDateString()
+                    : t('userProfile.dateUnavailable'),
+                })}
+              </Text>
                 {(perfil?.empresa || perfil?.admin) && (
                 <View style={styles.badgeRow}>
                   {perfil?.empresa && (
                     <View style={styles.badge}>
                       <MaterialIcons name="business" size={16} color="#2563eb" />
-                      <Text style={styles.badgeLabel}>Empresa</Text>
+                      <Text style={styles.badgeLabel}>{t('userProfile.badgeCompany')}</Text>
                     </View>
                   )}
                   {perfil?.admin && (
                     <View style={styles.badge}>
                       <MaterialIcons name="shield" size={16} color={sem.mapCustomLocation} />
-                      <Text style={styles.badgeLabel}>Admin</Text>
+                      <Text style={styles.badgeLabel}>{t('userProfile.badgeAdmin')}</Text>
                     </View>
                   )}
                 </View>
@@ -556,18 +580,18 @@ export default function PerfilScreen() {
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={sem.accent} />
-                <Text style={styles.loadingText}>Cargando perfil...</Text>
+                <Text style={styles.loadingText}>{t('userProfile.loading')}</Text>
               </View>
             ) : perfil ? (
               <>
                 <View style={styles.statsContainer}>
                   <View style={[styles.statsCard, styles.centered]}>
                     <Text style={styles.points}>{perfil.punts}</Text>
-                    <Text style={styles.ptsLabel}>Puntos</Text>
+                    <Text style={styles.ptsLabel}>{t('userProfile.points')}</Text>
                   </View>
                   <View style={[styles.statsCard, styles.centered]}>
                     <Text style={styles.points}>{perfil.posicio}</Text>
-                    <Text style={styles.ptsLabel}>Posición en el ránking</Text>
+                    <Text style={styles.ptsLabel}>{t('userProfile.rankPosition')}</Text>
                   </View>
                 </View>
                 <View style={styles.statsContainer}>
@@ -575,15 +599,15 @@ export default function PerfilScreen() {
                     {perfil.amics ?
                     <>
                       <Text style={styles.points}>{perfil.amics}</Text>
-                      <Text style={styles.ptsLabel}>Amigos</Text>
-                    </> : <Text style={styles.points}>Sin amigos</Text>}
+                      <Text style={styles.ptsLabel}>{t('userProfile.friendsLabel')}</Text>
+                    </> : <Text style={styles.points}>{t('userProfile.noFriends')}</Text>}
                   </View>
                   <View style={[styles.statsCard, styles.centered]}>
                     {perfil.valoracio ?
                     <>
                       <Text style={styles.points}>{Number(perfil.valoracio).toFixed(2)}</Text>
-                      <Text style={styles.ptsLabel}>Valoración media de estaciones</Text>
-                    </> : <Text style={styles.points}>Sin valoraciones</Text>}
+                      <Text style={styles.ptsLabel}>{t('userProfile.avgRating')}</Text>
+                    </> : <Text style={styles.points}>{t('userProfile.noRatings')}</Text>}
                   </View>
                 </View>
                 <View style={styles.statsContainer}>
@@ -591,19 +615,22 @@ export default function PerfilScreen() {
                     {perfil.skin ?
                     <>
                       <Image source={getSkinImage(perfil.skin)} style={styles.image} resizeMode="contain" />
-                    </> : <Text style={styles.points}>Sin skin</Text>}
+                    </> : <Text style={styles.points}>{t('userProfile.noSkin')}</Text>}
                   </View>
                   <View style={[styles.statsCard, styles.centered]}>
                     {perfil.carrega ?
                     <>
-                      <Text style={styles.points}>{perfil.carrega} {perfil.carrega === 1 ? 'min' : 'mins'}</Text>
-                      <Text style={styles.ptsLabel}>Tiempo total de carga</Text>
-                    </> : <Text style={styles.points}>Aún no has cargado</Text>}
+                      <Text style={styles.points}>
+                        {perfil.carrega}{' '}
+                        {perfil.carrega === 1 ? t('userProfile.minOne') : t('userProfile.minMany')}
+                      </Text>
+                      <Text style={styles.ptsLabel}>{t('userProfile.chargeTime')}</Text>
+                    </> : <Text style={styles.points}>{t('userProfile.notChargedYet')}</Text>}
                   </View>
                 </View>
               </>
             ) : (
-              <Text style={styles.emptyText}>No existe el usuario</Text>
+              <Text style={styles.emptyText}>{t('userProfile.notFound')}</Text>
             )}
           </ViewShot>
             {!isLoading && perfil?.id === user?.id && renderFriendRequests()}
@@ -616,7 +643,7 @@ export default function PerfilScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="camera-alt" size={20} color="#fff" />
-            <Text style={styles.instagramButtonText}>Comparte tu perfil!</Text>
+            <Text style={styles.instagramButtonText}>{t('userProfile.shareProfile')}</Text>
           </TouchableOpacity>
           )}
         </View>

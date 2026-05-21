@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ManualStationForm } from '@/components/stations/ManualStationForm';
@@ -20,6 +21,7 @@ async function resolveCompanyNombre(): Promise<string | null> {
 }
 
 export default function CompanyStationNewScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
   const getParam = (key: string) => {
@@ -81,17 +83,17 @@ export default function CompanyStationNewScreen() {
       if (isEdit && Number.isFinite(stationId)) {
         res = await requestUpdateCompanyStation(stationId!, form);
       } else if (isEdit) {
-        setError('ID de estacion invalido');
+        setError(t('companyStation.invalidId'));
         return;
       } else {
         res = await requestCreateCompanyStation(form);
       }
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo enviar la solicitud');
+        setError(data.error || t('companyStation.submitError'));
         return;
       }
-      setSuccess(isEdit ? 'Solicitud de actualizacion enviada' : 'Solicitud de alta enviada');
+      setSuccess(isEdit ? t('companyStation.updatedSent') : t('companyStation.createSent'));
       if (!isEdit) {
         const nombre = await resolveCompanyNombre();
         setForm(
@@ -99,7 +101,11 @@ export default function CompanyStationNewScreen() {
         );
       }
     } catch (err) {
-      setError(err instanceof Error && err.message === 'NO_SESSION' ? 'No hay sesion de empresa' : 'No se pudo conectar con el servidor');
+      setError(
+        err instanceof Error && err.message === 'NO_SESSION'
+          ? t('companyStation.noSession')
+          : t('companyStation.connectionError')
+      );
     } finally {
       setLoading(false);
     }
@@ -107,9 +113,9 @@ export default function CompanyStationNewScreen() {
 
   return (
     <ManualStationForm
-      title={isEdit ? 'Solicitar edicion de estacion' : 'Solicitar nueva estacion'}
-      subtitle="La solicitud quedara pendiente de revision admin"
-      submitLabel={isEdit ? 'Enviar solicitud de edicion' : 'Enviar solicitud de alta'}
+      title={isEdit ? t('companyStation.editTitle') : t('companyStation.newTitle')}
+      subtitle={t('companyStation.subtitle')}
+      submitLabel={isEdit ? t('companyStation.submitEdit') : t('companyStation.submitCreate')}
       loading={loading}
       error={error}
       success={success}

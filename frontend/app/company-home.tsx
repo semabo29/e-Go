@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Href, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -23,6 +24,7 @@ import { clearPrivilegedSession, getPrivilegedToken } from '@/services/privilege
 import { listCompanyStations, requestDeleteCompanyStation } from '@/services/stationModeration';
 
 export default function CompanyHomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [loadingStations, setLoadingStations] = useState(false);
@@ -38,7 +40,7 @@ export default function CompanyHomeScreen() {
     (async () => {
       const token = await getPrivilegedToken('company');
       if (!token) {
-        setError('No hay sesion de empresa');
+        setError(t('companyHome.noSession'));
         setLoading(false);
         return;
       }
@@ -49,8 +51,8 @@ export default function CompanyHomeScreen() {
       } catch (err) {
         setError(
           err instanceof Error && err.message === 'NO_SESSION'
-            ? 'No hay sesion de empresa'
-            : 'No se pudo cargar el perfil de empresa'
+            ? t('companyHome.noSession')
+            : t('companyHome.loadProfileError')
         );
       } finally {
         setLoading(false);
@@ -65,7 +67,11 @@ export default function CompanyHomeScreen() {
       const data = await listCompanyStations();
       setStations(data);
     } catch (err) {
-      setError(err instanceof Error && err.message === 'NO_SESSION' ? 'No hay sesion de empresa' : 'No se pudieron cargar las estaciones');
+      setError(
+        err instanceof Error && err.message === 'NO_SESSION'
+          ? t('companyHome.noSession')
+          : t('companyHome.stationsLoadError')
+      );
     } finally {
       setLoadingStations(false);
     }
@@ -80,7 +86,7 @@ export default function CompanyHomeScreen() {
       await mergeStoredCompanyUser({ nombre: updated.nombre });
       setEditingNombre(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el nombre');
+      setError(err instanceof Error ? err.message : t('companyHome.saveNameError'));
     } finally {
       setSavingNombre(false);
     }
@@ -92,12 +98,12 @@ export default function CompanyHomeScreen() {
       const res = await requestDeleteCompanyStation(id);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo enviar la solicitud');
+        setError(data.error || t('companyHome.deleteRequestError'));
         return;
       }
       await refreshStations();
     } catch (_e) {
-      setError('No se pudo conectar con el servidor');
+      setError(t('companyHome.connectionError'));
     } finally {
       setLoadingStations(false);
     }
@@ -111,25 +117,25 @@ export default function CompanyHomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Panel Empresa</Text>
+        <Text style={styles.title}>{t('companyHome.title')}</Text>
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#111827" />
-            <Text style={styles.muted}>Verificando sesion…</Text>
+            <Text style={styles.muted}>{t('companyHome.verifying')}</Text>
           </View>
         ) : error ? (
           <>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/company-login' as Href)}>
-              <Text style={styles.primaryButtonText}>Ir al login empresa</Text>
+              <Text style={styles.primaryButtonText}>{t('companyHome.goLogin')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <View style={styles.companyHeader}>
-              <Text style={styles.companyNameLabel}>Empresa</Text>
+              <Text style={styles.companyNameLabel}>{t('companyHome.companyLabel')}</Text>
               <Text style={styles.companyNameValue}>
-                {companyProfile?.nombre?.trim() ? companyProfile.nombre.trim() : 'Sin nombre'}
+                {companyProfile?.nombre?.trim() ? companyProfile.nombre.trim() : t('companyHome.noName')}
               </Text>
               {companyProfile?.email ? (
                 <Text style={styles.companyEmail}>{companyProfile.email}</Text>
@@ -137,12 +143,12 @@ export default function CompanyHomeScreen() {
             </View>
             {editingNombre ? (
               <View style={styles.nombreEditBlock}>
-                <Text style={styles.nombreEditLabel}>Nombre de la empresa</Text>
+                <Text style={styles.nombreEditLabel}>{t('companyHome.nameLabel')}</Text>
                 <TextInput
                   style={styles.nombreInput}
                   value={nombreDraft}
                   onChangeText={setNombreDraft}
-                  placeholder="Nombre comercial"
+                  placeholder={t('companyHome.commercialPlaceholder')}
                   placeholderTextColor="#9ca3af"
                   editable={!savingNombre}
                 />
@@ -155,14 +161,16 @@ export default function CompanyHomeScreen() {
                     }}
                     disabled={savingNombre}
                   >
-                    <Text style={styles.nombreCancelBtnText}>Cancelar</Text>
+                    <Text style={styles.nombreCancelBtnText}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.nombreSaveBtn, savingNombre && styles.nombreSaveBtnDisabled]}
                     onPress={saveNombreEmpresa}
                     disabled={savingNombre || !nombreDraft.trim()}
                   >
-                    <Text style={styles.nombreSaveBtnText}>{savingNombre ? 'Guardando…' : 'Guardar'}</Text>
+                    <Text style={styles.nombreSaveBtnText}>
+                      {savingNombre ? t('companyHome.saving') : t('common.save')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -174,29 +182,31 @@ export default function CompanyHomeScreen() {
                   setEditingNombre(true);
                 }}
               >
-                <Text style={styles.outlineButtonText}>Cambiar nombre de empresa</Text>
+                <Text style={styles.outlineButtonText}>{t('companyHome.changeName')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/company-station-new' as Href)}>
-              <Text style={styles.primaryButtonText}>Nueva solicitud de estacion</Text>
+              <Text style={styles.primaryButtonText}>{t('companyHome.newRequest')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={() => router.push('/company-requests' as Href)}>
-              <Text style={styles.secondaryButtonText}>Ver mis solicitudes</Text>
+              <Text style={styles.secondaryButtonText}>{t('companyHome.myRequests')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.logoutButton} onPress={logoutCompany}>
-              <Text style={styles.logoutButtonText}>Cerrar sesion empresa</Text>
+              <Text style={styles.logoutButtonText}>{t('companyHome.logout')}</Text>
             </TouchableOpacity>
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Estaciones de la empresa</Text>
+                <Text style={styles.sectionTitle}>{t('companyHome.companyStations')}</Text>
                 <TouchableOpacity onPress={refreshStations} disabled={loadingStations}>
-                  <Text style={styles.sectionLink}>{loadingStations ? 'Actualizando…' : 'Actualizar'}</Text>
+                  <Text style={styles.sectionLink}>
+                    {loadingStations ? t('companyHome.updating') : t('companyHome.refresh')}
+                  </Text>
                 </TouchableOpacity>
               </View>
               {loadingStations ? (
-                <Text style={styles.muted}>Cargando estaciones…</Text>
+                <Text style={styles.muted}>{t('companyHome.loadingStations')}</Text>
               ) : stations.length === 0 ? (
-                <Text style={styles.muted}>No tienes estaciones aprobadas.</Text>
+                <Text style={styles.muted}>{t('companyHome.noStations')}</Text>
               ) : (
                 stations.map((s) => (
                   <ManualStationCard
@@ -234,11 +244,11 @@ export default function CompanyHomeScreen() {
       <Modal visible={confirmDeleteId !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteId(null)}>
         <View style={styles.confirmBackdrop}>
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>Solicitar borrado</Text>
-            <Text style={styles.confirmText}>Se enviara una solicitud para eliminar esta estacion.</Text>
+            <Text style={styles.confirmTitle}>{t('companyHome.deleteRequestTitle')}</Text>
+            <Text style={styles.confirmText}>{t('companyHome.deleteRequestBody')}</Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity style={styles.confirmCancel} onPress={() => setConfirmDeleteId(null)}>
-                <Text style={styles.confirmCancelText}>Cancelar</Text>
+                <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmDelete}
@@ -249,7 +259,7 @@ export default function CompanyHomeScreen() {
                   setConfirmDeleteId(null);
                 }}
               >
-                <Text style={styles.confirmDeleteText}>Enviar</Text>
+                <Text style={styles.confirmDeleteText}>{t('companyHome.send')}</Text>
               </TouchableOpacity>
             </View>
           </View>

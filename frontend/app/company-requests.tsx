@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Href, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -7,6 +8,7 @@ import { StationRequest } from '@/components/stations/types';
 import { listCompanyRequests } from '@/services/stationModeration';
 
 export default function CompanyRequestsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,7 +20,11 @@ export default function CompanyRequestsScreen() {
     try {
       setRequests(await listCompanyRequests());
     } catch (err) {
-      setError(err instanceof Error && err.message === 'NO_SESSION' ? 'No hay sesion de empresa' : 'No se pudieron cargar las solicitudes');
+      setError(
+        err instanceof Error && err.message === 'NO_SESSION'
+          ? t('companyRequests.noSession')
+          : t('companyRequests.loadError')
+      );
     } finally {
       setLoading(false);
     }
@@ -31,19 +37,21 @@ export default function CompanyRequestsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Mis solicitudes</Text>
+        <Text style={styles.title}>{t('companyRequests.title')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/company-home' as Href)}>
-          <Text style={styles.backText}>Volver al panel</Text>
+          <Text style={styles.backText}>{t('companyRequests.backToPanel')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.refreshButton} onPress={load} disabled={loading}>
-          <Text style={styles.refreshText}>{loading ? 'Actualizando…' : 'Actualizar'}</Text>
+          <Text style={styles.refreshText}>
+            {loading ? t('companyRequests.updating') : t('companyRequests.refresh')}
+          </Text>
         </TouchableOpacity>
         {loading ? (
           <ActivityIndicator size="large" color="#111827" />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : requests.length === 0 ? (
-          <Text style={styles.muted}>No tienes solicitudes todavia.</Text>
+          <Text style={styles.muted}>{t('companyRequests.empty')}</Text>
         ) : (
           requests.map((request) => <StationRequestCard key={request.id} request={request} />)
         )}

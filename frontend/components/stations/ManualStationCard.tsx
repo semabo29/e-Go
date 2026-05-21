@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { ManualStation } from '@/components/stations/types';
 
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export function ManualStationCard({ station, onEdit, onDelete }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.stationItem}>
       <View style={styles.stationRow}>
@@ -16,17 +18,17 @@ export function ManualStationCard({ station, onEdit, onDelete }: Props) {
         <Text style={styles.stationMeta}>{new Date(station.created_at).toLocaleDateString()}</Text>
       </View>
       <Text style={styles.stationMeta}>
-        {station.municipi || 'Sin municipio'} {station.provincia ? `· ${station.provincia}` : ''}
+        {station.municipi || t('stationCard.noMunicipality')} {station.provincia ? `· ${station.provincia}` : ''}
       </Text>
       <Text style={styles.stationMeta}>
         {station.kw ?? 0} kW {station.ac_dc ? `· ${station.ac_dc}` : ''}
       </Text>
       <View style={styles.stationActions}>
         <TouchableOpacity style={styles.editButton} onPress={onEdit}>
-          <Text style={styles.editButtonText}>Editar</Text>
+          <Text style={styles.editButtonText}>{t('stationCard.edit')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-          <Text style={styles.deleteButtonText}>Borrar</Text>
+          <Text style={styles.deleteButtonText}>{t('stationCard.delete')}</Text>
         </TouchableOpacity>
       </View>
     </View>

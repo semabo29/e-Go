@@ -22,6 +22,22 @@ async function getUserPoints(usuariId) {
   };
 }
 
+// Establecer puntos absolutos de un usuario (UPSERT)
+async function setPoints(usuariId, puntosTotales) {
+  const query = `
+    INSERT INTO ego.conductor (user_id, punts)
+    VALUES ($1, $2)
+    ON CONFLICT (user_id) DO UPDATE
+    SET punts = EXCLUDED.punts
+    RETURNING user_id as id, punts as points;
+  `;
+  const result = await pool.query(query, [usuariId, puntosTotales]);
+  if (result.rows.length === 0) {
+    throw new Error('No se pudo actualizar los puntos del conductor');
+  }
+  return result.rows[0];
+}
+
 // Añadir puntos a un usuario (UPSERT)
 async function addPoints(usuariId, puntosGanados) {
   // Utilitzem ON CONFLICT per crear la fila si no existeix
@@ -75,6 +91,7 @@ async function getUserRanking(usuariId) {
 
 module.exports = {
   getUserPoints,
+  setPoints,
   addPoints,
   getLeaderboard,
   getUserRanking

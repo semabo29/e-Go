@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -20,6 +21,7 @@ import { getSemanticColors, type SemanticColors } from '@/constants/accessibilit
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 export default function FiltersScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { colorblindFriendly } = useColorblindPreference();
@@ -48,7 +50,7 @@ export default function FiltersScreen() {
       const max = parseFloat(maxKw);
 
       if (min > max) {
-        setErrorMessage('La potencia mínima no puede ser mayor que la máxima');
+        setErrorMessage(t('mapFilters.minGreaterThanMax'));
         return;
       }
     }
@@ -80,7 +82,7 @@ export default function FiltersScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
-        <Text style={styles.title}>Filtrar Estaciones</Text>
+        <Text style={styles.title}>{t('mapFilters.title')}</Text>
         {/* Espai buit per centrar el títol */}
         <View style={{ width: 24 }} />
       </View>
@@ -95,16 +97,14 @@ export default function FiltersScreen() {
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
           <View style={{flex: 1}}>
 
-          <Text style={styles.description}>
-                Ajusta los parámetros para encontrar el punto de carga ideal.
-              </Text>
+          <Text style={styles.description}>{t('mapFilters.description')}</Text>
 
               {/* INTERRUPTOR DE FAVORITOS */}
               <View style={styles.switchGroup}>
-                <Text style={styles.label}>Mis Estaciones</Text>
+                <Text style={styles.label}>{t('mapFilters.myStations')}</Text>
                 <View style={styles.switchRow}>
                   <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? sem.favorite : "#64748b"} />
-                  <Text style={styles.switchDescription}>Mostrar solo mis favoritos</Text>
+                  <Text style={styles.switchDescription}>{t('mapFilters.favoritesOnly')}</Text>
                   <Switch
                     value={showFavorites}
                     onValueChange={setShowFavorites}
@@ -116,7 +116,7 @@ export default function FiltersScreen() {
 
             {/* Input Mínim */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Potencia Mínima (kW)</Text>
+              <Text style={styles.label}>{t('mapFilters.minPower')}</Text>
               <TextInput
                 style={[
                   styles.input, focusedInput === 'min' && styles.inputFocused,
@@ -136,7 +136,7 @@ export default function FiltersScreen() {
 
             {/* Input Màxim */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Potencia Máxima (kW)</Text>
+              <Text style={styles.label}>{t('mapFilters.maxPower')}</Text>
               <TextInput
                 style={[
                   styles.input, focusedInput === 'max' && styles.inputFocused,
@@ -156,7 +156,7 @@ export default function FiltersScreen() {
 
             {/* Secció Tipo de corriente */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Corriente</Text>
+              <Text style={styles.label}>{t('mapFilters.currentType')}</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 {['AC', 'DC'].map((type) => (
                   <TouchableOpacity
@@ -181,7 +181,7 @@ export default function FiltersScreen() {
 
             {/* Secció Tipus de Connector */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Conector</Text>
+              <Text style={styles.label}>{t('mapFilters.connectorType')}</Text>
               <View style={styles.chipContainer}>
                 {CONNECTOR_TYPES.map((type) => (
                   <TouchableOpacity
@@ -210,11 +210,11 @@ export default function FiltersScreen() {
       {/* Botons d'acció */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.clearBtn} onPress={handleClear} activeOpacity={0.8}>
-          <Text style={styles.clearBtnText}>Limpiar</Text>
+          <Text style={styles.clearBtnText}>{t('common.clear')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.applyBtn} onPress={handleApply} activeOpacity={0.8}>
-          <Text style={styles.applyBtnText}>Aplicar Filtros</Text>
+          <Text style={styles.applyBtnText}>{t('mapFilters.apply')}</Text>
         </TouchableOpacity>
       </View>
 

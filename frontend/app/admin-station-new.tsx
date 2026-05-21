@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ManualStationForm } from '@/components/stations/ManualStationForm';
 import { FormState, initialStationFormState } from '@/components/stations/types';
 import { createAdminStation, updateAdminStation } from '@/services/stationModeration';
 
 export default function AdminStationNewScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
   const getParam = (key: string) => {
@@ -52,20 +54,24 @@ export default function AdminStationNewScreen() {
       if (isEdit && Number.isFinite(stationId)) {
         res = await updateAdminStation(stationId!, form);
       } else if (isEdit) {
-        setError('ID de estacion invalido');
+        setError(t('adminStation.invalidId'));
         return;
       } else {
         res = await createAdminStation(form);
       }
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo guardar la estacion');
+        setError(data.error || t('adminStation.saveError'));
         return;
       }
-      setSuccess(isEdit ? 'Estacion actualizada' : 'Estacion creada correctamente');
+      setSuccess(isEdit ? t('adminStation.updated') : t('adminStation.created'));
       if (!isEdit) setForm(initialStationFormState);
     } catch (err) {
-      setError(err instanceof Error && err.message === 'NO_SESSION' ? 'No hay sesion admin' : 'No se pudo conectar con el servidor');
+      setError(
+        err instanceof Error && err.message === 'NO_SESSION'
+          ? t('adminStation.noSession')
+          : t('adminStation.connectionError')
+      );
     } finally {
       setLoading(false);
     }
@@ -73,9 +79,9 @@ export default function AdminStationNewScreen() {
 
   return (
     <ManualStationForm
-      title={isEdit ? 'Editar estacion manual' : 'Nueva estacion manual'}
-      subtitle="Solo visible en el backoffice admin"
-      submitLabel={isEdit ? 'Guardar cambios' : 'Crear estacion'}
+      title={isEdit ? t('adminStation.editTitle') : t('adminStation.newTitle')}
+      subtitle={t('adminStation.subtitle')}
+      submitLabel={isEdit ? t('adminStation.saveChanges') : t('adminStation.create')}
       loading={loading}
       error={error}
       success={success}

@@ -77,11 +77,11 @@ describe('ShopScreen Integration Tests', () => {
     const { getByText } = render(<ShopScreen />);
 
     await waitFor(() => {
-      expect(getByText('El teu Garatge')).toBeTruthy();
+      expect(getByText('Tu garaje')).toBeTruthy();
       expect(getByText('1000 Pts')).toBeTruthy();
       expect(getByText('Coche Básico')).toBeTruthy();
       expect(getByText('Rayo Veloz')).toBeTruthy();
-      expect(getByText('Equipat')).toBeTruthy();
+      expect(getByText('Equipado')).toBeTruthy();
       expect(getByText('500 Pts')).toBeTruthy();
     });
   });
@@ -93,7 +93,7 @@ describe('ShopScreen Integration Tests', () => {
     const botonPrecio = await waitFor(() => getByText('5000 Pts'));
     fireEvent.press(botonPrecio);
 
-    expect(Alert.alert).toHaveBeenCalledWith("Punts insuficients", "Et falten 4900 punts.");
+    expect(Alert.alert).toHaveBeenCalledWith('Puntos insuficientes', 'Te faltan 4900 puntos.');
   });
 
   test('permite comprar una skin y actualiza la UI', async () => {
@@ -157,7 +157,7 @@ describe('ShopScreen Integration Tests', () => {
         expect.stringContaining('/skins/conductor/1/equip'),
         expect.objectContaining({ method: 'PUT', body: JSON.stringify({ skin_id: 2 }) })
       );
-      expect(getByText('Equipat')).toBeTruthy();
+      expect(getByText('Equipado')).toBeTruthy();
     });
   });
 });

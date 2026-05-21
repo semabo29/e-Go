@@ -49,6 +49,9 @@ jest.mock('@/components/stations/ManualStationCard', () => ({
 }));
 
 import AdminHomeScreen from '@/app/admin-home';
+import es from '@/tests/helpers/localeEs';
+
+const L = es.adminHome;
 
 const mockAdminData = { admin: { sub: 1, email: 'admin@test.com', role: 'admin' } };
 const mockStation = { id: 1, nom: 'Estacion Test', latitud: 41.0, longitud: 2.0, kw: 22, ac_dc: 'AC', tipus_connexio: 'T2', tipus_velocitat: 'Normal', adreca: '', municipi: '', provincia: '', promotor: '', acces: '' };
@@ -67,7 +70,7 @@ describe('AdminHomeScreen', () => {
   test('shows error when no admin token', async () => {
     mockGetPrivilegedToken.mockResolvedValue(null);
     const { findByText } = render(<AdminHomeScreen />);
-    await findByText('No hay sesion admin');
+    await findByText(L.noSession);
   });
 
   test('shows error when privilegedFetch fails', async () => {
@@ -101,10 +104,10 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    expect(getByText('Moderacion de usuarios')).toBeTruthy();
-    expect(getByText('Incidencias pendientes')).toBeTruthy();
-    expect(getByText(/Historico/)).toBeTruthy();
-    expect(getByText('Revisar solicitudes pendientes')).toBeTruthy();
+    expect(getByText(L.userModeration)).toBeTruthy();
+    expect(getByText(L.pendingIncidents)).toBeTruthy();
+    expect(getByText(L.incidentHistory)).toBeTruthy();
+    expect(getByText(L.reviewRequests)).toBeTruthy();
   });
 
   test('navigates to admin-users screen', async () => {
@@ -116,7 +119,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Moderacion de usuarios'));
+    fireEvent.press(getByText(L.userModeration));
     expect(mockPush).toHaveBeenCalledWith('/admin-users');
   });
 
@@ -129,7 +132,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Incidencias pendientes'));
+    fireEvent.press(getByText(L.pendingIncidents));
     expect(mockPush).toHaveBeenCalledWith('/admin-incidencias');
   });
 
@@ -142,7 +145,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Revisar solicitudes pendientes'));
+    fireEvent.press(getByText(L.reviewRequests));
     expect(mockPush).toHaveBeenCalledWith('/admin-requests');
   });
 
@@ -167,7 +170,7 @@ describe('AdminHomeScreen', () => {
     mockClearPrivilegedSession.mockResolvedValue(undefined);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText(/Cerrar sesion/));
+    fireEvent.press(getByText(L.logout));
     await waitFor(() => {
       expect(mockClearPrivilegedSession).toHaveBeenCalledWith('admin');
       expect(mockReplace).toHaveBeenCalledWith('/admin-login');
@@ -177,8 +180,8 @@ describe('AdminHomeScreen', () => {
   test('error button navigates back to admin-login', async () => {
     mockGetPrivilegedToken.mockResolvedValue(null);
     const { findByText, getByText } = render(<AdminHomeScreen />);
-    await findByText('No hay sesion admin');
-    fireEvent.press(getByText('Volver al login admin'));
+    await findByText(L.noSession);
+    fireEvent.press(getByText(L.backLogin));
     expect(mockReplace).toHaveBeenCalledWith('/admin-login');
   });
 
@@ -207,7 +210,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Anadir estacion manual'));
+    fireEvent.press(getByText(L.addStation));
     expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('admin-station-new'));
   });
 
@@ -227,7 +230,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Ir a la aplicacion'));
+    fireEvent.press(getByText(L.goToApp));
     await waitFor(() => {
       expect(mockSetUser).toHaveBeenCalledWith({ id: 1, email: 'admin@test.com' });
       expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
@@ -242,7 +245,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Ir a la aplicacion'));
+    fireEvent.press(getByText(L.goToApp));
     await findByText('Sin permisos');
   });
 
@@ -254,7 +257,7 @@ describe('AdminHomeScreen', () => {
     mockListAdminStations.mockResolvedValue([]);
     const { findByText, getByText } = render(<AdminHomeScreen />);
     await findByText('admin@test.com');
-    fireEvent.press(getByText('Ir a la aplicacion'));
+    fireEvent.press(getByText(L.goToApp));
     await findByText(/servidor/);
   });
 
@@ -265,8 +268,8 @@ describe('AdminHomeScreen', () => {
     const { findByText, getByTestId, getByText } = render(<AdminHomeScreen />);
     await findByText('Estacion Test');
     fireEvent.press(getByTestId('delete-1'));
-    expect(getByText('Borrar estacion')).toBeTruthy();
-    fireEvent.press(getByText('Cancelar'));
+    expect(getByText(L.deleteStationTitle)).toBeTruthy();
+    fireEvent.press(getByText(es.common.cancel));
   });
 
   test('deletes station successfully via confirm modal', async () => {
@@ -279,7 +282,7 @@ describe('AdminHomeScreen', () => {
     const { findByText, getByTestId, getAllByText } = render(<AdminHomeScreen />);
     await findByText('Estacion Test');
     fireEvent.press(getByTestId('delete-1'));
-    const borrarBtns = getAllByText('Borrar');
+    const borrarBtns = getAllByText(L.delete);
     fireEvent.press(borrarBtns[borrarBtns.length - 1]);
     await waitFor(() => {
       expect(mockDeleteAdminStation).toHaveBeenCalledWith(1);
@@ -296,7 +299,7 @@ describe('AdminHomeScreen', () => {
     const { findByText, getByTestId, getAllByText } = render(<AdminHomeScreen />);
     await findByText('Estacion Test');
     fireEvent.press(getByTestId('delete-1'));
-    const borrarBtns = getAllByText('Borrar');
+    const borrarBtns = getAllByText(L.delete);
     fireEvent.press(borrarBtns[borrarBtns.length - 1]);
     await findByText('No se pudo borrar');
   });
@@ -310,9 +313,9 @@ describe('AdminHomeScreen', () => {
     const { findByText, getByTestId, getAllByText } = render(<AdminHomeScreen />);
     await findByText('Estacion Test');
     fireEvent.press(getByTestId('delete-1'));
-    const borrarBtns = getAllByText('Borrar');
+    const borrarBtns = getAllByText(L.delete);
     fireEvent.press(borrarBtns[borrarBtns.length - 1]);
-    await findByText('No hay sesion admin');
+    await findByText(L.noSession);
   });
 
   test('delete station shows error on network failure', async () => {
@@ -325,7 +328,7 @@ describe('AdminHomeScreen', () => {
     const { findByText, getByTestId, getAllByText } = render(<AdminHomeScreen />);
     await findByText('Estacion Test');
     fireEvent.press(getByTestId('delete-1'));
-    const borrarBtns = getAllByText('Borrar');
+    const borrarBtns = getAllByText(L.delete);
     fireEvent.press(borrarBtns[borrarBtns.length - 1]);
     await findByText(/servidor/);
   });

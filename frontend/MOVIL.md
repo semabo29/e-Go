@@ -3,10 +3,10 @@
 **Primera vez (o tras `git pull` con cambios nativos):** en `frontend`:
 
 1. `npm install`
-2. `npm run android:keystore` (keystore del equipo → Google Sign-In)
-3. `npx expo prebuild --platform android --clean` (regenera `android/`; no va en git)
-4. Desinstala apps viejas en el móvil: `adb uninstall com.ego.app` y `adb uninstall com.ego2.app`
-5. `npx expo run:android` (instala **E-Go**, package `com.ego.app`)
+2. `npm run android:reset` (prebuild + keystore del equipo en `android/app/debug.keystore`)  
+   O bien: `npx expo prebuild --platform android --clean` y luego `npm run android:keystore`
+3. Desinstala apps viejas en el móvil: `adb uninstall com.ego.app` y `adb uninstall com.ego2.app`
+4. `npx expo run:android` (instala **E-Go**, package `com.ego.app`)
 
 **Cada día:**
 
@@ -22,7 +22,7 @@
 
 **`.env` en `frontend`:** API keys / `EXPO_PUBLIC_*` como siempre; sin eso el login Google / mapas pueden fallar.
 
-**Google Sign-In (SHA-1 del equipo):** `npm run android:keystore` antes de compilar. SHA-1: `48:5D:FB:2C:91:EB:8C:35:4D:0E:53:8D:46:EF:F0:50:96:CC:AC:49` · package `com.ego.app`.
+**Google Sign-In (SHA-1 del equipo):** el APK usa `android/app/debug.keystore`. Tras cada `prebuild --clean`, ejecuta `npm run android:keystore` (o `android:reset`, que ya lo hace al final). SHA-1: `48:5D:FB:2C:91:EB:8C:35:4D:0E:53:8D:46:EF:F0:50:96:CC:AC:49` · package `com.ego.app`. Si ves `DEVELOPER_ERROR`, casi siempre es que el APK se firmó con otra SHA (p. ej. `5E:8F:16:…`).
 
 ### “E-Go” / “frontend” keeps stopping
 

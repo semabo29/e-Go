@@ -17,7 +17,7 @@ module.exports = {
     '!**/scripts/**',
     '!**/sql/**',
     '!index.js',
-    '!index.jsx',
+    'index.jsx',
   ],
 
   coverageReporters: ['text', 'lcov', 'html'],

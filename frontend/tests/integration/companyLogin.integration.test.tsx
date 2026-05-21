@@ -36,6 +36,7 @@ jest.mock('@/services/privilegedAuth', () => ({
 }));
 
 import CompanyLoginScreen from '@/app/company-login';
+import es from '@/tests/helpers/localeEs';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 describe('CompanyLoginScreen', () => {
@@ -104,7 +105,7 @@ describe('CompanyLoginScreen', () => {
     fireEvent.changeText(getByPlaceholderText('Email'), 'bad@test.com');
     fireEvent.changeText(getByPlaceholderText(/Contrase/), 'wrong');
     fireEvent.press(getByText(/Iniciar/));
-    await findByText(/Error al iniciar/);
+    await findByText(/No se pudo iniciar/);
   });
 
   test('network error shows connection error', async () => {
@@ -120,7 +121,7 @@ describe('CompanyLoginScreen', () => {
   test('back link navigates to app root', () => {
     const { getByText } = render(<CompanyLoginScreen />);
     fireEvent.press(getByText('Volver al login'));
-    expect(mockReplace).toHaveBeenCalledWith('/');
+    expect(mockReplace).toHaveBeenCalledWith('/login');
   });
 
   test('login without company in response does not navigate', async () => {
@@ -243,7 +244,7 @@ describe('CompanyLoginScreen', () => {
       (GoogleSignin.signIn as jest.Mock<any>).mockRejectedValue({ code: statusCodes.IN_PROGRESS });
       const { getByText, findByText } = render(<CompanyLoginScreen />);
       fireEvent.press(getByText('Continuar con Google'));
-      await findByText('Ya hay un inicio de sesion en curso');
+      await findByText(/sesión en curso/);
     });
 
     test('Google sign-in unknown error shows the error message', async () => {
@@ -251,7 +252,7 @@ describe('CompanyLoginScreen', () => {
       (GoogleSignin.signIn as jest.Mock<any>).mockRejectedValue(new Error('Google crash'));
       const { getByText, findByText } = render(<CompanyLoginScreen />);
       fireEvent.press(getByText('Continuar con Google'));
-      await findByText('Google crash');
+      await findByText(es.login.errors.googleConnect);
     });
   });
 });

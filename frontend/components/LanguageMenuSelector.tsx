@@ -1,36 +1,13 @@
 import { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { APP_LOCALES, setAppLocale, type AppLocale } from '@/i18n/i18n';
+import { LocaleFlagIcon } from '@/components/LocaleFlagIcon';
 
-const FLAG_SIZE = 24;
 const BTN_SIZE = 36;
 
-function CatalanFlagIcon({ size = FLAG_SIZE }: { size?: number }) {
-  const r = size / 2;
-  return (
-    <View style={{ width: size, height: size, borderRadius: r, overflow: 'hidden' }}>
-      <View style={[catFlagStyles.stripes, { width: size, height: size }]}>
-        <View style={[catFlagStyles.stripe, { backgroundColor: '#FCDD09' }]} />
-        <View style={[catFlagStyles.stripe, { backgroundColor: '#DA121A', width: Math.max(2, size * 0.14) }]} />
-        <View style={[catFlagStyles.stripe, { backgroundColor: '#FCDD09' }]} />
-      </View>
-    </View>
-  );
-}
-
-const catFlagStyles = StyleSheet.create({
-  stripes: { flexDirection: 'row' },
-  stripe: { flex: 1 },
-});
-
-const OPTIONS: { lng: AppLocale; flag: 'es' | 'gb' | 'ca' | 'it' }[] = [
-  { lng: 'es', flag: 'es' },
-  { lng: 'ca', flag: 'ca' },
-  { lng: 'en', flag: 'gb' },
-  { lng: 'it', flag: 'it' },
-];
+const OPTIONS: AppLocale[] = ['es', 'ca', 'en', 'it'];
 
 type Props = {
   isDark: boolean;
@@ -48,7 +25,7 @@ export function LanguageMenuSelector({ isDark, accent }: Props) {
   return (
     <View style={[styles.section, { borderColor: isDark ? '#334155' : '#e2e8f0' }]}>
       <View style={styles.row}>
-        {OPTIONS.map(({ lng, flag }) => {
+        {OPTIONS.map((lng) => {
           const selected = active === lng;
           return (
             <Pressable
@@ -65,13 +42,7 @@ export function LanguageMenuSelector({ isDark, accent }: Props) {
                 },
               ]}
             >
-              {flag === 'ca' ? (
-                <CatalanFlagIcon size={FLAG_SIZE} />
-              ) : (
-                <Text style={styles.emoji}>
-                  {flag === 'es' ? '🇪🇸' : flag === 'it' ? '🇮🇹' : '🇬🇧'}
-                </Text>
-              )}
+              <LocaleFlagIcon locale={lng} size={24} />
             </Pressable>
           );
         })}
@@ -111,5 +82,4 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     overflow: 'hidden',
   },
-  emoji: { fontSize: 22, lineHeight: 24, textAlign: 'center' },
 });

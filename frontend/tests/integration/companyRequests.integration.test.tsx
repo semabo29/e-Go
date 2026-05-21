@@ -22,6 +22,7 @@ jest.mock('@/components/stations/StationRequestCard', () => ({
 }));
 
 import CompanyRequestsScreen from '@/app/company-requests';
+import es from '@/tests/helpers/localeEs';
 
 const mockRequest = {
   id: 10,
@@ -71,7 +72,7 @@ describe('CompanyRequestsScreen', () => {
   test('shows NO_SESSION error message', async () => {
     mockListCompanyRequests.mockRejectedValue(new Error('NO_SESSION'));
     const { findByText } = render(<CompanyRequestsScreen />);
-    await findByText(/No hay sesion de empresa/);
+    await findByText(es.companyRequests.noSession);
   });
 
   test('shows generic error message on other errors', async () => {

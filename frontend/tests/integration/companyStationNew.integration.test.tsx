@@ -45,6 +45,9 @@ jest.mock('@/services/privilegedAuth', () => ({
 }));
 
 import CompanyStationNewScreen from '@/app/company-station-new';
+import es from '@/tests/helpers/localeEs';
+
+const S = es.companyStation;
 import { requestCreateCompanyStation, requestUpdateCompanyStation } from '@/services/stationModeration';
 import { fetchCompanyProfile } from '@/services/companyProfile';
 import { getPrivilegedUser } from '@/services/privilegedAuth';
@@ -66,13 +69,13 @@ describe('CompanyStationNewScreen', () => {
   describe('Create mode', () => {
     test('renders create title and submit label', () => {
       const { getByText } = render(<CompanyStationNewScreen />);
-      expect(getByText('Solicitar nueva estacion')).toBeTruthy();
-      expect(getByText('Enviar solicitud de alta')).toBeTruthy();
+      expect(getByText(S.newTitle)).toBeTruthy();
+      expect(getByText(S.submitCreate)).toBeTruthy();
     });
 
     test('back button calls router.back', () => {
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Volver'));
+      fireEvent.press(getByText(es.common.back));
       expect(mockBack).toHaveBeenCalledTimes(1);
     });
 
@@ -105,9 +108,9 @@ describe('CompanyStationNewScreen', () => {
     test('submit creates station request and shows success', async () => {
       (requestCreateCompanyStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(true, { id: 5 }));
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => {
-        expect(getByText('Solicitud de alta enviada')).toBeTruthy();
+        expect(getByText(S.createSent)).toBeTruthy();
       });
       expect(requestCreateCompanyStation).toHaveBeenCalledTimes(1);
     });
@@ -115,7 +118,7 @@ describe('CompanyStationNewScreen', () => {
     test('shows error from API on create', async () => {
       (requestCreateCompanyStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, { error: 'Datos invalidos' }));
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => {
         expect(getByText('Datos invalidos')).toBeTruthy();
       });
@@ -124,34 +127,34 @@ describe('CompanyStationNewScreen', () => {
     test('shows fallback error when API error field is empty', async () => {
       (requestCreateCompanyStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, {}));
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => {
-        expect(getByText('No se pudo enviar la solicitud')).toBeTruthy();
+        expect(getByText(S.submitError)).toBeTruthy();
       });
     });
 
     test('shows NO_SESSION error', async () => {
       (requestCreateCompanyStation as jest.Mock<any>).mockRejectedValue(new Error('NO_SESSION'));
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => {
-        expect(getByText('No hay sesion de empresa')).toBeTruthy();
+        expect(getByText(S.noSession)).toBeTruthy();
       });
     });
 
     test('shows generic network error', async () => {
       (requestCreateCompanyStation as jest.Mock<any>).mockRejectedValue(new Error('timeout'));
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => {
-        expect(getByText('No se pudo conectar con el servidor')).toBeTruthy();
+        expect(getByText(S.connectionError)).toBeTruthy();
       });
     });
 
     test('typing clears previous error', async () => {
       (requestCreateCompanyStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, { error: 'Error previo' }));
       const { getByText, getByPlaceholderText, queryByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => expect(getByText('Error previo')).toBeTruthy());
       fireEvent.changeText(getByPlaceholderText('Nombre de la estacion'), 'X');
       await waitFor(() => expect(queryByText('Error previo')).toBeNull());
@@ -163,9 +166,9 @@ describe('CompanyStationNewScreen', () => {
       const { getByText, getByPlaceholderText } = render(<CompanyStationNewScreen />);
       await waitFor(() => expect(getByPlaceholderText('Promotor/gestor').props.value).toBe('Mi Empresa'));
       fireEvent.changeText(getByPlaceholderText('Nombre de la estacion'), 'Estacion Temp');
-      fireEvent.press(getByText('Enviar solicitud de alta'));
+      fireEvent.press(getByText(S.submitCreate));
       await waitFor(() => {
-        expect(getByText('Solicitud de alta enviada')).toBeTruthy();
+        expect(getByText(S.createSent)).toBeTruthy();
         expect(getByPlaceholderText('Nombre de la estacion').props.value).toBe('');
       });
     });
@@ -193,8 +196,8 @@ describe('CompanyStationNewScreen', () => {
 
     test('renders edit title and submit label', () => {
       const { getByText } = render(<CompanyStationNewScreen />);
-      expect(getByText('Solicitar edicion de estacion')).toBeTruthy();
-      expect(getByText('Enviar solicitud de edicion')).toBeTruthy();
+      expect(getByText(S.editTitle)).toBeTruthy();
+      expect(getByText(S.submitEdit)).toBeTruthy();
     });
 
     test('pre-fills form from route params in edit mode', async () => {
@@ -207,10 +210,10 @@ describe('CompanyStationNewScreen', () => {
     test('submit updates station request and shows success', async () => {
       (requestUpdateCompanyStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(true, { id: 10 }));
       const { getByText } = render(<CompanyStationNewScreen />);
-      await waitFor(() => expect(getByText('Enviar solicitud de edicion')).toBeTruthy());
-      fireEvent.press(getByText('Enviar solicitud de edicion'));
+      await waitFor(() => expect(getByText(S.submitEdit)).toBeTruthy());
+      fireEvent.press(getByText(S.submitEdit));
       await waitFor(() => {
-        expect(getByText('Solicitud de actualizacion enviada')).toBeTruthy();
+        expect(getByText(S.updatedSent)).toBeTruthy();
       });
       expect(requestUpdateCompanyStation).toHaveBeenCalledWith(10, expect.anything());
     });
@@ -218,8 +221,8 @@ describe('CompanyStationNewScreen', () => {
     test('shows error from API in edit mode', async () => {
       (requestUpdateCompanyStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, { error: 'Sin permiso' }));
       const { getByText } = render(<CompanyStationNewScreen />);
-      await waitFor(() => expect(getByText('Enviar solicitud de edicion')).toBeTruthy());
-      fireEvent.press(getByText('Enviar solicitud de edicion'));
+      await waitFor(() => expect(getByText(S.submitEdit)).toBeTruthy());
+      fireEvent.press(getByText(S.submitEdit));
       await waitFor(() => {
         expect(getByText('Sin permiso')).toBeTruthy();
       });
@@ -230,9 +233,9 @@ describe('CompanyStationNewScreen', () => {
     test('shows error for invalid station ID', async () => {
       Object.assign(mockLocalSearchParams, { mode: 'edit', id: 'bad' });
       const { getByText } = render(<CompanyStationNewScreen />);
-      fireEvent.press(getByText('Enviar solicitud de edicion'));
+      fireEvent.press(getByText(S.submitEdit));
       await waitFor(() => {
-        expect(getByText('ID de estacion invalido')).toBeTruthy();
+        expect(getByText(S.invalidId)).toBeTruthy();
       });
     });
   });

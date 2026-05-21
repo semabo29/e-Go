@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type Href, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Modal,
@@ -27,6 +28,7 @@ type AdminPayload = {
 };
 
 export default function AdminHomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { setUser } = useAuth();
   const { colorblindFriendly } = useColorblindPreference();
@@ -46,19 +48,19 @@ export default function AdminHomeScreen() {
       try {
         const token = await getPrivilegedToken('admin');
         if (!token) {
-          setError('No hay sesion admin');
+          setError(t('adminHome.noSession'));
           return;
         }
         const res = await privilegedFetch('admin', '/admin/me');
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'No autorizado');
+          setError(data.error || t('adminHome.unauthorized'));
           return;
         }
         setAdmin(data.admin);
         await loadMyStations();
       } catch (err) {
-        setError('No se pudo conectar con el servidor');
+        setError(t('adminHome.connectionError'));
       } finally {
         setLoading(false);
       }
@@ -84,7 +86,7 @@ export default function AdminHomeScreen() {
   async function deleteStation(id: number) {
     const token = await getPrivilegedToken('admin');
     if (!token) {
-      setError('No hay sesion admin');
+      setError(t('adminHome.noSession'));
       return;
     }
     setLoadingStations(true);
@@ -92,7 +94,7 @@ export default function AdminHomeScreen() {
       const res = await deleteAdminStation(id);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo borrar la estacion');
+        setError(data.error || t('adminHome.deleteStationError'));
         return;
       }
       setStations((prev) => prev.filter((s) => s.id !== id));
@@ -106,61 +108,61 @@ export default function AdminHomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Admin Home</Text>
+        <Text style={styles.title}>{t('adminHome.title')}</Text>
 
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#111827" />
-            <Text style={styles.muted}>Verificando token…</Text>
+            <Text style={styles.muted}>{t('adminHome.verifying')}</Text>
           </View>
         ) : error ? (
           <>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/admin-login')}>
-              <Text style={styles.primaryButtonText}>Volver al login admin</Text>
+              <Text style={styles.primaryButtonText}>{t('adminHome.backLogin')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>{t('adminHome.email')}</Text>
               <Text style={styles.infoValue}>{admin?.email}</Text>
             </View>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => router.push('/admin-station-new' as Href)}
             >
-              <Text style={styles.primaryButtonText}>Anadir estacion manual</Text>
+              <Text style={styles.primaryButtonText}>{t('adminHome.addStation')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButtonAlt}
               onPress={() => router.push('/admin-requests' as Href)}
             >
-              <Text style={styles.primaryButtonAltText}>Revisar solicitudes pendientes</Text>
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.reviewRequests')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButtonAlt}
               onPress={() => router.push('/admin-users' as Href)}
               accessibilityRole="button"
-              accessibilityLabel="Moderacion de usuarios"
+              accessibilityLabel={t('adminHome.userModerationA11y')}
             >
-              <Text style={styles.primaryButtonAltText}>Moderacion de usuarios</Text>
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.userModeration')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButtonAlt}
               onPress={() => router.push('/admin-incidencias' as Href)}
               accessibilityRole="button"
-              accessibilityLabel="Incidencias pendientes"
+              accessibilityLabel={t('adminHome.pendingIncidentsA11y')}
             >
-              <Text style={styles.primaryButtonAltText}>Incidencias pendientes</Text>
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.pendingIncidents')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButtonAlt}
               onPress={() => router.push('/admin-incidencias-history' as Href)}
               accessibilityRole="button"
-              accessibilityLabel="Historico de incidencias"
+              accessibilityLabel={t('adminHome.incidentHistoryA11y')}
             >
-              <Text style={styles.primaryButtonAltText}>Historico de incidencias</Text>
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.incidentHistory')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
@@ -171,39 +173,39 @@ export default function AdminHomeScreen() {
                     const userRes = await privilegedFetch('admin', '/admin/user');
                     const userData = await userRes.json();
                     if (!userRes.ok || !userData.user) {
-                      setError(userData.error || 'No se pudo cargar el usuario');
+                      setError(userData.error || t('adminHome.loadUserError'));
                       return;
                     }
                     setUser(userData.user);
                     router.replace('/(tabs)');
                   } catch (err) {
-                    setError('No se pudo conectar con el servidor');
+                    setError(t('adminHome.connectionError'));
                   }
                 })();
               }}
             >
-              <Text style={styles.primaryButtonText}>Ir a la aplicacion</Text>
+              <Text style={styles.primaryButtonText}>{t('adminHome.goToApp')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={logoutAdmin}>
-              <Text style={styles.secondaryButtonText}>Cerrar sesion admin</Text>
+              <Text style={styles.secondaryButtonText}>{t('adminHome.logout')}</Text>
             </TouchableOpacity>
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Tus estaciones manuales</Text>
+                <Text style={styles.sectionTitle}>{t('adminHome.manualStations')}</Text>
                 <TouchableOpacity
                   onPress={loadMyStations}
                   disabled={loadingStations}
                 >
                   <Text style={styles.sectionLink}>
-                    {loadingStations ? 'Actualizando…' : 'Actualizar'}
+                    {loadingStations ? t('adminHome.updating') : t('adminHome.refresh')}
                   </Text>
                 </TouchableOpacity>
               </View>
               {loadingStations ? (
-                <Text style={styles.muted}>Cargando estaciones…</Text>
+                <Text style={styles.muted}>{t('adminHome.loadingStations')}</Text>
               ) : stations.length === 0 ? (
-                <Text style={styles.muted}>No has creado estaciones manuales.</Text>
+                <Text style={styles.muted}>{t('adminHome.noManualStations')}</Text>
               ) : (
                 stations.map((s) => (
                   <ManualStationCard
@@ -248,14 +250,14 @@ export default function AdminHomeScreen() {
       >
         <View style={styles.confirmBackdrop}>
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>Borrar estacion</Text>
-            <Text style={styles.confirmText}>Esta accion no se puede deshacer.</Text>
+            <Text style={styles.confirmTitle}>{t('adminHome.deleteStationTitle')}</Text>
+            <Text style={styles.confirmText}>{t('adminHome.deleteStationBody')}</Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity
                 style={styles.confirmCancel}
                 onPress={() => setConfirmDeleteId(null)}
               >
-                <Text style={styles.confirmCancelText}>Cancelar</Text>
+                <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmDelete}
@@ -266,7 +268,7 @@ export default function AdminHomeScreen() {
                   setConfirmDeleteId(null);
                 }}
               >
-                <Text style={styles.confirmDeleteText}>Borrar</Text>
+                <Text style={styles.confirmDeleteText}>{t('adminHome.delete')}</Text>
               </TouchableOpacity>
             </View>
           </View>
