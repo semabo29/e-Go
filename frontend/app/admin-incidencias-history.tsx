@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -73,6 +75,20 @@ function toLocalDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Interpreta YYYY-MM-DD en calendario local (medianoche). */
+function parseYmd(s: string): Date | null {
+  const m = YMD_RE.exec(s.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const da = Number(m[3]);
+  const d = new Date(y, mo - 1, da);
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da) return null;
+  return d;
+}
+
 const PAGE_SIZE = 20;
 
 export default function AdminIncidenciasHistoryScreen() {
@@ -88,6 +104,12 @@ export default function AdminIncidenciasHistoryScreen() {
   const [to, setTo] = useState('');
   const [selectedTipus, setSelectedTipus] = useState<IncidenciaTipus | ''>('');
   const [selectedEstado, setSelectedEstado] = useState<IncidenciaEstado | ''>('');
+
+  const androidPickerFieldRef = useRef<'from' | 'to'>('from');
+  const [androidPickerVisible, setAndroidPickerVisible] = useState(false);
+  const [androidPickerDate, setAndroidPickerDate] = useState(() => new Date());
+
+  const [iosPicker, setIosPicker] = useState<null | { field: 'from' | 'to'; date: Date }>(null);
 
   const [detailInc, setDetailInc] = useState<Incidencia | null>(null);
   const [rejectingInc, setRejectingInc] = useState<Incidencia | null>(null);
@@ -145,6 +167,36 @@ export default function AdminIncidenciasHistoryScreen() {
     setTo('');
     setSelectedTipus('');
     setSelectedEstado('');
+  }
+
+  function openDatePicker(field: 'from' | 'to') {
+    const str = field === 'from' ? from : to;
+    const initial = parseYmd(str) ?? new Date();
+    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'android') {
+      androidPickerFieldRef.current = field;
+      setAndroidPickerDate(initial);
+      setAndroidPickerVisible(true);
+      return;
+    }
+    setIosPicker({ field, date: initial });
+  }
+
+  function onAndroidDateChange(event: DateTimePickerEvent, selectedDate?: Date) {
+    setAndroidPickerVisible(false);
+    const field = androidPickerFieldRef.current;
+    if (event.type !== 'set' || selectedDate == null) return;
+    const ymd = toLocalDateString(selectedDate);
+    if (field === 'from') setFrom(ymd);
+    else setTo(ymd);
+  }
+
+  function confirmIosPicker() {
+    if (!iosPicker) return;
+    const ymd = toLocalDateString(iosPicker.date);
+    if (iosPicker.field === 'from') setFrom(ymd);
+    else setTo(ymd);
+    setIosPicker(null);
   }
 
   async function handleValidate(id: number) {
@@ -220,31 +272,55 @@ export default function AdminIncidenciasHistoryScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Inputs de fecha */}
+          {/* Rango de fechas (calendario nativo en iOS/Android; texto en web) */}
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>Desde (AAAA-MM-DD)</Text>
-              <TextInput
-                style={styles.dateInput}
-                value={from}
-                onChangeText={setFrom}
-                placeholder="2026-01-01"
-                placeholderTextColor="#9ca3af"
-                keyboardType="numeric"
-                maxLength={10}
-              />
+              <Text style={styles.dateLabel}>Desde</Text>
+              {Platform.OS === 'web' ? (
+                <TextInput
+                  style={styles.dateInput}
+                  value={from}
+                  onChangeText={setFrom}
+                  placeholder="AAAA-MM-DD"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              ) : (
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => openDatePicker('from')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateInputText, !from && styles.dateInputPlaceholder]}>
+                    {from || 'Toca para elegir'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>Hasta (AAAA-MM-DD)</Text>
-              <TextInput
-                style={styles.dateInput}
-                value={to}
-                onChangeText={setTo}
-                placeholder="2026-12-31"
-                placeholderTextColor="#9ca3af"
-                keyboardType="numeric"
-                maxLength={10}
-              />
+              <Text style={styles.dateLabel}>Hasta</Text>
+              {Platform.OS === 'web' ? (
+                <TextInput
+                  style={styles.dateInput}
+                  value={to}
+                  onChangeText={setTo}
+                  placeholder="AAAA-MM-DD"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              ) : (
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => openDatePicker('to')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateInputText, !to && styles.dateInputPlaceholder]}>
+                    {to || 'Toca para elegir'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -400,6 +476,52 @@ export default function AdminIncidenciasHistoryScreen() {
         </View>
       </Modal>
 
+      {/* Selector de fecha (iOS: calendario en modal) */}
+      <Modal
+        visible={!!iosPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIosPicker(null)}
+      >
+        <View style={styles.datePickerOverlay}>
+          <TouchableOpacity style={styles.datePickerBackdrop} activeOpacity={1} onPress={() => setIosPicker(null)} />
+          <View style={styles.datePickerSheet}>
+            <View style={styles.datePickerToolbar}>
+              <TouchableOpacity onPress={() => setIosPicker(null)} hitSlop={12}>
+                <Text style={styles.datePickerToolbarBtn}>Cancelar</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerToolbarTitle}>
+                {iosPicker?.field === 'from' ? 'Fecha desde' : 'Fecha hasta'}
+              </Text>
+              <TouchableOpacity onPress={confirmIosPicker} hitSlop={12}>
+                <Text style={[styles.datePickerToolbarBtn, styles.datePickerToolbarBtnPrimary]}>Listo</Text>
+              </TouchableOpacity>
+            </View>
+            {iosPicker ? (
+              <DateTimePicker
+                value={iosPicker.date}
+                mode="date"
+                display="inline"
+                onChange={(_, date) => {
+                  if (date) setIosPicker((prev) => (prev ? { ...prev, date } : prev));
+                }}
+                locale="es_ES"
+                themeVariant="light"
+              />
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      {androidPickerVisible && Platform.OS === 'android' ? (
+        <DateTimePicker
+          value={androidPickerDate}
+          mode="date"
+          display="default"
+          onChange={onAndroidDateChange}
+        />
+      ) : null}
+
       {/* Modal rechazo */}
       <Modal visible={!!rejectingInc} transparent animationType="fade" onRequestClose={() => setRejectingInc(null)}>
         <View style={styles.overlay}>
@@ -472,7 +594,46 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', gap: 10, marginBottom: 4, marginTop: 8 },
   dateField: { flex: 1 },
   dateLabel: { fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
-  dateInput: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, color: '#111827', fontSize: 13 },
+  dateInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 8,
+    justifyContent: 'center',
+    minHeight: 40,
+    color: '#111827',
+    fontSize: 13,
+  },
+  dateInputText: { color: '#111827', fontSize: 13 },
+  dateInputPlaceholder: { color: '#9ca3af' },
+  datePickerOverlay: { flex: 1, justifyContent: 'flex-end' },
+  datePickerBackdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(17,24,39,0.45)',
+  },
+  datePickerSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+    maxHeight: '70%',
+  },
+  datePickerToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  datePickerToolbarTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  datePickerToolbarBtn: { fontSize: 16, color: '#6b7280', fontWeight: '600' },
+  datePickerToolbarBtnPrimary: { color: '#2563eb' },
   applyBtn: { marginTop: 12, paddingVertical: 11, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
   applyBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   card: {

@@ -288,7 +288,7 @@ export default function AdminLoginScreen() {
           </>
         )}
 
-        <TouchableOpacity style={styles.backLink} onPress={() => router.replace('/login')}>
+        <TouchableOpacity style={styles.backLink} onPress={() => router.replace('/')}>
           <Text style={styles.backLinkText}>Volver al login</Text>
         </TouchableOpacity>
       </View>

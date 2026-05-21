@@ -274,7 +274,7 @@ export default function CompanyLoginScreen() {
           </>
         )}
 
-        <TouchableOpacity style={styles.backLink} onPress={() => router.replace('/login' as Href)}>
+        <TouchableOpacity style={styles.backLink} onPress={() => router.replace('/' as Href)}>
           <Text style={styles.backLinkText}>Volver al login</Text>
         </TouchableOpacity>
       </View>
