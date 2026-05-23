@@ -77,7 +77,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
     return (
       <TouchableOpacity
         testID="map-view"
-        onPress={(event) => onPress?.(event)}
+        onPress={(event: any) => onPress?.(event)}
       >
         <View>{children}</View>
       </TouchableOpacity>
@@ -119,7 +119,7 @@ describe('Gestión de Autonomía y Selección de Vehículo', () => {
     alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
    // 1. Hacemos que appFetch sea inteligente y responda según la URL
-       (appFetch as jest.Mock).mockImplementation(async (url: string) => {
+       (appFetch as jest.Mock).mockImplementation(async (url: any) => {
          if (url.includes('/car')) return { ok: true, json: async () => mockVehicles };
          if (url.includes('/stations')) return { ok: true, json: async () => mockStations };
          if (url.includes('/favorites')) return { ok: true, json: async () => [] };
