@@ -130,7 +130,7 @@ describe('E2E: Flux de Ressenyes al StationBottomSheet', () => {
       isCharging: false,
       elapsedSeconds: 0,
       distanceToStation: null,
-      onStartCharging: jest.fn(() => Promise.resolve(true)) as jest.Mock<Promise<boolean>, any>,
+      onStartCharging: jest.fn(() => Promise.resolve(true)) as any,
       onFinishCharging: jest.fn(),
       onCancelCharging: jest.fn(),
       chargingError: '',
