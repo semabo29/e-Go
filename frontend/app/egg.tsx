@@ -16,6 +16,13 @@ const LANE_WIDTH = (width*0.9) / 2;
 const CAR_SIZE = 50;
 const OBSTACLE_SIZE = 40;
 
+// Simple pseudo-random number generator (Linear Congruential Generator)
+let seed = Date.now();
+const pseudoRandom = () => {
+  seed = (seed * 1664525 + 1013904223) % 4294967296;
+  return seed / 4294967296;
+};
+
 interface Obstacle {
   id: number;
   lane: number;
@@ -87,9 +94,9 @@ export default function Egg({ visible, onClose, theme }: VoltixGameProps) {
     const filtered = moved.filter(obs => obs.y < height + OBSTACLE_SIZE);
 
     // Obstacle mínim cada 20 punts
-    if (gameStateRef.current.score - gameStateRef.current.lastObstacleScore >= 20 && Math.random() < 0.05) {
+    if (gameStateRef.current.score - gameStateRef.current.lastObstacleScore >= 20 && pseudoRandom() < 0.05) {
       gameStateRef.current.lastObstacleScore = gameStateRef.current.score;
-      const newLane = Math.random() < 0.5 ? 0 : 1;
+      const newLane = pseudoRandom() < 0.5 ? 0 : 1;
       filtered.push({
         id: obstacleIdRef.current++,
         lane: newLane,
