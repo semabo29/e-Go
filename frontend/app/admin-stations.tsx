@@ -12,7 +12,12 @@ import {
   View,
 } from 'react-native';
 
-import { getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
+import {
+  adminPanelScrollBase,
+  adminPanelSectionHeaderBase,
+  adminPanelSharedSheet,
+} from '@/constants/adminPanelLayoutStyles';
+import { fetchAdminSession } from '@/lib/adminSession';
 import {
   AdminStationSummary,
   listAllAdminStations,
@@ -61,15 +66,18 @@ export default function AdminStationsScreen() {
     (async () => {
       setAuthLoading(true);
       setAuthError('');
+      const session = await fetchAdminSession({
+        noSession: t('adminStations.noSession'),
+        unauthorized: t('adminStations.unauthorized'),
+        connectionError: t('adminStations.connectionError'),
+      });
+      if (!session.ok) {
+        setAuthError(session.error);
+        setAuthLoading(false);
+        return;
+      }
       try {
-        const token = await getPrivilegedToken('admin');
-        if (!token) { setAuthError(t('adminStations.noSession')); return; }
-        const res = await privilegedFetch('admin', '/admin/me');
-        const data = await res.json();
-        if (!res.ok) { setAuthError(data.error || t('adminStations.unauthorized')); return; }
         await load('', 0, true);
-      } catch {
-        setAuthError(t('adminStations.connectionError'));
       } finally {
         setAuthLoading(false);
       }
@@ -259,29 +267,11 @@ export default function AdminStationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scroll: {
-    flexGrow: 1,
-    padding: 24,
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
+const styles = Object.assign(
+  {},
+  adminPanelSharedSheet,
+  StyleSheet.create({
+    scroll: adminPanelScrollBase,
   title: {
     fontSize: 24,
     fontWeight: '700',
@@ -310,40 +300,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  primaryButton: {
-    marginTop: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    ...adminPanelSectionHeaderBase,
     marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
   },
   searchBlock: {
     marginBottom: 14,
@@ -439,47 +398,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  confirmCard: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  confirmText: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginBottom: 18,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  confirmCancel: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  confirmCancelText: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   confirmDisable: {
     flex: 1,
     paddingVertical: 11,
@@ -499,4 +417,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-});
+  }),
+) as any;
