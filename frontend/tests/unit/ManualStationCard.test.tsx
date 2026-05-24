@@ -77,4 +77,22 @@ describe('ManualStationCard', () => {
     );
     expect(getByText(/0 kW/)).toBeTruthy();
   });
+
+  test('does not show ac_dc info when ac_dc is null', () => {
+    const station = { ...mockStation, ac_dc: null };
+    const { getByText, queryByText } = render(
+      <ManualStationCard station={station} onEdit={jest.fn() as any} onDelete={jest.fn() as any} />
+    );
+    expect(getByText(/22 kW/)).toBeTruthy();
+    expect(queryByText(/· AC/)).toBeNull();
+  });
+
+  test('does not show province when provincia is undefined', () => {
+    const station = { ...mockStation, provincia: undefined };
+    const { getByText, queryByText } = render(
+      <ManualStationCard station={station} onEdit={jest.fn() as any} onDelete={jest.fn() as any} />
+    );
+    expect(getByText('Barcelona ')).toBeTruthy();
+    expect(queryByText(/· Barcelona/)).toBeNull();
+  });
 });

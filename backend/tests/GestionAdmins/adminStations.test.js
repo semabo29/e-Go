@@ -169,4 +169,16 @@ describe('Admin stations', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
   });
+
+  test('POST con body null usa fallback de validacion', async () => {
+    const res = await request(app).post('/admin/stations').set(authHeader()).send(null);
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH con body null aplica patch vacio', async () => {
+    stationModel.updateManualStation.mockResolvedValue({ id: 5, nom: 'Igual' });
+    const res = await request(app).patch('/admin/stations/5').set(authHeader()).send(null);
+    expect(res.status).toBe(200);
+    expect(stationModel.updateManualStation).toHaveBeenCalledWith(5, {});
+  });
 });

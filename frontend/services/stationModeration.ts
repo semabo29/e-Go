@@ -1,6 +1,19 @@
 import { FormState, ManualStation, StationRequest } from '@/components/stations/types';
 import { privilegedFetch } from '@/services/privilegedAuth';
 
+export type AdminStationSummary = {
+  id: number;
+  nom: string;
+  municipi: string | null;
+  provincia: string | null;
+  adreca: string | null;
+  kw: number | string | null;
+  ac_dc: string | null;
+  tipus_connexio: string | null;
+  is_manual: boolean;
+  operatiu: boolean;
+};
+
 function toPayload(form: FormState) {
   return {
     ...form,
@@ -13,6 +26,24 @@ function toPayload(form: FormState) {
 export async function listAdminStations() {
   const res = await privilegedFetch('admin', '/admin/stations/mine');
   return (await res.json()) as ManualStation[];
+}
+
+export async function listAllAdminStations(
+  q = '',
+  offset = 0
+): Promise<{ stations: AdminStationSummary[]; hasMore: boolean }> {
+  const params = new URLSearchParams({ offset: String(offset) });
+  if (q) params.set('q', q);
+  const res = await privilegedFetch('admin', `/admin/stations?${params.toString()}`);
+  return (await res.json()) as { stations: AdminStationSummary[]; hasMore: boolean };
+}
+
+export async function setStationOperatiu(id: number, operatiu: boolean): Promise<AdminStationSummary> {
+  const res = await privilegedFetch('admin', `/admin/stations/${id}/operatiu`, {
+    method: 'PATCH',
+    body: JSON.stringify({ operatiu }),
+  });
+  return (await res.json()) as AdminStationSummary;
 }
 
 export async function createAdminStation(form: FormState) {

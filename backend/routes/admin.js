@@ -30,10 +30,12 @@ router.get('/user', requireAdmin, async (req, res) => {
 });
 
 // CRUD estaciones manuales
+router.get('/stations', requireAdmin, adminStationController.listAllStations);
 router.post('/stations', requireAdmin, adminStationController.createManualStation);
+router.get('/stations/mine', requireAdmin, adminStationController.listMyManualStations);
+router.patch('/stations/:id/operatiu', requireAdmin, adminStationController.setStationOperatiu);
 router.patch('/stations/:id', requireAdmin, adminStationController.updateManualStation);
 router.delete('/stations/:id', requireAdmin, adminStationController.deleteManualStation);
-router.get('/stations/mine', requireAdmin, adminStationController.listMyManualStations);
 router.get('/station-requests/pending', requireAdmin, adminCompanyRequestController.listPendingRequests);
 router.post('/station-requests/:id/approve', requireAdmin, adminCompanyRequestController.approveRequest);
 router.post('/station-requests/:id/reject', requireAdmin, adminCompanyRequestController.rejectRequest);

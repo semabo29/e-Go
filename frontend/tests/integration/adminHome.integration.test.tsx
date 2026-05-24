@@ -344,4 +344,30 @@ describe('AdminHomeScreen', () => {
       expect.objectContaining({ pathname: expect.stringContaining('admin-station-new') })
     );
   });
+
+  test('navigates to admin-incidencias-history screen', async () => {
+    mockGetPrivilegedToken.mockResolvedValue('token123');
+    mockPrivilegedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => mockAdminData,
+    });
+    mockListAdminStations.mockResolvedValue([]);
+    const { findByText, getByText } = render(<AdminHomeScreen />);
+    await findByText('admin@test.com');
+    fireEvent.press(getByText(L.incidentHistory));
+    expect(mockPush).toHaveBeenCalledWith('/admin-incidencias-history');
+  });
+
+  test('navigates to admin-stations screen', async () => {
+    mockGetPrivilegedToken.mockResolvedValue('token123');
+    mockPrivilegedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => mockAdminData,
+    });
+    mockListAdminStations.mockResolvedValue([]);
+    const { findByText, getByText } = render(<AdminHomeScreen />);
+    await findByText('admin@test.com');
+    fireEvent.press(getByText(L.manageStations));
+    expect(mockPush).toHaveBeenCalledWith('/admin-stations');
+  });
 });

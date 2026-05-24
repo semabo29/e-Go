@@ -16,7 +16,7 @@ const COMPANY_LOGIN_CONFIG = {
   localLoginPath: '/auth/company/local/login',
   googleLoginPath: '/auth/company/google',
   homePath: '/company-home' as const,
-  backPath: '/login' as const,
+  backPath: '/' as const,
 };
 
 export default function CompanyLoginScreen() {

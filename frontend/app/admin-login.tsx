@@ -18,7 +18,7 @@ const ADMIN_LOGIN_CONFIG = {
   localLoginPath: '/auth/admin/local/login',
   googleLoginPath: '/auth/admin/google',
   homePath: '/admin-home' as const,
-  backPath: '/login' as const,
+  backPath: '/' as const,
 };
 
 export default function AdminLoginScreen() {

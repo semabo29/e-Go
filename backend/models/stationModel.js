@@ -154,6 +154,8 @@ async function searchStations(q, filters = {}) {
 module.exports = {
   upsertStation,
   getAllStations,
+  getAllStationsForAdmin,
+  setStationOperatiu,
   createManualStation,
   updateManualStation,
   deleteManualStation,
@@ -164,6 +166,44 @@ module.exports = {
   deleteCompanyOwnedManualStation,
   searchStations
 };
+
+async function getAllStationsForAdmin({ q = '', limit = 51, offset = 0 } = {}) {
+  const conditions = [];
+  const values = [];
+  let idx = 1;
+
+  if (q) {
+    conditions.push(
+      `(nom ILIKE $${idx} OR municipi ILIKE $${idx} OR provincia ILIKE $${idx})`
+    );
+    values.push(`%${q}%`);
+    idx++;
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  values.push(limit, offset);
+
+  const result = await pool.query(
+    `SELECT id, nom, municipi, provincia, adreca, kw, ac_dc, tipus_connexio, is_manual, operatiu
+     FROM ego.estaciones
+     ${where}
+     ORDER BY nom ASC
+     LIMIT $${idx} OFFSET $${idx + 1}`,
+    values
+  );
+  return result.rows;
+}
+
+async function setStationOperatiu(id, operatiu) {
+  const result = await pool.query(
+    `UPDATE ego.estaciones
+     SET operatiu = $2, updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, nom, municipi, provincia, adreca, kw, ac_dc, tipus_connexio, is_manual, operatiu`,
+    [id, operatiu]
+  );
+  return result.rows[0] || null;
+}
 
 async function createManualStation(data, dbClient = pool) {
   const query = `
