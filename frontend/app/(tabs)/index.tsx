@@ -44,7 +44,7 @@ import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext'
 import { useThemePreference } from '@/contexts/ThemePreferenceContext';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import type { SemanticColors } from '@/constants/accessibilityColors';
-import { INICIO_SCREEN_THEME } from '@/constants/inicioScreenTheme';
+import { buildInicioScreenPalette } from '@/constants/screenTheme';
 import { LanguageMenuSelector } from '@/components/LanguageMenuSelector';
 import {
   requestLocationPermissions,
@@ -2594,7 +2594,7 @@ useEffect(() => {
 }
 
 const createStyles = (isDark: boolean, sem: SemanticColors) => {
-  const t = INICIO_SCREEN_THEME[isDark ? 'dark' : 'light'];
+  const t = buildInicioScreenPalette(isDark, sem);
   const errorTextColor = isDark ? sem.errorTextDark : sem.errorTextLight;
   return StyleSheet.create({
   screen: {

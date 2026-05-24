@@ -103,6 +103,69 @@ export function buildScreenTheme(isDark: boolean, sem: SemanticColors): ScreenTh
   };
 }
 
+/**
+ * Map tab (index) palette — derived from {@link buildScreenTheme} with map-specific overrides.
+ * Avoids a separate static light/dark object pair (Sonar CPD).
+ */
+export type InicioScreenPalette = {
+  screenBg: string;
+  mutedText: string;
+  cardBg: string;
+  titleText: string;
+  subtitleText: string;
+  border: string;
+  inputBorder: string;
+  textPrimary: string;
+  textEmphasis: string;
+  handle: string;
+  infoTitle: string;
+  promotorText: string;
+  menuBackdrop: string;
+  themeSegmentBg: string;
+  themeOptionActiveBg: string;
+  themeOptionText: string;
+  themeOptionTextActive: string;
+  errorBannerBg: string;
+  reportBackdrop: string;
+  formBorder: string;
+  chipBg: string;
+  chipText: string;
+  secondaryButtonBg: string;
+  secondaryButtonText: string;
+  labelText: string;
+};
+
+export function buildInicioScreenPalette(isDark: boolean, sem: SemanticColors): InicioScreenPalette {
+  const base = buildScreenTheme(isDark, sem);
+  return {
+    screenBg: pick(isDark, '#f5f5f5', SCREEN_CONTAINER_BG.dark),
+    mutedText: base.mutedText,
+    cardBg: base.surface,
+    titleText: pick(isDark, '#1a1a1a', base.title),
+    subtitleText: pick(isDark, '#6b7280', base.mutedText),
+    border: base.border,
+    inputBorder: pick(isDark, '#e5e7eb', base.border),
+    textPrimary: pick(isDark, '#1f2937', base.title),
+    textEmphasis: pick(isDark, '#111827', base.body),
+    handle: pick(isDark, '#e2e8f0', base.chipBorder),
+    infoTitle: pick(isDark, '#1e293b', base.title),
+    promotorText: pick(isDark, '#94a3b8', base.secondaryText),
+    menuBackdrop: base.overlay,
+    themeSegmentBg: base.chipBg,
+    themeOptionActiveBg: pick(isDark, '#ffffff', SCREEN_CONTAINER_BG.dark),
+    themeOptionText: base.chipText,
+    themeOptionTextActive: base.title,
+    errorBannerBg: base.dangerBtnBg,
+    reportBackdrop: pick(isDark, 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.6)'),
+    formBorder: pick(isDark, '#d1d5db', base.chipBorder),
+    chipBg: pick(isDark, '#f8fafc', base.chipBg),
+    chipText: pick(isDark, '#4b5563', base.chipText),
+    secondaryButtonBg: pick(isDark, '#f3f4f6', base.secondaryBtnBg),
+    secondaryButtonText: pick(isDark, '#374151', base.secondaryBtnText),
+    labelText: pick(isDark, '#374151', base.secondaryText),
+  };
+}
+
 /** Align React Navigation chrome (tab/stack backgrounds) with app screen tokens. */
 export function buildNavigationTheme(isDark: boolean, sem: SemanticColors): Theme {
   const screen = buildScreenTheme(isDark, sem);
