@@ -81,6 +81,25 @@ export default function Egg({ visible, onClose, theme }: VoltixGameProps) {
     return false;
   };
 
+  const updateObstacles = (prev: Obstacle[]): Obstacle[] => {
+    const baseSpeed = 8 + (gameStateRef.current.score / 150); // Aumenta velocitat gradualment
+    const moved = prev.map(obs => ({ ...obs, y: obs.y + baseSpeed }));
+    const filtered = moved.filter(obs => obs.y < height + OBSTACLE_SIZE);
+
+    // Obstacle mínim cada 20 punts
+    if (gameStateRef.current.score - gameStateRef.current.lastObstacleScore >= 20 && Math.random() < 0.05) {
+      gameStateRef.current.lastObstacleScore = gameStateRef.current.score;
+      const newLane = Math.random() < 0.5 ? 0 : 1;
+      filtered.push({
+        id: obstacleIdRef.current++,
+        lane: newLane,
+        y: -150, // Per radere del header de la finestra
+      });
+    }
+
+    return filtered;
+  };
+
   const startGameLoop = () => {
     if (gameLoopRef.current) {
       clearInterval(gameLoopRef.current);
@@ -102,34 +121,15 @@ export default function Egg({ visible, onClose, theme }: VoltixGameProps) {
         setScore(gameStateRef.current.score);
       }
 
-      setObstacles(prev => {
-        const baseSpeed = 8 + (gameStateRef.current.score / 150); // Aumenta velocitat gradualment
-        const moved = prev.map(obs => ({ ...obs, y: obs.y + baseSpeed }));
-        const filtered = moved.filter(obs => obs.y < height + OBSTACLE_SIZE);
-
-        // Obstacle mínim cada 20 punts
-        if (gameStateRef.current.score - gameStateRef.current.lastObstacleScore >= 20 && Math.random() < 0.05) {
-          gameStateRef.current.lastObstacleScore = gameStateRef.current.score;
-          const newLane = Math.random() < 0.5 ? 0 : 1;
-          filtered.push({
-            id: obstacleIdRef.current++,
-            lane: newLane,
-            y: -150, // Per radere del header de la finestra
-          });
-        }
-
-        return filtered;
-      });
+      setObstacles(updateObstacles);
     }, 16); // ~60 FPS
   };
 
   useEffect(() => {
     if (visible && gameStarted && !gameOver) {
       startGameLoop();
-    } else {
-      if (gameLoopRef.current) {
+    } else if (gameLoopRef.current) {
         clearInterval(gameLoopRef.current);
-      }
     }
 
     return () => {
@@ -177,6 +177,7 @@ export default function Egg({ visible, onClose, theme }: VoltixGameProps) {
   (Egg as any).handlePress = handlePress;
   (Egg as any).handleClose = handleClose;
   (Egg as any).checkCollision = checkCollision;
+  (Egg as any).updateObstacles = updateObstacles;
 
   return (
     <Modal
