@@ -21,15 +21,6 @@ export const adminPanelSectionHeaderBase = {
   marginBottom: 12,
 };
 
-export type AdminPanelSharedStyles = ReturnType<typeof createAdminPanelSharedStyles>;
-
-export function mergeAdminPanelStyles<E extends object>(
-  theme: ScreenTheme,
-  extra: E,
-): AdminPanelSharedStyles & E {
-  return Object.assign({}, createAdminPanelSharedStyles(theme), StyleSheet.create(extra)) as AdminPanelSharedStyles & E;
-}
-
 export function createAdminPanelChromeStyleObjects(theme: ScreenTheme) {
   return {
     title: {
@@ -152,4 +143,20 @@ export function createAdminPanelSharedStyles(theme: ScreenTheme) {
       fontWeight: '600',
     },
   });
+}
+
+export type AdminPanelSharedStyles = ReturnType<typeof createAdminPanelSharedStyles>;
+
+type PanelStyleMap = Parameters<typeof StyleSheet.create>[0];
+
+/** Shared panel chrome + screen-specific styles with a stable merged type. */
+export function createAdminPanelScreenStyles<E extends PanelStyleMap>(
+  theme: ScreenTheme,
+  extra: E,
+): AdminPanelSharedStyles & E {
+  return Object.assign(
+    {},
+    createAdminPanelSharedStyles(theme),
+    StyleSheet.create(extra),
+  ) as AdminPanelSharedStyles & E;
 }

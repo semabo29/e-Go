@@ -29,15 +29,11 @@ import {
   TIPUS_COLORS,
   TIPUS_TEXT_COLORS,
 } from '@/utils/adminIncidentUi';
-import {
-  mergeAdminIncidenciaStyles,
-  type AdminIncidenciaCoreStyles,
-} from '@/constants/adminIncidenciaPanelStyles';
+import { createAdminIncidenciaScreenStyles } from '@/constants/adminIncidenciaPanelStyles';
 import type { ScreenTheme } from '@/constants/screenTheme';
 import { useScreenTheme } from '@/hooks/use-screen-theme';
 
-type AdminIncExtraStyles = ReturnType<typeof createAdminIncidenciasExtraStyles>;
-type AdminIncStyles = AdminIncidenciaCoreStyles & AdminIncExtraStyles;
+type AdminIncStyles = ReturnType<typeof createAdminIncidenciasStyles>;
 
 type IncidenciaCardProps = {
   inc: Incidencia;
@@ -119,10 +115,7 @@ export default function AdminIncidenciasScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const theme = useScreenTheme();
-  const styles = useMemo(
-    () => mergeAdminIncidenciaStyles(theme, createAdminIncidenciasExtraStyles(theme)) as AdminIncStyles,
-    [theme.isDark, theme.sem],
-  );
+  const styles = useMemo(() => createAdminIncidenciasStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -369,13 +362,13 @@ export default function AdminIncidenciasScreen() {
   );
 }
 
-function adminIncidenciasExtraStyles(theme: ScreenTheme) {
-  return {
-    refreshBtn: { alignSelf: 'center' as const, marginBottom: 16 },
-    refreshBtnText: { color: theme.title, fontWeight: '600' as const, fontSize: 14 },
+function createAdminIncidenciasStyles(theme: ScreenTheme) {
+  return createAdminIncidenciaScreenStyles(theme, {
+    refreshBtn: { alignSelf: 'center', marginBottom: 16 },
+    refreshBtnText: { color: theme.title, fontWeight: '600', fontSize: 14 },
     sectionHeader: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 8,
       marginBottom: 12,
       paddingBottom: 8,
@@ -383,7 +376,7 @@ function adminIncidenciasExtraStyles(theme: ScreenTheme) {
       borderBottomColor: theme.border,
     },
     sectionDot: { width: 10, height: 10, borderRadius: 5 },
-    sectionTitle: { fontSize: 16, fontWeight: '700' as const, color: theme.title, flex: 1 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: theme.title, flex: 1 },
     sectionBadge: {
       backgroundColor: theme.isDark ? '#422006' : '#fef3c7',
       borderRadius: 12,
@@ -392,14 +385,10 @@ function adminIncidenciasExtraStyles(theme: ScreenTheme) {
     },
     sectionBadgeText: {
       fontSize: 12,
-      fontWeight: '700' as const,
+      fontWeight: '700',
       color: theme.isDark ? '#fcd34d' : '#92400e',
     },
     imageContainer: { marginBottom: 10 },
     image: { width: '100%', height: 180, borderRadius: 8, marginTop: 6 },
-  };
-}
-
-function createAdminIncidenciasExtraStyles(theme: ScreenTheme) {
-  return StyleSheet.create(adminIncidenciasExtraStyles(theme));
+  });
 }

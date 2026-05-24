@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,8 +14,8 @@ import {
 import {
   adminPanelScrollBase,
   createAdminPanelChromeStyleObjects,
+  createAdminPanelScreenStyles,
   createAdminPanelSearchStyleObjects,
-  mergeAdminPanelStyles,
 } from '@/constants/adminPanelLayoutStyles';
 import type { ScreenTheme } from '@/constants/screenTheme';
 import { useScreenTheme } from '@/hooks/use-screen-theme';
@@ -274,12 +273,12 @@ export default function AdminStationsScreen() {
 
 const createAdminStationsStyles = (theme: ScreenTheme) => {
   const chrome = createAdminPanelChromeStyleObjects(theme);
-  return mergeAdminPanelStyles(theme, {
-    scroll: adminPanelScrollBase,
-    ...chrome,
-    muted: { ...chrome.muted, textAlign: 'center' as const, marginTop: 8 },
-    ...createAdminPanelSearchStyleObjects(theme),
-    stationRow: {
+  return createAdminPanelScreenStyles(theme, {
+      scroll: adminPanelScrollBase,
+      ...chrome,
+      muted: { ...chrome.muted, textAlign: 'center' as const, marginTop: 8 },
+      ...createAdminPanelSearchStyleObjects(theme),
+      stationRow: {
         borderWidth: 1,
         borderColor: theme.border,
         borderRadius: 10,

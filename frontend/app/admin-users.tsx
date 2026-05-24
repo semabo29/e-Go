@@ -6,7 +6,6 @@ import {
   Alert,
   Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,8 +15,8 @@ import {
 import {
   adminPanelScrollBase,
   createAdminPanelChromeStyleObjects,
+  createAdminPanelScreenStyles,
   createAdminPanelSearchStyleObjects,
-  mergeAdminPanelStyles,
 } from '@/constants/adminPanelLayoutStyles';
 import type { ScreenTheme } from '@/constants/screenTheme';
 import { useScreenTheme } from '@/hooks/use-screen-theme';
@@ -260,11 +259,11 @@ export default function AdminUsersScreen() {
 }
 
 const createAdminUsersStyles = (theme: ScreenTheme) =>
-  mergeAdminPanelStyles(theme, {
-    scroll: adminPanelScrollBase,
-    ...createAdminPanelChromeStyleObjects(theme),
-    ...createAdminPanelSearchStyleObjects(theme),
-    userRow: {
+  createAdminPanelScreenStyles(theme, {
+      scroll: adminPanelScrollBase,
+      ...createAdminPanelChromeStyleObjects(theme),
+      ...createAdminPanelSearchStyleObjects(theme),
+      userRow: {
         borderWidth: 1,
         borderColor: theme.border,
         borderRadius: 10,

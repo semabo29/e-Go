@@ -29,17 +29,13 @@ import {
   TIPUS_COLORS,
   TIPUS_TEXT_COLORS,
 } from '@/utils/adminIncidentUi';
-import {
-  mergeAdminIncidenciaStyles,
-  type AdminIncidenciaCoreStyles,
-} from '@/constants/adminIncidenciaPanelStyles';
+import { createAdminIncidenciaScreenStyles } from '@/constants/adminIncidenciaPanelStyles';
 import type { ScreenTheme } from '@/constants/screenTheme';
 import { useScreenTheme } from '@/hooks/use-screen-theme';
 
 const ALL_ESTADO_KEYS: IncidenciaEstado[] = ['pending', 'validated', 'resolved', 'rejected'];
 
-type AdminIncHistoryExtraStyles = ReturnType<typeof createAdminIncidenciasHistoryExtraStyles>;
-type AdminIncHistoryStyles = AdminIncidenciaCoreStyles & AdminIncHistoryExtraStyles;
+type AdminIncHistoryStyles = ReturnType<typeof createAdminIncidenciasHistoryStyles>;
 
 function toLocalDateString(date: Date): string {
   const y = date.getFullYear();
@@ -54,10 +50,7 @@ export default function AdminIncidenciasHistoryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const theme = useScreenTheme();
-  const styles = useMemo(
-    () => mergeAdminIncidenciaStyles(theme, createAdminIncidenciasHistoryExtraStyles(theme)) as AdminIncHistoryStyles,
-    [theme.isDark, theme.sem],
-  );
+  const styles = useMemo(() => createAdminIncidenciasHistoryStyles(theme), [theme.isDark, theme.sem]);
   const estadoFilters = useMemo(
     () =>
       ALL_ESTADO_KEYS.map((key) => ({
@@ -460,8 +453,8 @@ function DetailRow({ label, value, styles }: DetailRowProps) {
   );
 }
 
-function adminIncidenciasHistoryExtraStyles(theme: ScreenTheme) {
-  return {
+function createAdminIncidenciasHistoryStyles(theme: ScreenTheme) {
+  return createAdminIncidenciaScreenStyles(theme, {
     title: { marginBottom: 6 },
     backBtn: { marginBottom: 14 },
     errorText: { marginVertical: 8, marginTop: 0 },
@@ -477,30 +470,30 @@ function adminIncidenciasHistoryExtraStyles(theme: ScreenTheme) {
       shadowRadius: 4,
       elevation: 2,
     },
-    filterTitle: { fontSize: 15, fontWeight: '700' as const, color: theme.title, marginBottom: 10 },
+    filterTitle: { fontSize: 15, fontWeight: '700', color: theme.title, marginBottom: 10 },
     filterSectionLabel: {
       fontSize: 12,
-      fontWeight: '700' as const,
+      fontWeight: '700',
       color: theme.mutedText,
-      textTransform: 'uppercase' as const,
+      textTransform: 'uppercase',
       marginTop: 10,
       marginBottom: 6,
     },
-    chipRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 6, marginBottom: 4 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
     shortcutChip: {
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 6,
       backgroundColor: theme.secondaryBtnBg,
     },
-    shortcutChipText: { fontSize: 13, color: theme.secondaryBtnText, fontWeight: '600' as const },
+    shortcutChipText: { fontSize: 13, color: theme.secondaryBtnText, fontWeight: '600' },
     shortcutChipClear: {
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 6,
       backgroundColor: theme.dangerBtnBg,
     },
-    shortcutChipClearText: { fontSize: 13, color: theme.dangerBtnText, fontWeight: '600' as const },
+    shortcutChipClearText: { fontSize: 13, color: theme.dangerBtnText, fontWeight: '600' },
     filterChip: {
       borderRadius: 8,
       paddingHorizontal: 12,
@@ -510,17 +503,17 @@ function adminIncidenciasHistoryExtraStyles(theme: ScreenTheme) {
       borderColor: theme.border,
     },
     filterChipActive: { backgroundColor: theme.primaryBtnBg, borderColor: theme.primaryBtnBg },
-    filterChipText: { fontSize: 13, color: theme.secondaryText, fontWeight: '600' as const },
+    filterChipText: { fontSize: 13, color: theme.secondaryText, fontWeight: '600' },
     filterChipTextActive: { color: theme.primaryBtnText },
-    dateRow: { flexDirection: 'row' as const, gap: 10, marginBottom: 4, marginTop: 8 },
+    dateRow: { flexDirection: 'row', gap: 10, marginBottom: 4, marginTop: 8 },
     dateField: { flex: 1 },
-    dateLabel: { fontSize: 11, fontWeight: '600' as const, color: theme.mutedText, marginBottom: 4 },
+    dateLabel: { fontSize: 11, fontWeight: '600', color: theme.mutedText, marginBottom: 4 },
     dateInput: {
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 8,
       padding: 8,
-      justifyContent: 'center' as const,
+      justifyContent: 'center',
       minHeight: 40,
       color: theme.inputText,
       fontSize: 13,
@@ -531,9 +524,9 @@ function adminIncidenciasHistoryExtraStyles(theme: ScreenTheme) {
       paddingVertical: 11,
       borderRadius: 10,
       backgroundColor: theme.primaryBtnBg,
-      alignItems: 'center' as const,
+      alignItems: 'center',
     },
-    applyBtnText: { color: theme.primaryBtnText, fontWeight: '700' as const, fontSize: 14 },
+    applyBtnText: { color: theme.primaryBtnText, fontWeight: '700', fontSize: 14 },
     card: { marginBottom: 12 },
     stationName: { fontSize: 14 },
     comment: { color: theme.secondaryText, marginBottom: 8 },
@@ -550,15 +543,11 @@ function adminIncidenciasHistoryExtraStyles(theme: ScreenTheme) {
       paddingVertical: 12,
       borderRadius: 10,
       backgroundColor: theme.secondaryBtnBg,
-      alignItems: 'center' as const,
+      alignItems: 'center',
       marginTop: 4,
     },
-    loadMoreBtnText: { color: theme.secondaryBtnText, fontWeight: '700' as const },
+    loadMoreBtnText: { color: theme.secondaryBtnText, fontWeight: '700' },
     detailScroll: { maxHeight: 380 },
     modalActions: { marginBottom: 8 },
-  };
-}
-
-function createAdminIncidenciasHistoryExtraStyles(theme: ScreenTheme) {
-  return StyleSheet.create(adminIncidenciasHistoryExtraStyles(theme));
+  });
 }
