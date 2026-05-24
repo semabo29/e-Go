@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
+import Egg from '../egg';
 
 interface Vehicle {
   usuari: number;
@@ -72,6 +73,7 @@ export default function VehiclesScreen() {
   const [connectorType, setConnectorType] = useState('');
   const [acDc, setAcDc] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showEgg, setShowEgg] = useState(false);
   
   // Llista de vehicles
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -89,7 +91,6 @@ export default function VehiclesScreen() {
       const response = await appFetch(`/car?usuari_id=${user.id}`); // vehicles d'un usuari
       const data = await response.json();
       setVehicles(Array.isArray(data) ? data : []);
-      console.log(data);
     } catch (error) {
       console.error("Error cargando vehiculos:", error);
     }
@@ -107,11 +108,19 @@ export default function VehiclesScreen() {
     // Netegem l'error abans de tornar a comprovar
     setErrorMessage('');
     
+	  if(nom === "Voltix") {
+      setShowEgg(true);
+      setNom('');
+      setPotencia('');
+      setConnectorType('');
+      setAcDc('');
+      return;
+    }
+
     if ((nom === '') || (potencia === '') || (connectorType === '') || (acDc === '')) {
 	setErrorMessage(t('car.validationIncomplete'));
 	return;
     }
-	  
     try {
       const method = 'POST';
       const res = await appFetch('/car', {
@@ -126,7 +135,6 @@ export default function VehiclesScreen() {
           const response = await appFetch(`/car?usuari_id=${user!.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
-          console.log(data);
           router.navigate({
             pathname: '/',
             params: {// Paràmetres de la cerca
@@ -170,7 +178,6 @@ export default function VehiclesScreen() {
           const response = await appFetch(`/car?usuari_id=${user!.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
-          console.log(data);
         } catch (error) {
           console.error("Error cargando vehiculos:", error);
         }
@@ -371,6 +378,11 @@ export default function VehiclesScreen() {
           </View>
         </View>
       </Modal>
+      <Egg
+        visible={showEgg}
+        onClose={() => setShowEgg(false)}
+        theme={theme}
+      />
     </SafeAreaView>
   );
 }

@@ -625,6 +625,15 @@ export default {
     validationIncomplete:
       'I veicoli devono essere completamente specificati (nome, potenza, tipo di connettore e di corrente)',
   },
+  egg: {
+    score: 'Punti',
+    highScore: 'Punteggio più alto',
+    tap: 'Toccare per cambiare di corsia',
+    avoid: 'Evitare gli ostacoli!',
+    start: 'INIZIA',
+    gameOver: 'FINE DEL GIOCO',
+    playAgain: 'GIOCARE DI NUOVO',
+  },
   favorites: {
     loadError: 'Impossibile caricare i preferiti',
     connectionError: 'Errore di connessione',
