@@ -456,6 +456,7 @@ export default function PerfilScreen() {
                 <>
                   {esAmic === 0 && (
                     <TouchableOpacity
+                      testID="send-friend-request-button"
                       style={[styles.primaryButton, isSendingRequest && styles.buttonDisabled]}
                       onPress={sendFriendRequest}
                       disabled={isSendingRequest}
@@ -474,6 +475,7 @@ export default function PerfilScreen() {
                       </View>
                       <View style={styles.buttonGroup}>
                         <TouchableOpacity
+                          testID="accept-friend-request-button"
                           style={[styles.acceptButton, isAcceptingFriend && styles.buttonDisabled]}
                           onPress={() => handleAcceptFriendRequest(idUser)}
                           disabled={isAcceptingFriend || isRejectingRequest}
@@ -484,6 +486,7 @@ export default function PerfilScreen() {
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
+                          testID="reject-friend-request-button"
                           style={[styles.rejectButton, isRejectingRequest && styles.buttonDisabled]}
                           onPress={() => handleRejectFriendRequest(idUser)}
                           disabled={isRejectingRequest || isAcceptingFriend}
@@ -503,6 +506,7 @@ export default function PerfilScreen() {
                         <Text style={styles.sentRequestText}>{t('userProfile.sentRequest')}</Text>
                       </View>
                       <TouchableOpacity
+                        testID="cancel-friend-request-button"
                         style={[styles.cancelFriendButton, isSendingRequest && styles.buttonDisabled]}
                         onPress={() => handleCancelFriendRequest(idUser)}
                         disabled={isSendingRequest}
@@ -518,6 +522,7 @@ export default function PerfilScreen() {
                         <Text style={styles.friendStatusText}>{t('userProfile.friend')}</Text>
                       </View>
                       <TouchableOpacity
+                        testID="remove-friend-button"
                         style={[styles.deleteButton, isRemovingFriend && styles.buttonDisabled]}
                         onPress={removeFriendAction}
                         disabled={isRemovingFriend}
