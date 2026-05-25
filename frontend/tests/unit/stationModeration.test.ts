@@ -1,6 +1,8 @@
 ﻿import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import {
   listAdminStations,
+  listAllAdminStations,
+  setStationOperatiu,
   createAdminStation,
   updateAdminStation,
   deleteAdminStation,
@@ -41,6 +43,60 @@ const baseForm = {
 
 describe('stationModeration', () => {
   beforeEach(() => { jest.clearAllMocks(); });
+
+  describe('listAllAdminStations', () => {
+    test('fetches all stations without query', async () => {
+      const result = { stations: [{ id: 1, nom: 'A' }], hasMore: false };
+      mockFetch.mockResolvedValueOnce(makeRes(result));
+      const res = await listAllAdminStations();
+      expect(res).toEqual(result);
+      expect(mockFetch).toHaveBeenCalledWith('admin', expect.stringContaining('/admin/stations?'));
+      expect(mockFetch).toHaveBeenCalledWith('admin', expect.stringContaining('offset=0'));
+    });
+
+    test('fetches stations with search query', async () => {
+      const result = { stations: [], hasMore: false };
+      mockFetch.mockResolvedValueOnce(makeRes(result));
+      await listAllAdminStations('barcelona', 0);
+      const url = mockFetch.mock.calls[0]?.[1] as string;
+      expect(url).toContain('q=barcelona');
+    });
+
+    test('fetches stations with non-zero offset', async () => {
+      const result = { stations: [], hasMore: false };
+      mockFetch.mockResolvedValueOnce(makeRes(result));
+      await listAllAdminStations('', 50);
+      const url = mockFetch.mock.calls[0]?.[1] as string;
+      expect(url).toContain('offset=50');
+    });
+  });
+
+  describe('setStationOperatiu', () => {
+    test('sends PATCH request with operatiu=false', async () => {
+      const updated = { id: 5, nom: 'X', operatiu: false };
+      mockFetch.mockResolvedValueOnce(makeRes(updated));
+      const res = await setStationOperatiu(5, false);
+      expect(res).toEqual(updated);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'admin',
+        '/admin/stations/5/operatiu',
+        expect.objectContaining({ method: 'PATCH' })
+      );
+      const init = mockFetch.mock.calls[0]?.[2] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      expect(body.operatiu).toBe(false);
+    });
+
+    test('sends PATCH request with operatiu=true', async () => {
+      const updated = { id: 7, nom: 'Y', operatiu: true };
+      mockFetch.mockResolvedValueOnce(makeRes(updated));
+      const res = await setStationOperatiu(7, true);
+      expect(res).toEqual(updated);
+      const init = mockFetch.mock.calls[0]?.[2] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      expect(body.operatiu).toBe(true);
+    });
+  });
 
   describe('Admin station CRUD', () => {
     test('listAdminStations: fetches admin stations', async () => {

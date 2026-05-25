@@ -16,11 +16,10 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { getApiUrl, GOOGLE_WEB_CLIENT_ID } from '@/constants/api';
 import { appFetch } from '@/services/appFetch';
-import { Colors } from '@/constants/theme';
-import { getSemanticColors } from '@/constants/accessibilityColors';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import SvgComponent from './_assets/logo.jsx'
 
 GoogleSignin.configure({
@@ -30,8 +29,8 @@ GoogleSignin.configure({
 export default function LoginScreen() {
   const { t } = useTranslation();
   const { setUser } = useAuth();
-  const { colorblindFriendly } = useColorblindPreference();
-  const brandAccent = useMemo(() => getSemanticColors(colorblindFriendly).accent, [colorblindFriendly]);
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createLoginStyles(theme), [theme.isDark, theme.sem]);
   const router = useRouter();
   const { openGoogle, mode } = useLocalSearchParams<{ openGoogle?: string; mode?: string }>();
   const [authMode, setAuthMode] = useState<'google' | 'local-login' | 'local-register'>('google');
@@ -240,7 +239,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: brandAccent }]} onPress={registerWithUsername} disabled={loading}>
+          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.sem.accent }]} onPress={registerWithUsername} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('common.continue')}</Text>}
           </TouchableOpacity>
         </View>
@@ -292,7 +291,7 @@ export default function LoginScreen() {
             <Text style={styles.separatorText}>{t('common.or')}</Text>
 
             <TouchableOpacity
-              style={[styles.primaryButton, styles.mailButton, { backgroundColor: brandAccent }]}
+              style={[styles.primaryButton, styles.mailButton, { backgroundColor: theme.sem.accent }]}
               onPress={() => {
                 setAuthMode('local-login');
                 setError('');
@@ -390,7 +389,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
-            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: brandAccent }]} onPress={submitLocalAuth} disabled={loading}>
+            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.sem.accent }]} onPress={submitLocalAuth} disabled={loading}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -427,79 +426,108 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f5f5' },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20, paddingVertical: 20 },
-  card: { width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', elevation: 3 },
-  cardCompact: { paddingVertical: 18, paddingHorizontal: 20 },
-  title: { fontSize: 24, fontWeight: '700', color: '#1f2937', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center', marginBottom: 20 },
-  googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb' },
-  skipGoogleButton: { marginTop: 10 },
-  googleIcon: { width: 22, height: 22 },
-  googleButtonText: { fontSize: 16, fontWeight: '600', color: '#1f2937' },
-  primaryButton: { width: '100%', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 8 },
-  primaryButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
-  separatorText: { marginTop: 12, marginBottom: 8, color: '#6b7280', fontSize: 14, fontWeight: '600' },
-  mailButton: { marginTop: 0, marginBottom: 4 },
-  input: { width: '100%', paddingVertical: 11, paddingHorizontal: 14, fontSize: 16, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, marginBottom: 12 },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    marginBottom: 12,
-    paddingRight: 4,
-    backgroundColor: '#fff',
-  },
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#111827',
-  },
-  eyeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 12 },
-  linksRow: { flexDirection: 'row', gap: 16, marginBottom: 18 },
-  adminLink: {},
-  adminLinkText: { fontSize: 14, color: '#111827', fontWeight: '600' },
-  localForm: {
-    width: '100%',
-  },
-  localTitle: { fontSize: 17, fontWeight: '700', color: '#1f2937', marginBottom: 14, textAlign: 'center' },
-  switchModeButton: {
-    marginTop: 10,
-    alignSelf: 'stretch',
-    minHeight: 42,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  switchModeButtonPrimary: {
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1,
-    borderColor: '#86efac',
-  },
-  switchModeButtonSecondary: {
-    marginTop: 14,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  switchModeText: {
-    color: '#065f46',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  backGoogleText: { color: '#374151', fontSize: 13, fontWeight: '600' },
-  terms: { marginTop: 24, fontSize: 12, color: '#9ca3af', textAlign: 'center' },
-});
+const createLoginStyles = (theme: ScreenTheme) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: theme.panelScreenBg },
+    scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20, paddingVertical: 20 },
+    card: {
+      width: '100%',
+      maxWidth: 400,
+      backgroundColor: theme.surface,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: 'center',
+      elevation: 3,
+    },
+    cardCompact: { paddingVertical: 18, paddingHorizontal: 20 },
+    title: { fontSize: 24, fontWeight: '700', color: theme.title, textAlign: 'center', marginBottom: 8 },
+    subtitle: { fontSize: 15, color: theme.mutedText, textAlign: 'center', marginBottom: 20 },
+    googleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.googleBtnBorder,
+      backgroundColor: theme.googleBtnBg,
+    },
+    skipGoogleButton: { marginTop: 10 },
+    googleIcon: { width: 22, height: 22 },
+    googleButtonText: { fontSize: 16, fontWeight: '600', color: theme.title },
+    primaryButton: { width: '100%', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+    primaryButtonText: { fontSize: 16, fontWeight: '600', color: theme.textOnAccent },
+    separatorText: { marginTop: 12, marginBottom: 8, color: theme.mutedText, fontSize: 14, fontWeight: '600' },
+    mailButton: { marginTop: 0, marginBottom: 4 },
+    input: {
+      width: '100%',
+      paddingVertical: 11,
+      paddingHorizontal: 14,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      borderRadius: 10,
+      marginBottom: 12,
+      backgroundColor: theme.inputBg,
+      color: theme.inputText,
+    },
+    passwordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '100%',
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      borderRadius: 10,
+      marginBottom: 12,
+      paddingRight: 4,
+      backgroundColor: theme.inputBg,
+    },
+    passwordInput: {
+      flex: 1,
+      paddingVertical: 11,
+      paddingHorizontal: 14,
+      fontSize: 16,
+      color: theme.inputText,
+    },
+    eyeButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    errorText: { color: theme.error, fontSize: 14, textAlign: 'center', marginBottom: 12 },
+    linksRow: { flexDirection: 'row', gap: 16, marginBottom: 18 },
+    adminLink: {},
+    adminLinkText: { fontSize: 14, color: theme.title, fontWeight: '600' },
+    localForm: { width: '100%' },
+    localTitle: { fontSize: 17, fontWeight: '700', color: theme.title, marginBottom: 14, textAlign: 'center' },
+    switchModeButton: {
+      marginTop: 10,
+      alignSelf: 'stretch',
+      minHeight: 42,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+    },
+    switchModeButtonPrimary: {
+      backgroundColor: theme.sem.chipActiveBg,
+      borderWidth: 1,
+      borderColor: theme.sem.accent,
+    },
+    switchModeButtonSecondary: {
+      marginTop: 14,
+      backgroundColor: theme.chipBg,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    switchModeText: {
+      color: theme.sem.chipActiveText,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    backGoogleText: { color: theme.secondaryText, fontSize: 13, fontWeight: '600' },
+    terms: { marginTop: 24, fontSize: 12, color: theme.mutedText, textAlign: 'center' },
+  });

@@ -300,6 +300,12 @@ describe('E2E: eventos y navegación desde el panel', () => {
       fireEvent.press(getByTestId('event-location-how-to-arrive'));
     });
 
+    // —— NUEVO PASO 7.5: Saltarnos el modal de autonomía ——
+    const btnSaltar = await waitFor(() => getByText('Saltar'));
+    await act(async () => {
+      fireEvent.press(btnSaltar);
+    });
+
     // —— Paso 8: se pide la ruta a Google Directions (mock) ——
     await waitFor(() => {
       expect(getByTestId('map-view-directions')).toBeTruthy();

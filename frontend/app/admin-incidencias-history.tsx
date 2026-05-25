@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {
   ActivityIndicator,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,8 +29,13 @@ import {
   TIPUS_COLORS,
   TIPUS_TEXT_COLORS,
 } from '@/utils/adminIncidentUi';
+import { createAdminIncidenciaScreenStyles } from '@/constants/adminIncidenciaPanelStyles';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 
 const ALL_ESTADO_KEYS: IncidenciaEstado[] = ['pending', 'validated', 'resolved', 'rejected'];
+
+type AdminIncHistoryStyles = ReturnType<typeof createAdminIncidenciasHistoryStyles>;
 
 function toLocalDateString(date: Date): string {
   const y = date.getFullYear();
@@ -41,25 +44,13 @@ function toLocalDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** Interpreta YYYY-MM-DD en calendario local (medianoche). */
-function parseYmd(s: string): Date | null {
-  const m = YMD_RE.exec(s.trim());
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const da = Number(m[3]);
-  const d = new Date(y, mo - 1, da);
-  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da) return null;
-  return d;
-}
-
 const PAGE_SIZE = 20;
 
 export default function AdminIncidenciasHistoryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createAdminIncidenciasHistoryStyles(theme), [theme.isDark, theme.sem]);
   const estadoFilters = useMemo(
     () =>
       ALL_ESTADO_KEYS.map((key) => ({
@@ -79,12 +70,6 @@ export default function AdminIncidenciasHistoryScreen() {
   const [to, setTo] = useState('');
   const [selectedTipus, setSelectedTipus] = useState<IncidenciaTipus | ''>('');
   const [selectedEstado, setSelectedEstado] = useState<IncidenciaEstado | ''>('');
-
-  const androidPickerFieldRef = useRef<'from' | 'to'>('from');
-  const [androidPickerVisible, setAndroidPickerVisible] = useState(false);
-  const [androidPickerDate, setAndroidPickerDate] = useState(() => new Date());
-
-  const [iosPicker, setIosPicker] = useState<null | { field: 'from' | 'to'; date: Date }>(null);
 
   const [detailInc, setDetailInc] = useState<Incidencia | null>(null);
   const [rejectingInc, setRejectingInc] = useState<Incidencia | null>(null);
@@ -142,36 +127,6 @@ export default function AdminIncidenciasHistoryScreen() {
     setTo('');
     setSelectedTipus('');
     setSelectedEstado('');
-  }
-
-  function openDatePicker(field: 'from' | 'to') {
-    const str = field === 'from' ? from : to;
-    const initial = parseYmd(str) ?? new Date();
-    if (Platform.OS === 'web') return;
-    if (Platform.OS === 'android') {
-      androidPickerFieldRef.current = field;
-      setAndroidPickerDate(initial);
-      setAndroidPickerVisible(true);
-      return;
-    }
-    setIosPicker({ field, date: initial });
-  }
-
-  function onAndroidDateChange(event: DateTimePickerEvent, selectedDate?: Date) {
-    setAndroidPickerVisible(false);
-    const field = androidPickerFieldRef.current;
-    if (event.type !== 'set' || selectedDate == null) return;
-    const ymd = toLocalDateString(selectedDate);
-    if (field === 'from') setFrom(ymd);
-    else setTo(ymd);
-  }
-
-  function confirmIosPicker() {
-    if (!iosPicker) return;
-    const ymd = toLocalDateString(iosPicker.date);
-    if (iosPicker.field === 'from') setFrom(ymd);
-    else setTo(ymd);
-    setIosPicker(null);
   }
 
   async function handleValidate(id: number) {
@@ -248,51 +203,31 @@ export default function AdminIncidenciasHistoryScreen() {
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
               <Text style={styles.dateLabel}>{t('adminIncidents.filter.fromDate')}</Text>
-              {Platform.OS === 'web' ? (
-                <TextInput
-                  style={styles.dateInput}
-                  value={from}
-                  onChangeText={setFrom}
-                  placeholder="2026-01-01"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              ) : (
-                <TouchableOpacity
-                  style={styles.dateInput}
-                  onPress={() => openDatePicker('from')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dateInputText, !from && styles.dateInputPlaceholder]}>
-                    {from || t('adminIncidents.filter.tapToPick')}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TextInput
+                style={styles.dateInput}
+                value={from}
+                onChangeText={setFrom}
+                placeholder="2026-01-01"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="numbers-and-punctuation"
+                maxLength={10}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
             </View>
             <View style={styles.dateField}>
               <Text style={styles.dateLabel}>{t('adminIncidents.filter.toDate')}</Text>
-              {Platform.OS === 'web' ? (
-                <TextInput
-                  style={styles.dateInput}
-                  value={to}
-                  onChangeText={setTo}
-                  placeholder="2026-12-31"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              ) : (
-                <TouchableOpacity
-                  style={styles.dateInput}
-                  onPress={() => openDatePicker('to')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dateInputText, !to && styles.dateInputPlaceholder]}>
-                    {to || t('adminIncidents.filter.tapToPick')}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TextInput
+                style={styles.dateInput}
+                value={to}
+                onChangeText={setTo}
+                placeholder="2026-12-31"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="numbers-and-punctuation"
+                maxLength={10}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
             </View>
           </View>
 
@@ -337,7 +272,7 @@ export default function AdminIncidenciasHistoryScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {loading && incidencias.length === 0 && (
-          <ActivityIndicator size="large" color="#111827" style={{ marginTop: 24 }} />
+          <ActivityIndicator size="large" color={theme.primaryBtnBg} style={{ marginTop: 24 }} />
         )}
         {!loading && incidencias.length === 0 && (
           <Text style={styles.muted}>{t('adminIncidents.emptyFiltered')}</Text>
@@ -413,41 +348,46 @@ export default function AdminIncidenciasHistoryScreen() {
             <Text style={styles.modalTitle}>{t('adminIncidents.modalTitle', { id: detailInc?.id })}</Text>
             {detailInc && (
               <ScrollView style={styles.detailScroll}>
-                <DetailRow label={t('adminIncidents.fields.type')} value={incidentTypeLabel(detailInc.tipus, t)} />
-                <DetailRow label={t('adminIncidents.fields.status')} value={incidentStatusLabel(detailInc, t)} />
-                <DetailRow label={t('adminIncidents.fields.station')} value={detailInc.estacio_nom ?? `#${detailInc.estacio}`} />
+                <DetailRow styles={styles} label={t('adminIncidents.fields.type')} value={incidentTypeLabel(detailInc.tipus, t)} />
+                <DetailRow styles={styles} label={t('adminIncidents.fields.status')} value={incidentStatusLabel(detailInc, t)} />
+                <DetailRow styles={styles} label={t('adminIncidents.fields.station')} value={detailInc.estacio_nom ?? `#${detailInc.estacio}`} />
                 {detailInc.estacio_municipi ? (
-                  <DetailRow label={t('adminIncidents.fields.municipality')} value={detailInc.estacio_municipi} />
+                  <DetailRow styles={styles} label={t('adminIncidents.fields.municipality')} value={detailInc.estacio_municipi} />
                 ) : null}
-                <DetailRow label={t('adminIncidents.fields.driver')} value={detailInc.conductor_username} />
-                <DetailRow label={t('adminIncidents.fields.email')} value={detailInc.conductor_email} />
+                <DetailRow styles={styles} label={t('adminIncidents.fields.driver')} value={detailInc.conductor_username} />
+                <DetailRow styles={styles} label={t('adminIncidents.fields.email')} value={detailInc.conductor_email} />
                 <DetailRow
+                  styles={styles}
                   label={t('adminIncidents.fields.reportDate')}
                   value={new Date(detailInc.data_inici).toLocaleString()}
                 />
-                <DetailRow label={t('adminIncidents.fields.comment')} value={detailInc.comentari} />
+                <DetailRow styles={styles} label={t('adminIncidents.fields.comment')} value={detailInc.comentari} />
                 {detailInc.motiu_rebuig ? (
-                  <DetailRow label={t('adminIncidents.fields.rejectReason')} value={detailInc.motiu_rebuig} />
+                  <DetailRow styles={styles} label={t('adminIncidents.fields.rejectReason')} value={detailInc.motiu_rebuig} />
                 ) : null}
                 {detailInc.data_validacio ? (
                   <DetailRow
+                    styles={styles}
                     label={t('adminIncidents.fields.validationDate')}
                     value={new Date(detailInc.data_validacio).toLocaleString()}
                   />
                 ) : null}
                 {detailInc.data_resolucio ? (
                   <DetailRow
+                    styles={styles}
                     label={t('adminIncidents.fields.resolutionDate')}
                     value={new Date(detailInc.data_resolucio).toLocaleString()}
                   />
                 ) : null}
                 {detailInc.data_rebuig ? (
                   <DetailRow
+                    styles={styles}
                     label={t('adminIncidents.fields.rejectionDate')}
                     value={new Date(detailInc.data_rebuig).toLocaleString()}
                   />
                 ) : null}
                 <DetailRow
+                  styles={styles}
                   label={t('adminIncidents.fields.pointsAwarded')}
                   value={detailInc.punts_atorgats ? t('adminIncidents.pointsYes') : t('adminIncidents.pointsNo')}
                 />
@@ -468,62 +408,12 @@ export default function AdminIncidenciasHistoryScreen() {
                 <Text style={styles.btnResolveText}>{t('adminIncidents.markResolved')}</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.closeBtn} onPress={() => setDetailInc(null)}>
-              <Text style={styles.closeBtnText}>{t('adminIncidents.close')}</Text>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setDetailInc(null)}>
+              <Text style={styles.modalCloseBtnText}>{t('adminIncidents.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
-      {/* Selector de fecha (iOS: calendario en modal) */}
-      <Modal
-        visible={!!iosPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIosPicker(null)}
-      >
-        <View style={styles.datePickerOverlay}>
-          <TouchableOpacity style={styles.datePickerBackdrop} activeOpacity={1} onPress={() => setIosPicker(null)} />
-          <View style={styles.datePickerSheet}>
-            <View style={styles.datePickerToolbar}>
-              <TouchableOpacity onPress={() => setIosPicker(null)} hitSlop={12}>
-                <Text style={styles.datePickerToolbarBtn}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <Text style={styles.datePickerToolbarTitle}>
-                {iosPicker?.field === 'from'
-                  ? t('adminIncidents.filter.dateFromTitle')
-                  : t('adminIncidents.filter.dateToTitle')}
-              </Text>
-              <TouchableOpacity onPress={confirmIosPicker} hitSlop={12}>
-                <Text style={[styles.datePickerToolbarBtn, styles.datePickerToolbarBtnPrimary]}>
-                  {t('adminIncidents.filter.datePickerDone')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {iosPicker ? (
-              <DateTimePicker
-                value={iosPicker.date}
-                mode="date"
-                display="inline"
-                onChange={(_, date) => {
-                  if (date) setIosPicker((prev) => (prev ? { ...prev, date } : prev));
-                }}
-                locale="es_ES"
-                themeVariant="light"
-              />
-            ) : null}
-          </View>
-        </View>
-      </Modal>
-
-      {androidPickerVisible && Platform.OS === 'android' ? (
-        <DateTimePicker
-          value={androidPickerDate}
-          mode="date"
-          display="default"
-          onChange={onAndroidDateChange}
-        />
-      ) : null}
 
       {/* Modal rechazo */}
       <Modal visible={!!rejectingInc} transparent animationType="fade" onRequestClose={() => setRejectingInc(null)}>
@@ -531,16 +421,16 @@ export default function AdminIncidenciasHistoryScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{t('adminIncidents.rejectModalShort', { id: rejectingInc?.id })}</Text>
             <TextInput
-              style={styles.textArea}
+              style={styles.modalInput}
               value={rejectMotiu}
               onChangeText={setRejectMotiu}
               placeholder={t('adminIncidents.rejectPlaceholder')}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.placeholder}
               multiline
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setRejectingInc(null)}>
-                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setRejectingInc(null)}>
+                <Text style={styles.modalCancelBtnText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.btnReject} onPress={handleReject} disabled={submitting}>
                 <Text style={styles.btnRejectText}>{t('adminIncidents.reject')}</Text>
@@ -553,8 +443,8 @@ export default function AdminIncidenciasHistoryScreen() {
   );
 }
 
-type DetailRowProps = { label: string; value: string };
-function DetailRow({ label, value }: DetailRowProps) {
+type DetailRowProps = { label: string; value: string; styles: AdminIncHistoryStyles };
+function DetailRow({ label, value, styles }: DetailRowProps) {
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
@@ -563,124 +453,101 @@ function DetailRow({ label, value }: DetailRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f5f5' },
-  scroll: { flexGrow: 1, alignItems: 'center', padding: 16, paddingVertical: 32 },
-  container: { width: '100%', maxWidth: 640 },
-  title: { fontSize: 22, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 6 },
-  backBtn: { alignSelf: 'center', marginBottom: 14 },
-  backBtnText: { color: '#6b7280', fontWeight: '600' },
-  errorText: { color: '#dc2626', textAlign: 'center', marginVertical: 8 },
-  muted: { color: '#6b7280', textAlign: 'center', marginTop: 24 },
-  filterBox: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  filterTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10 },
-  filterSectionLabel: { fontSize: 12, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginTop: 10, marginBottom: 6 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
-  shortcutChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#e5e7eb' },
-  shortcutChipText: { fontSize: 13, color: '#374151', fontWeight: '600' },
-  shortcutChipClear: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fee2e2' },
-  shortcutChipClearText: { fontSize: 13, color: '#b91c1c', fontWeight: '600' },
-  filterChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
-  filterChipActive: { backgroundColor: '#111827', borderColor: '#111827' },
-  filterChipText: { fontSize: 13, color: '#374151', fontWeight: '600' },
-  filterChipTextActive: { color: '#fff' },
-  dateRow: { flexDirection: 'row', gap: 10, marginBottom: 4, marginTop: 8 },
-  dateField: { flex: 1 },
-  dateLabel: { fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
-  dateInput: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 8,
-    justifyContent: 'center',
-    minHeight: 40,
-    color: '#111827',
-    fontSize: 13,
-  },
-  dateInputText: { color: '#111827', fontSize: 13 },
-  dateInputPlaceholder: { color: '#9ca3af' },
-  datePickerOverlay: { flex: 1, justifyContent: 'flex-end' },
-  datePickerBackdrop: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(17,24,39,0.45)',
-  },
-  datePickerSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 24,
-    maxHeight: '70%',
-  },
-  datePickerToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  datePickerToolbarTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  datePickerToolbarBtn: { fontSize: 16, color: '#6b7280', fontWeight: '600' },
-  datePickerToolbarBtnPrimary: { color: '#2563eb' },
-  applyBtn: { marginTop: 12, paddingVertical: 11, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
-  applyBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
-  typeBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  typeBadgeText: { fontSize: 12, fontWeight: '700' },
-  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  statusBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  stationName: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 2 },
-  meta: { fontSize: 12, color: '#6b7280', marginBottom: 6 },
-  comment: { fontSize: 13, color: '#374151', marginBottom: 8 },
-  detailBtn: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingVertical: 7, alignItems: 'center', marginBottom: 8 },
-  detailBtnText: { color: '#111827', fontWeight: '600', fontSize: 13 },
-  actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  btnValidate: { flex: 1, minWidth: 80, paddingVertical: 9, borderRadius: 8, backgroundColor: '#111827', alignItems: 'center' },
-  btnValidateText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  btnReject: { flex: 1, minWidth: 80, paddingVertical: 9, borderRadius: 8, backgroundColor: '#fee2e2', alignItems: 'center' },
-  btnRejectText: { color: '#b91c1c', fontWeight: '700', fontSize: 13 },
-  btnResolve: { flex: 1, minWidth: 80, paddingVertical: 9, borderRadius: 8, backgroundColor: '#dcfce7', alignItems: 'center' },
-  btnResolveText: { color: '#166534', fontWeight: '700', fontSize: 13 },
-  loadMoreBtn: { paddingVertical: 12, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center', marginTop: 4 },
-  loadMoreBtnText: { color: '#374151', fontWeight: '700' },
-  overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  detailCard: { width: '100%', maxWidth: 440, maxHeight: '88%', backgroundColor: '#fff', borderRadius: 16, padding: 20 },
-  detailScroll: { maxHeight: 380, marginBottom: 12 },
-  detailRow: { marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  detailLabel: { fontSize: 11, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: 2 },
-  detailValue: { fontSize: 14, color: '#111827' },
-  modalCard: { width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 16, padding: 20 },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  textArea: { minHeight: 80, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, marginBottom: 12, color: '#111827', textAlignVertical: 'top' },
-  modalActions: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  cancelBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: '#e5e7eb', alignItems: 'center' },
-  cancelBtnText: { color: '#111827', fontWeight: '700' },
-  closeBtn: { paddingVertical: 12, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
-  closeBtnText: { color: '#fff', fontWeight: '700' },
-});
+function createAdminIncidenciasHistoryStyles(theme: ScreenTheme) {
+  return createAdminIncidenciaScreenStyles(theme, {
+    title: { marginBottom: 6 },
+    backBtn: { marginBottom: 14 },
+    errorText: { marginVertical: 8, marginTop: 0 },
+    muted: { marginTop: 24, marginVertical: 0 },
+    filterBox: {
+      backgroundColor: theme.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    filterTitle: { fontSize: 15, fontWeight: '700', color: theme.title, marginBottom: 10 },
+    filterSectionLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.mutedText,
+      textTransform: 'uppercase',
+      marginTop: 10,
+      marginBottom: 6,
+    },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+    shortcutChip: {
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: theme.secondaryBtnBg,
+    },
+    shortcutChipText: { fontSize: 13, color: theme.secondaryBtnText, fontWeight: '600' },
+    shortcutChipClear: {
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: theme.dangerBtnBg,
+    },
+    shortcutChipClearText: { fontSize: 13, color: theme.dangerBtnText, fontWeight: '600' },
+    filterChip: {
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: theme.chipBg,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    filterChipActive: { backgroundColor: theme.primaryBtnBg, borderColor: theme.primaryBtnBg },
+    filterChipText: { fontSize: 13, color: theme.secondaryText, fontWeight: '600' },
+    filterChipTextActive: { color: theme.primaryBtnText },
+    dateRow: { flexDirection: 'row', gap: 10, marginBottom: 4, marginTop: 8 },
+    dateField: { flex: 1 },
+    dateLabel: { fontSize: 11, fontWeight: '600', color: theme.mutedText, marginBottom: 4 },
+    dateInput: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 8,
+      padding: 8,
+      justifyContent: 'center',
+      minHeight: 40,
+      color: theme.inputText,
+      fontSize: 13,
+      backgroundColor: theme.inputBg,
+    },
+    applyBtn: {
+      marginTop: 12,
+      paddingVertical: 11,
+      borderRadius: 10,
+      backgroundColor: theme.primaryBtnBg,
+      alignItems: 'center',
+    },
+    applyBtnText: { color: theme.primaryBtnText, fontWeight: '700', fontSize: 14 },
+    card: { marginBottom: 12 },
+    stationName: { fontSize: 14 },
+    comment: { color: theme.secondaryText, marginBottom: 8 },
+    detailBtn: { borderColor: theme.border, paddingVertical: 7 },
+    btnValidate: { minWidth: 80, paddingVertical: 9 },
+    btnReject: { minWidth: 80, paddingVertical: 9 },
+    btnResolve: {
+      minWidth: 80,
+      paddingVertical: 9,
+      backgroundColor: theme.sem.chipActiveBg,
+    },
+    btnResolveText: { color: theme.sem.chipActiveText },
+    loadMoreBtn: {
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: theme.secondaryBtnBg,
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    loadMoreBtnText: { color: theme.secondaryBtnText, fontWeight: '700' },
+    detailScroll: { maxHeight: 380 },
+    modalActions: { marginBottom: 8 },
+  });
+}

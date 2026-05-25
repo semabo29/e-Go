@@ -16,9 +16,9 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { appFetch } from '@/services/appFetch';
-import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { getApiUrl } from '@/constants/api';
-import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Station {
@@ -40,9 +40,8 @@ export default function MyFavoriteStationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { colorblindFriendly } = useColorblindPreference();
-  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
-  const styles = useMemo(() => createFavoriteStyles(sem), [sem]);
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createFavoriteStyles(theme), [theme.isDark, theme.sem]);
 
   // Obtenim els marges de l'àrea segura del mòbil
   const insets = useSafeAreaInsets();
@@ -197,19 +196,19 @@ export default function MyFavoriteStationsScreen() {
             <Text style={styles.stationName} numberOfLines={1}>
               {item.nom || t('home.stationNoName')}
             </Text>
-            {item.municipi && (
+            {Boolean(item.municipi) && (
               <Text style={styles.stationDetail} numberOfLines={1}>
-                <MaterialIcons name="location-on" size={14} color="#64748b" /> {item.municipi}
+                <MaterialIcons name="location-on" size={14} color={theme.mutedText} /> {item.municipi}
               </Text>
             )}
-            {item.adreca && (
+            {Boolean(item.adreca) && (
               <Text style={styles.stationDetail} numberOfLines={1}>
                 {item.adreca}
               </Text>
             )}
-            {item.kw && (
+            {Boolean(item.kw) && (
               <Text style={styles.stationDetail}>
-                <MaterialIcons name="bolt" size={14} color={sem.accent} /> {item.kw} kW
+                <MaterialIcons name="bolt" size={14} color={theme.sem.accent} /> {item.kw} kW
               </Text>
             )}
           </View>
@@ -223,7 +222,7 @@ export default function MyFavoriteStationsScreen() {
             onPress={() => handleStartRoute(item)}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="directions" size={16} color={sem.accent} />
+            <MaterialIcons name="directions" size={16} color={theme.sem.accent} />
             <Text style={styles.routeBtnText}>{t('favorites.howToArrive')}</Text>
           </TouchableOpacity>
 
@@ -246,7 +245,7 @@ export default function MyFavoriteStationsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={sem.accent} />
+          <ActivityIndicator size="large" color={theme.sem.accent} />
           <Text style={styles.loadingText}>{t('favorites.loading')}</Text>
         </View>
       </View>
@@ -306,7 +305,7 @@ export default function MyFavoriteStationsScreen() {
                       : 'done'
                   }
                   size={20}
-                  color={selectedIds.size > 0 ? sem.accent : '#cbd5e1'}
+                  color={selectedIds.size > 0 ? theme.sem.accent : theme.inputBorder}
                 />
                 <Text style={styles.selectAllText}>
                   {selectedIds.size === favorites.length
@@ -341,19 +340,19 @@ export default function MyFavoriteStationsScreen() {
   );
 }
 
-const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
+const createFavoriteStyles = (theme: ScreenTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.containerBg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surfaceElevated,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.border,
   },
   closeButton: {
     padding: 8,
@@ -365,11 +364,11 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0f172a',
+    color: theme.title,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: theme.mutedText,
     marginTop: 2,
   },
   centerContent: {
@@ -381,18 +380,18 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#64748b',
+    color: theme.mutedText,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#475569',
+    color: theme.secondaryText,
     marginTop: 16,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: theme.mutedText,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -403,11 +402,11 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
 
   // --- NOU CONTENIDOR PRINCIPAL DE LA TARGETA ---
   stationItemWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     marginVertical: 6,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.border,
     overflow: 'hidden',
   },
   stationItemTop: {
@@ -417,8 +416,8 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
     paddingVertical: 12,
   },
   stationItemSelected: {
-    backgroundColor: sem.chipActiveBg,
-    borderColor: sem.accent,
+    backgroundColor: theme.sem.chipActiveBg,
+    borderColor: theme.sem.accent,
   },
   checkboxContainer: {
     marginRight: 12,
@@ -428,13 +427,13 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderColor: theme.inputBorder,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: sem.accent,
-    borderColor: sem.accent,
+    backgroundColor: theme.sem.accent,
+    borderColor: theme.sem.accent,
   },
   stationInfo: {
     flex: 1,
@@ -442,12 +441,12 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
   stationName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
+    color: theme.title,
     marginBottom: 6,
   },
   stationDetail: {
     fontSize: 13,
-    color: '#64748b',
+    color: theme.mutedText,
     marginBottom: 4,
   },
 
@@ -455,8 +454,8 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
   actionButtonsRow: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    backgroundColor: '#f8fafc',
+    borderTopColor: theme.border,
+    backgroundColor: theme.chipBg,
   },
   actionBtn: {
     flex: 1,
@@ -468,15 +467,15 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
   },
   routeBtn: {
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
+    borderRightColor: theme.border,
   },
   routeBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: sem.accent,
+    color: theme.sem.accent,
   },
   chargeBtn: {
-    backgroundColor: sem.accent,
+    backgroundColor: theme.sem.accent,
   },
   chargeBtnText: {
     fontSize: 13,
@@ -486,9 +485,9 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
 
   // --- RESTA D'ESTILS ---
   selectionBar: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surfaceElevated,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: theme.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -501,19 +500,19 @@ const createFavoriteStyles = (sem: SemanticColors) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.chipBg,
     borderRadius: 6,
     gap: 8,
   },
   selectAllText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#475569',
+    color: theme.secondaryText,
   },
   removeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: sem.error,
+    backgroundColor: theme.sem.error,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 6,

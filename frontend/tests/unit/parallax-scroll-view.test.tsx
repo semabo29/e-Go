@@ -2,6 +2,9 @@ import React from 'react';
 import { Text } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { describe, expect, jest, test } from '@jest/globals';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { ThemedView } from '@/components/themed-view';
 
 jest.mock('@/hooks/use-theme-color', () => ({
   useThemeColor: jest.fn(() => '#ffffff'),
@@ -11,14 +14,6 @@ jest.mock('@/hooks/use-color-scheme', () => ({
   useColorScheme: jest.fn(() => 'dark'),
 }));
 
-jest.mock('@/components/themed-view', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    ThemedView: ({ children, style }: { children?: React.ReactNode; style?: object }) =>
-      React.createElement(View, { testID: 'themed-view', style }, children),
-  };
-});
 
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
@@ -41,9 +36,6 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
 describe('ParallaxScrollView', () => {
   test('renderiza header, contenido y scroll', () => {
     const { getByTestId, getByText } = render(
@@ -59,7 +51,7 @@ describe('ParallaxScrollView', () => {
     expect(getByTestId('parallax-header')).toBeTruthy();
     expect(getByTestId('header-img')).toBeTruthy();
     expect(getByText('Cuerpo')).toBeTruthy();
-    expect(getByTestId('themed-view')).toBeTruthy();
+    expect(getByTestId('themed-view-real')).toBeTruthy(); 
   });
 
   test('usa color de fondo del header según esquema oscuro', () => {

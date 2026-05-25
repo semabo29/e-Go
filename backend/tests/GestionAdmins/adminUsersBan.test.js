@@ -71,6 +71,32 @@ describe('Admin users moderation', () => {
     expect(res.body.subscription_stripe).toEqual({ ok: true, reason: 'cancel_at_period_end_set' });
   });
 
+  test('PATCH /admin/users/:id/ban -> 200 banea usuario e incluye error de Stripe si falla cancelacion', async () => {
+    scheduleSubscriptionCancelAtPeriodEnd.mockResolvedValueOnce({
+      ok: false,
+      reason: 'stripe_error',
+      error: 'card_declined',
+    });
+    userModel.setUserBanStatus.mockResolvedValue({
+      id: 12,
+      email: 'b@test.com',
+      username: 'b',
+      is_banned: true,
+      banned_reason: 'manual',
+    });
+    const res = await request(app)
+      .patch('/admin/users/12/ban')
+      .set(authHeader())
+      .send({ is_banned: true, reason: 'manual' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.subscription_stripe).toEqual({
+      ok: false,
+      reason: 'stripe_error',
+      error: 'card_declined',
+    });
+  });
+
   test('GET /admin/users -> 500 si el modelo falla', async () => {
     userModel.listAllUsersForAdmin.mockRejectedValue(new Error('db fail'));
     const res = await request(app).get('/admin/users').set(authHeader());
@@ -83,6 +109,33 @@ describe('Admin users moderation', () => {
       .set(authHeader())
       .send({ is_banned: true });
     expect(res.status).toBe(400);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 400 si id negativo', async () => {
+    const res = await request(app)
+      .patch('/admin/users/-1/ban')
+      .set(authHeader())
+      .send({ is_banned: true });
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH /admin/users/:id/ban -> 400 si id no es entero', async () => {
+    const res = await request(app)
+      .patch('/admin/users/12.5/ban')
+      .set(authHeader())
+      .send({ is_banned: true });
+    expect(res.status).toBe(400);
+  });
+
+  test('setUserBan con body null usa fallback y responde 400', async () => {
+    const req = { params: { id: '12' }, body: null };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    await adminUserController.setUserBan(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'is_banned debe ser boolean' });
   });
 
   test('PATCH /admin/users/:id/ban -> 400 si is_banned no es boolean', async () => {

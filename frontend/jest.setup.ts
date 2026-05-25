@@ -83,19 +83,6 @@ jest.mock('react-native-maps', () => {
   };
 });
 
-jest.mock(
-  '@react-native-community/datetimepicker',
-  () => {
-    const React = require('react');
-    const { View } = require('react-native');
-    return {
-      __esModule: true,
-      default: () => React.createElement(View, { testID: 'mock-datetimepicker' }),
-    };
-  },
-  { virtual: true },
-);
-
 jest.mock('@react-native-google-signin/google-signin', () => ({
   GoogleSignin: {
     hasPlayServices: jest.fn(),

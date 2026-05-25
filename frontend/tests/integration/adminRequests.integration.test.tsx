@@ -157,4 +157,148 @@ describe('AdminRequestsScreen', () => {
     const { findByText } = render(<AdminRequestsScreen />);
     await findByText(/solicitudes/);
   });
+
+  test('shows noSession error when error.message is NO_SESSION', async () => {
+    const err = new Error('NO_SESSION');
+    mockListPendingRequests.mockRejectedValue(err);
+    const { findByText } = render(<AdminRequestsScreen />);
+    await findByText('No hay sesión admin');
+  });
+
+  test('reject shows error when rejectRequest returns not-ok', async () => {
+    mockListPendingRequests.mockResolvedValue([mockRequest]);
+    mockRejectRequest.mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'No se pudo rechazar la solicitud' }),
+    });
+    const { findByText, getByText, getByPlaceholderText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Rechazar'));
+    await waitFor(() => expect(getByText(/Motivo del rechazo/)).toBeTruthy());
+    fireEvent.press(getByText('Enviar rechazo'));
+    await findByText('No se pudo rechazar la solicitud');
+  });
+
+  test('reject shows fallback error when no error field', async () => {
+    mockListPendingRequests.mockResolvedValue([mockRequest]);
+    mockRejectRequest.mockResolvedValue({
+      ok: false,
+      json: async () => ({}),
+    });
+    const { findByText, getByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Rechazar'));
+    await waitFor(() => expect(getByText(/Motivo del rechazo/)).toBeTruthy());
+    fireEvent.press(getByText('Enviar rechazo'));
+    await findByText('No se pudo rechazar');
+  });
+
+  test('reject cancel button closes the modal', async () => {
+    mockListPendingRequests.mockResolvedValue([mockRequest]);
+    const { findByText, getByText, queryByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Rechazar'));
+    await waitFor(() => expect(getByText(/Motivo del rechazo/)).toBeTruthy());
+    fireEvent.press(getByText('Cancelar'));
+    await waitFor(() => {
+      expect(queryByText(/Motivo del rechazo/)).toBeNull();
+    });
+  });
+
+  test('successful approve reloads list', async () => {
+    mockListPendingRequests
+      .mockResolvedValueOnce([mockRequest])
+      .mockResolvedValueOnce([]);
+    mockApproveRequest.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: 'Approved' }),
+    });
+    const { findByText, getByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Aprobar'));
+    await waitFor(() => {
+      expect(mockListPendingRequests).toHaveBeenCalledTimes(2);
+    });
+    await findByText('No hay solicitudes pendientes.');
+  });
+
+  test('successful reject reloads list and resets modal state', async () => {
+    mockListPendingRequests
+      .mockResolvedValueOnce([mockRequest])
+      .mockResolvedValueOnce([]);
+    mockRejectRequest.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: 'Rejected' }),
+    });
+    const { findByText, getByText, getByPlaceholderText, queryByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Rechazar'));
+    await waitFor(() => expect(getByText(/Motivo del rechazo/)).toBeTruthy());
+    fireEvent.changeText(getByPlaceholderText(/Escribe un motivo/), 'Mala solicitud');
+    fireEvent.press(getByText('Enviar rechazo'));
+    await waitFor(() => {
+      expect(mockRejectRequest).toHaveBeenCalledWith(1, 'Mala solicitud');
+      expect(mockListPendingRequests).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(queryByText(/Motivo del rechazo/)).toBeNull();
+    });
+  });
+
+  test('detail modal shows station_id when it is a number', async () => {
+    const requestWithStation = { ...mockRequest, station_id: 42 };
+    mockListPendingRequests.mockResolvedValue([requestWithStation]);
+    const { findByText, getByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Ver detalles'));
+    await waitFor(() => {
+      expect(getByText('Cerrar')).toBeTruthy();
+    });
+    await findByText(/Estación ID/);
+  });
+
+  test('detail modal close button closes it', async () => {
+    mockListPendingRequests.mockResolvedValue([mockRequest]);
+    const { findByText, getByText, queryByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Ver detalles'));
+    await waitFor(() => expect(getByText('Cerrar')).toBeTruthy());
+    fireEvent.press(getByText('Cerrar'));
+    await waitFor(() => {
+      expect(queryByText('Cerrar')).toBeNull();
+    });
+  });
+
+  test('detail modal payload with extra keys shows them', async () => {
+    const requestWithExtras = {
+      ...mockRequest,
+      payload: {
+        nom: 'My Station',
+        extra_field: 'extra_value',
+        another_extra: { key: 'value' },
+      },
+    };
+    mockListPendingRequests.mockResolvedValue([requestWithExtras]);
+    const { findByText, getByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Ver detalles'));
+    await waitFor(() => expect(getByText('Cerrar')).toBeTruthy());
+    await findByText('extra_value');
+  });
+
+  test('detail modal payload with object value shows JSON string', async () => {
+    const requestWithObj = {
+      ...mockRequest,
+      payload: {
+        nom: 'Station Obj',
+        metadata: { type: 'fast', connectors: 2 },
+      },
+    };
+    mockListPendingRequests.mockResolvedValue([requestWithObj]);
+    const { findByText, getByText } = render(<AdminRequestsScreen />);
+    await findByText('Solicitud #1');
+    fireEvent.press(getByText('Ver detalles'));
+    await waitFor(() => expect(getByText('Cerrar')).toBeTruthy());
+    await findByText('{"type":"fast","connectors":2}');
+  });
 });

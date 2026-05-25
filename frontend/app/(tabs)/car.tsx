@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
+import Egg from '../egg';
 
 interface Vehicle {
   usuari: number;
@@ -72,6 +73,7 @@ export default function VehiclesScreen() {
   const [connectorType, setConnectorType] = useState('');
   const [acDc, setAcDc] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showEgg, setShowEgg] = useState(false);
   
   // Llista de vehicles
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -89,7 +91,6 @@ export default function VehiclesScreen() {
       const response = await appFetch(`/car?usuari_id=${user.id}`); // vehicles d'un usuari
       const data = await response.json();
       setVehicles(Array.isArray(data) ? data : []);
-      console.log(data);
     } catch (error) {
       console.error("Error cargando vehiculos:", error);
     }
@@ -107,11 +108,19 @@ export default function VehiclesScreen() {
     // Netegem l'error abans de tornar a comprovar
     setErrorMessage('');
     
+	  if(nom === "Voltix") {
+      setShowEgg(true);
+      setNom('');
+      setPotencia('');
+      setConnectorType('');
+      setAcDc('');
+      return;
+    }
+
     if ((nom === '') || (potencia === '') || (connectorType === '') || (acDc === '')) {
 	setErrorMessage(t('car.validationIncomplete'));
 	return;
     }
-	  
     try {
       const method = 'POST';
       const res = await appFetch('/car', {
@@ -126,7 +135,6 @@ export default function VehiclesScreen() {
           const response = await appFetch(`/car?usuari_id=${user!.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
-          console.log(data);
           router.navigate({
             pathname: '/',
             params: {// Paràmetres de la cerca
@@ -170,7 +178,6 @@ export default function VehiclesScreen() {
           const response = await appFetch(`/car?usuari_id=${user!.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
-          console.log(data);
         } catch (error) {
           console.error("Error cargando vehiculos:", error);
         }
@@ -248,6 +255,7 @@ export default function VehiclesScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('car.name')}</Text>
             <TextInput
+              testID="vehicle-name-input"
               style={[
                 styles.input, focusedInput === 'nom' && styles.inputFocused,
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
@@ -266,6 +274,7 @@ export default function VehiclesScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('car.maxPower')}</Text>
             <TextInput
+              testID="vehicle-power-input"
               style={[
                 styles.input, focusedInput === 'max' && styles.inputFocused,
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
@@ -288,6 +297,7 @@ export default function VehiclesScreen() {
               {['AC', 'DC'].map((type) => (
                 <TouchableOpacity
                   key={type}
+                  testID={`current-type-${type.toLowerCase()}`}
                   style={[
                     styles.typeBtn,
                     acDc === type && styles.typeBtnActive
@@ -313,6 +323,7 @@ export default function VehiclesScreen() {
               {CONNECTOR_TYPES.map((type) => (
                 <TouchableOpacity
                   key={type}
+                  testID={`connector-type-${type.replace(/\s+/g, '-').toLowerCase()}`}
                   style={[
                     styles.chip,
                     connectorType === type && styles.chipActive
@@ -362,6 +373,7 @@ export default function VehiclesScreen() {
 
             {/* Botó per tancar / Creueta */}
             <TouchableOpacity
+              testID="modal-close-button"
               style={styles.modalCloseButton}
               onPress={() => setErrorMessage('')}
             >
@@ -371,6 +383,11 @@ export default function VehiclesScreen() {
           </View>
         </View>
       </Modal>
+      <Egg
+        visible={showEgg}
+        onClose={() => setShowEgg(false)}
+        theme={theme}
+      />
     </SafeAreaView>
   );
 }

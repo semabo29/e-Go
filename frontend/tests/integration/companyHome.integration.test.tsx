@@ -328,4 +328,31 @@ describe('CompanyHomeScreen', () => {
       expect.objectContaining({ pathname: expect.stringContaining('company-station-new') })
     );
   });
+
+  test('cancel button in delete confirm modal closes it', async () => {
+    mockGetPrivilegedToken.mockResolvedValue('token123');
+    mockFetchCompanyProfile.mockResolvedValue(mockProfile);
+    mockListCompanyStations.mockResolvedValue([mockStation]);
+    const { findByText, getByTestId, getByText, queryByText } = render(<CompanyHomeScreen />);
+    await findByText('Estacion Empresa');
+    fireEvent.press(getByTestId('delete-station-1'));
+    await waitFor(() => expect(getByText('Enviar')).toBeTruthy());
+    fireEvent.press(getByText('Cancelar'));
+    await waitFor(() => {
+      expect(queryByText('Enviar')).toBeNull();
+    });
+  });
+
+  test('delete confirm modal shows body text', async () => {
+    mockGetPrivilegedToken.mockResolvedValue('token123');
+    mockFetchCompanyProfile.mockResolvedValue(mockProfile);
+    mockListCompanyStations.mockResolvedValue([mockStation]);
+    const { findByText, getByTestId, getByText } = render(<CompanyHomeScreen />);
+    await findByText('Estacion Empresa');
+    fireEvent.press(getByTestId('delete-station-1'));
+    await waitFor(() => {
+      expect(getByText(L.deleteRequestBody)).toBeTruthy();
+      expect(getByText('Enviar')).toBeTruthy();
+    });
+  });
 });

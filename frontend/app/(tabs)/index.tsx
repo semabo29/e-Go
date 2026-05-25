@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { Href, useRouter, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -43,6 +44,7 @@ import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext'
 import { useThemePreference } from '@/contexts/ThemePreferenceContext';
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import type { SemanticColors } from '@/constants/accessibilityColors';
+import { buildInicioScreenPalette } from '@/constants/screenTheme';
 import { LanguageMenuSelector } from '@/components/LanguageMenuSelector';
 import {
   requestLocationPermissions,
@@ -373,8 +375,49 @@ export default function InicioScreen() {
   const [selectedLocationLabel, setSelectedLocationLabel] = useState<string | null>(null);
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
 
+  // --- ESTATS PER LA GESTIÓ D'AUTONOMIA ---
+    const [showAutonomyPrompt, setShowAutonomyPrompt] = useState(false);
+    const [autonomyInput, setAutonomyInput] = useState('');
+    const [pendingRoute, setPendingRoute] = useState<{origin: any, destination: any} | null>(null);
+    const [routeWaypoint, setRouteWaypoint] = useState<{latitude: number, longitude: number} | null>(null);
+
   const isFirstRouteLoad = useRef(true);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+
+  //Definir la interfaz del coche para escogerlo en la ruta
+  interface Vehicle {
+    id?: number;
+    usuari: number;
+    nom: string;
+    kw: string;
+    tipus_connexio: string;
+    ac_dc: string;
+  }
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+
+    useEffect(() => {
+      if (user?.id) {
+        cargarVehiculosUsuario();
+      }
+    }, [user?.id]);
+
+    const cargarVehiculosUsuario = async () => {
+      if (!user?.id) return;
+      try {
+        //Hacemos la petición exacta igual que en car.tsx
+        const response = await appFetch(`/car?usuari_id=${user.id}`);
+
+        //Extraemos el JSON real (esto es lo que faltaba)
+        const data = await response.json();
+
+        //Guardamos los vehículos en el estado
+        setVehicles(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error al cargar los vehículos en la pantalla principal:", error);
+      }
+    };
+
 
   // Referències sincronitzades pel seguiment en temps real del GPS
   const routeInfoRef = useRef(routeInfo);
@@ -386,17 +429,134 @@ export default function InicioScreen() {
   const routeStepsRef = useRef(routeSteps);
   useEffect(() => { routeStepsRef.current = routeSteps; }, [routeSteps]);
 
+  //Guarda la ruta temporalmente y abre el modal
+    const prepareRouteWithAutonomy = (origin: any, destination: any) => {
+      setPendingRoute({ origin, destination });
+      setAutonomyInput(''); //Reseteamos el campo
+      setShowAutonomyPrompt(true);//Preguntamos la autonomia
+    };
+
+    //Ejecuta la matemática del calculo del desvio una vez el usuario le da a "Calcular"
+    const processRouteWithAutonomy = async (autonomyStr: string) => {
+      setShowAutonomyPrompt(false);
+      if (!pendingRoute) return;
+
+      const { origin, destination } = pendingRoute;
+      const autonomy = parseFloat(autonomyStr);
+
+      //Si deja el campo vacío o pone texto, hacemos ruta directa clásica
+      if (isNaN(autonomy) || autonomy <= 0) {
+        startFinalNavigation(origin, destination, null);
+        return;
+      }
+
+      // Calculamos distancia recta aproximada al recorrido real (Multiplicamos x 1.3 por las curvas de las carreteras)
+      const directDistMeters = calculateDistanceInMeters(
+        origin.latitude, origin.longitude,
+        destination.latitude, destination.longitude
+      );
+      const directDistKm = (directDistMeters / 1000) * 1.3;
+
+      // Condición principal: ¿Llega al destino y le sobran 50 km?
+      if (directDistKm <= (autonomy - 50)) {
+        Alert.alert("Ruta directa", "Tienes autonomía suficiente para llegar a tu destino con más de 50km de margen.");
+        startFinalNavigation(origin, destination, null);
+      } else {
+        //No llega, toca buscar el cargador que genere el menor desvío posible
+        Alert.alert("Parada necesaria", "No tienes suficiente autonomía. Buscando un cargador en tu ruta...");
+
+        let bestStation = null;
+        let minDetour = Infinity;
+
+        for (const est of estaciones) {
+          // Ignoramos estaciones estropeadas si tienes esa propiedad
+          if (est.operatiu === false) continue;
+
+            // ================================================================
+            // FILTRADO punto de carga entre ruta POR COCHE SELECCIONADO (Imitando filtros del mapa)
+            // ================================================================
+            if (selectedVehicle !== null) {
+              //Validación de Tipo de Conector (Filtro estricto físico)
+              if (selectedVehicle.tipus_connexio && est.tipus_connexio) {
+                if (est.tipus_connexio !== selectedVehicle.tipus_connexio) {
+                  continue; // El conector no encaja físicamente, saltamos la estación
+                }
+              }
+              //Validación de Tipo de Corriente (AC / DC)
+              if (selectedVehicle.ac_dc && est.ac_dc) {
+                if (est.ac_dc !== selectedVehicle.ac_dc) {
+                  continue; // Incompatible el tipo de carga eléctrica, saltamos
+                }
+              }
+              //Validación de Potencia de carga (kW)
+              if (selectedVehicle.kw && est.kw) {
+                const potEstacion = parseFloat(est.kw);
+                const potCoche = parseFloat(selectedVehicle.kw);
+                //Si el punto de carga ofrece menos kW de los que tu coche necesita para
+                //un viaje óptimo, puedes descartarla descomentando la línea de abajo:
+                //if (potEstacion < potCoche) continue;
+              }
+            }
+
+          const lat = parseFloat(est.latitud);
+          const lon = parseFloat(est.longitud);
+
+          //Distancia del origen al cargador
+          const distToStation = (calculateDistanceInMeters(origin.latitude, origin.longitude, lat, lon) / 1000) * 1.3;
+
+          //¿Puede llegar el coche a ESE cargador y que le sigan sobrando 20km?
+          if (distToStation <= (autonomy - 20)) {
+            //Distancia del cargador al destino final
+            const distToDest = (calculateDistanceInMeters(lat, lon, destination.latitude, destination.longitude) / 1000) * 1.3;
+            //El coste total es lo que recorremos. Buscamos el mínimo absoluto.
+            const totalPath = distToStation + distToDest;
+            if (totalPath < minDetour) {
+              minDetour = totalPath;
+              bestStation = est;
+            }
+          }
+        }
+
+        if (bestStation) {
+          Alert.alert("Parada añadida", `Se ha modificado la ruta para parar en: ${bestStation.nom}`);
+          startFinalNavigation(origin, destination, {
+            latitude: parseFloat(bestStation.latitud),
+            longitude: parseFloat(bestStation.longitud)
+          });
+        } else {
+          Alert.alert("Atención", "No hemos encontrado ningún cargador intermedio al que puedas llegar. ¡Precaución!");
+          startFinalNavigation(origin, destination, null);
+        }
+      }
+    };
+
+    // 3. Arranca el motor de Google Maps y dibuja
+    const startFinalNavigation = (origin: any, destination: any, waypoint: any) => {
+      setRouteWaypoint(waypoint);
+      setRouteOrigin(origin);
+      setRouteDestination(destination);
+      setIsNavigating(true);
+      fetchNavigationSteps(origin, destination, waypoint);
+    };
+
   //Funció per obtenir les indicacions Turn-By-Turn
-  const fetchNavigationSteps = async (origin: {latitude: number, longitude: number}, destination: {latitude: number, longitude: number}) => {
+  const fetchNavigationSteps = async (
+      origin: {latitude: number, longitude: number},
+      destination: {latitude: number, longitude: number},
+      waypoint?: {latitude: number, longitude: number} | null
+    ) => {
     try {
       const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${apiKey}&language=ca`;
+      let url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${apiKey}&language=ca`;
+      if (waypoint) {//Añadimos la parada a la URL si hay
+          url += `&waypoints=${waypoint.latitude},${waypoint.longitude}`;
+      }
 
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
-        const leg = data.routes[0].legs[0]; // <--- Capturem la branca de la ruta
+        const leg = data.routes[0].legs[0]; //Capturem la branca de la ruta
 
         const steps = leg.steps.map((step: any) => ({
           instruction: stripHtmlTags(step.html_instructions),
@@ -409,7 +569,7 @@ export default function InicioScreen() {
         setRouteSteps(steps);
         setCurrentStepIndex(0);
 
-        // <--- Actualitzem el temps i la distància amb la font original i exacta de Google
+        //Actualitzem el temps i la distància amb la font original i exacta de Google
         setRouteInfo({
           distance: leg.distance.value / 1000, // L'API ho dona en metres, passem a Km
           duration: leg.duration.value / 60    // L'API ho dona en segons, passem a minuts
@@ -424,7 +584,7 @@ export default function InicioScreen() {
     }
   };
 
-  // SEGUIMIENTO GPS, RECÀLCUL I CÀMERA 3D AUTOMÀTICA
+  //SEGUIMIENTO GPS, RECÀLCUL I CÀMERA 3D AUTOMÀTICA
   useEffect(() => {
     let isMounted = true;
 
@@ -549,7 +709,7 @@ export default function InicioScreen() {
       setRouteOrigin(originResolution.origin);
       setRouteOriginPreset(null);
       setSelectedLocationLabel(null);
-      setIsNavigating(true);
+      prepareRouteWithAutonomy(originResolution.origin, coordenadas);
       return;
     }
     //Preguntamos al usuario el origen
@@ -577,17 +737,27 @@ export default function InicioScreen() {
             }
 
             // Un cop assegurats, llancem la ruta
-            if (locToUse && locToUse.coords) {
-              void activateNavigation(() => {
-                setRouteOrigin({
-                  latitude: locToUse.coords!.latitude, // L'exclamació diu a TypeScript que és segur
-                  longitude: locToUse.coords!.longitude,
+              if (locToUse && locToUse.coords) {
+                // 1. Guardamos los datos exactos del GPS en variables normales
+                const latInstantanea = locToUse.coords.latitude;
+                const lonInstantanea = locToUse.coords.longitude;
+
+                void activateNavigation(() => {
+                  // 2. Le decimos a React que guarde esto para el futuro
+                  setRouteOrigin({
+                    latitude: latInstantanea,
+                    longitude: lonInstantanea,
+                  });
+
+                  // 3. ¡LA CLAVE! Le pasamos el objeto construido al momento, NO usamos 'routeOrigin'
+                  prepareRouteWithAutonomy(
+                    { latitude: latInstantanea, longitude: lonInstantanea },
+                    coordenadas
+                  );
                 });
-                setIsNavigating(true);
-              });
-            } else {
-              Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
-            }
+              } else {
+                Alert.alert(t('navigation.gpsOffTitle'), t('navigation.gpsOffBody'));
+              }
           },
         },
         {
@@ -1713,6 +1883,7 @@ useEffect(() => {
             if (e.nativeEvent.coordinate) {
               //Limpiamos cualquier estación seleccionada previamente
               setSelectedStation(null);
+              setChargingError('');
               //Guardamos la nueva ubicación libre
               setSelectedLocation({
                 latitude: e.nativeEvent.coordinate.latitude,
@@ -1760,6 +1931,7 @@ useEffect(() => {
                 }
 
                 setSelectedStation(est);
+                setChargingError('');
                 setSelectedLocation(null); //Limpiamos el punto manual si seleccionan una estación
                 setRouteOriginPreset(null);
                 setSelectedLocationLabel(null);
@@ -1795,44 +1967,58 @@ useEffect(() => {
             )}
 
             {/* Trazado de la ruta (Solo visible si estamos navegando) */}
-            {isNavigating && routeOrigin && routeDestination && (
-              <MapViewDirections
-                key={`directions-${routeOrigin.latitude}-${routeOrigin.longitude}`}
-                origin={routeOrigin}
-                destination={routeDestination}
-                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
-                strokeWidth={0}
-                strokeColor={sem.routeLine}
-                mode="DRIVING"
-                onReady={(result) => {
-                  setRouteInfo({
-                    distance: result.distance,
-                    duration: result.duration
-                  });
-                  setLiveRouteInfo({
-                    distance: result.distance,
-                    duration: result.duration
-                  });
-                  setRouteCoords(result.coordinates);
-                  setVisibleRouteCoords(result.coordinates); // Inicialitzem la visible
+                {isNavigating && routeOrigin && routeDestination && (
+                  <>
+                    <MapViewDirections
+                      key={`directions-${routeOrigin.latitude}-${routeOrigin.longitude}`}
+                      origin={routeOrigin}
+                      destination={routeDestination}
+                      waypoints={routeWaypoint ? [routeWaypoint] : []}
+                      apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                      strokeWidth={0}
+                      strokeColor={sem.routeLine}
+                      mode="DRIVING"
 
-                  // Demanem els passos detallats turn-by-turn a l'API de Google
-                  fetchNavigationSteps(routeOrigin!, routeDestination!);
+                      onReady={(result) => {
+                        setRouteInfo({
+                          distance: result.distance,
+                          duration: result.duration
+                        });
+                        setLiveRouteInfo({
+                          distance: result.distance,
+                          duration: result.duration
+                        });
+                        setRouteCoords(result.coordinates);
+                        setVisibleRouteCoords(result.coordinates); // Inicialitzem la visible
 
-                  if (isFirstRouteLoad.current && mapRef.current) {
-                    mapRef.current.fitToCoordinates(result.coordinates, {
-                      edgePadding: { top: 120, right: 50, bottom: 250, left: 50 },
-                      animated: true
-                    });
-                    isFirstRouteLoad.current = false; // Desactivem per als propers recàlculs
-                  }
-                }}
-                onError={(errorMessage) => {
-                  Alert.alert(t('navigation.routeErrorTitle'), t('navigation.routeErrorBody'));
-                  console.log(errorMessage);
-                }}
-              />
-            )}
+                        // Demanem els passos detallats turn-by-turn a l'API de Google
+                        // (AQUÍ LE PASAMOS EL WAYPOINT TAMBIÉN PARA QUE CALCULE LOS PASOS CON LA PARADA)
+                        fetchNavigationSteps(routeOrigin!, routeDestination!, routeWaypoint);
+
+                        if (isFirstRouteLoad.current && mapRef.current) {
+                          mapRef.current.fitToCoordinates(result.coordinates, {
+                            edgePadding: { top: 120, right: 50, bottom: 250, left: 50 },
+                            animated: true
+                          });
+                          isFirstRouteLoad.current = false; // Desactivem per als propers recàlculs
+                        }
+                      }}
+                      onError={(errorMessage) => {
+                        Alert.alert(t('navigation.routeErrorTitle'), t('navigation.routeErrorBody'));
+                        console.log(errorMessage);
+                      }}
+                    />
+
+                    {/* --- DIBUJAR LA PARADA EN MEDIO --- */}
+                    {routeWaypoint && (
+                      <Marker
+                        coordinate={routeWaypoint}
+                        pinColor="orange"
+                        title="Parada de Carga (Autonomía)"
+                      />
+                    )}
+                  </>
+                )}
             {/* Nuestro propio trazado de la ruta (100% controlable) */}
             {isNavigating && (
               <Polyline
@@ -1885,6 +2071,7 @@ useEffect(() => {
                 // Si l'estació és a menys de 30 metres, l'obrim de cop!
                 if (closestStation && minDistance < 30) {
                   setSelectedStation(closestStation);
+                  setChargingError('');
                   setSelectedLocation(null);
                   setRouteOriginPreset(null);
                   setSelectedLocationLabel(null);
@@ -2000,7 +2187,10 @@ useEffect(() => {
         {!isNavigating && selectedStation && !isSelectingOrigin && (
           <StationBottomSheet
             station={selectedStation}
-            onClose={() => setSelectedStation(null)}
+            onClose={() => {
+              setSelectedStation(null);
+              setChargingError('');
+            }}
             isFavorite={favoriteIds.includes(selectedStation.id)}
             onToggleFavorite={(isFav) => {
               if (isFav) {
@@ -2303,97 +2493,108 @@ useEffect(() => {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* MODAL DE AUTONOMÍA */}
+        <Modal visible={showAutonomyPrompt} transparent animationType="fade">
+          <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 }}>
+            <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, elevation: 10 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#1f2937' }}>
+                🔋 Autonomía del Vehículo
+              </Text>
+              <Text style={{ marginBottom: 20, color: '#4b5563', lineHeight: 20 }}>
+                Introduce los km de autonomía que te quedan (opcional). Si no tienes suficiente para llegar con 50km de margen, desviaremos la ruta a un cargador de paso.
+              </Text>
+
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 16 }}
+                placeholder="Ej: 150 (km)"
+                keyboardType="numeric"
+                value={autonomyInput}
+                onChangeText={setAutonomyInput}
+              />
+
+              {/* Selector de Vehículo Opcional dentro del Modal de Autonomía, solo se llama si el usuario tiene vehiculos guardados */}
+              {vehicles.length > 0 && (
+                <View style={{ marginTop: 16, marginBottom: 8, width: '100%' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748b', marginBottom: 8 }}>
+                    ¿Con qué coche viajas? (Filtra conectores automáticamente):
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                  >
+                    {/* Opción por defecto para saltarse el filtrado por coche */}
+                    <TouchableOpacity
+                      onPress={() => setSelectedVehicle(null)}
+                      style={[
+                        {
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          borderWidth: 1,
+                          borderColor: selectedVehicle === null ? sem.accent : '#cbd5e1',
+                          backgroundColor: selectedVehicle === null ? (sem.chipActiveBg || '#e0f2fe') : '#f1f5f9',
+                        }
+                      ]}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: selectedVehicle === null ? sem.accent : '#64748b' }}>
+                        Ninguno (Cualquier punto)
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Lista de tus coches guardados mapeados en chips */}
+                    {vehicles.map((car, idx) => {
+                      // Determinamos si está seleccionado comparando el nombre o ID
+                      const isSelected = selectedVehicle?.nom === car.nom;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => setSelectedVehicle(car)}
+                          style={[
+                            {
+                              paddingHorizontal: 14,
+                              paddingVertical: 8,
+                              borderRadius: 20,
+                              borderWidth: 1,
+                              borderColor: isSelected ? sem.accent : '#cbd5e1',
+                              backgroundColor: isSelected ? (sem.chipActiveBg || '#e0f2fe') : '#f1f5f9',
+                            }
+                          ]}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? sem.accent : '#64748b' }}>
+                            🚗 {car.nom} ({car.kw}kW)
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                <TouchableOpacity
+                  onPress={() => processRouteWithAutonomy('')}
+                  style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#f3f4f6' }}
+                >
+                  <Text style={{ color: '#4b5563', fontWeight: 'bold' }}>Saltar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => processRouteWithAutonomy(autonomyInput)}
+                  style={{ backgroundColor: '#10b981', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 }}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>Calcular Ruta</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
     </View>
   );
 }
 
-type InicioScreenTheme = {
-  screenBg: string;
-  mutedText: string;
-  cardBg: string;
-  titleText: string;
-  subtitleText: string;
-  border: string;
-  inputBorder: string;
-  textPrimary: string;
-  textEmphasis: string;
-  handle: string;
-  infoTitle: string;
-  promotorText: string;
-  menuBackdrop: string;
-  themeSegmentBg: string;
-  themeOptionActiveBg: string;
-  themeOptionText: string;
-  themeOptionTextActive: string;
-  errorBannerBg: string;
-  reportBackdrop: string;
-  formBorder: string;
-  chipBg: string;
-  chipText: string;
-  secondaryButtonBg: string;
-  secondaryButtonText: string;
-  labelText: string;
-};
-
-const INICIO_SCREEN_THEME: Record<'dark' | 'light', InicioScreenTheme> = {
-  dark: {
-    screenBg: '#0f172a',
-    mutedText: '#94a3b8',
-    cardBg: '#1e293b',
-    titleText: '#f1f5f9',
-    subtitleText: '#94a3b8',
-    border: '#334155',
-    inputBorder: '#334155',
-    textPrimary: '#f1f5f9',
-    textEmphasis: '#e2e8f0',
-    handle: '#475569',
-    infoTitle: '#f1f5f9',
-    promotorText: '#cbd5e1',
-    menuBackdrop: 'rgba(0,0,0,0.55)',
-    themeSegmentBg: '#334155',
-    themeOptionActiveBg: '#0f172a',
-    themeOptionText: '#cbd5e1',
-    themeOptionTextActive: '#f1f5f9',
-    errorBannerBg: '#7f1d1d',
-    reportBackdrop: 'rgba(0,0,0,0.6)',
-    formBorder: '#475569',
-    chipBg: '#334155',
-    chipText: '#cbd5e1',
-    secondaryButtonBg: '#334155',
-    secondaryButtonText: '#e2e8f0',
-    labelText: '#cbd5e1',
-  },
-  light: {
-    screenBg: '#f5f5f5',
-    mutedText: '#64748b',
-    cardBg: '#fff',
-    titleText: '#1a1a1a',
-    subtitleText: '#6b7280',
-    border: '#e2e8f0',
-    inputBorder: '#e5e7eb',
-    textPrimary: '#1f2937',
-    textEmphasis: '#111827',
-    handle: '#e2e8f0',
-    infoTitle: '#1e293b',
-    promotorText: '#94a3b8',
-    menuBackdrop: 'rgba(0,0,0,0.4)',
-    themeSegmentBg: '#f1f5f9',
-    themeOptionActiveBg: '#ffffff',
-    themeOptionText: '#475569',
-    themeOptionTextActive: '#111827',
-    errorBannerBg: '#fee2e2',
-    reportBackdrop: 'rgba(0,0,0,0.45)',
-    formBorder: '#d1d5db',
-    chipBg: '#f8fafc',
-    chipText: '#4b5563',
-    secondaryButtonBg: '#f3f4f6',
-    secondaryButtonText: '#374151',
-    labelText: '#374151',
-  },
-};
-
 const createStyles = (isDark: boolean, sem: SemanticColors) => {
-  const t = INICIO_SCREEN_THEME[isDark ? 'dark' : 'light'];
+  const t = buildInicioScreenPalette(isDark, sem);
   const errorTextColor = isDark ? sem.errorTextDark : sem.errorTextLight;
   return StyleSheet.create({
   screen: {

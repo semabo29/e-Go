@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Href, useRouter } from 'expo-router';
 import {
@@ -22,10 +22,14 @@ import {
 } from '@/services/companyProfile';
 import { clearPrivilegedSession, getPrivilegedToken } from '@/services/privilegedAuth';
 import { listCompanyStations, requestDeleteCompanyStation } from '@/services/stationModeration';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 
 export default function CompanyHomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createCompanyHomeStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
   const [loadingStations, setLoadingStations] = useState(false);
   const [stations, setStations] = useState<ManualStation[]>([]);
@@ -269,31 +273,47 @@ export default function CompanyHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f5f5' }, scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
-  card: { width: '100%', maxWidth: 460, backgroundColor: '#fff', borderRadius: 16, padding: 24, elevation: 3 }, title: { fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 12 },
-  companyHeader: { marginBottom: 14, alignItems: 'center' },
-  companyNameLabel: { fontSize: 12, color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  companyNameValue: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4, textAlign: 'center' },
-  companyEmail: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  outlineButton: { marginBottom: 12, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center' },
-  outlineButtonText: { color: '#111827', fontWeight: '600', fontSize: 14 },
-  nombreEditBlock: { marginBottom: 14 },
-  nombreEditLabel: { fontSize: 13, color: '#374151', fontWeight: '600', marginBottom: 6 },
-  nombreInput: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: '#111827', marginBottom: 10 },
-  nombreEditActions: { flexDirection: 'row', gap: 10 },
-  nombreCancelBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' },
-  nombreCancelBtnText: { fontWeight: '600', color: '#111827' },
-  nombreSaveBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
-  nombreSaveBtnDisabled: { opacity: 0.55 },
-  nombreSaveBtnText: { fontWeight: '600', color: '#fff' },
-  centered: { alignItems: 'center', gap: 10 }, muted: { fontSize: 14, color: '#6b7280' }, errorText: { color: '#dc2626', textAlign: 'center', marginBottom: 10 },
-  primaryButton: { marginTop: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' }, primaryButtonText: { color: '#fff', fontWeight: '600' },
-  secondaryButton: { marginTop: 10, paddingVertical: 12, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' }, secondaryButtonText: { color: '#111827', fontWeight: '600' },
-  logoutButton: { marginTop: 10, paddingVertical: 12, borderRadius: 10, backgroundColor: '#fee2e2', alignItems: 'center' }, logoutButtonText: { color: '#b91c1c', fontWeight: '600' },
-  section: { marginTop: 20, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 14 }, sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }, sectionTitle: { fontSize: 16, fontWeight: '700' }, sectionLink: { fontWeight: '600' },
-  confirmBackdrop: { flex: 1, backgroundColor: 'rgba(17,24,39,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  confirmCard: { width: '100%', maxWidth: 340, backgroundColor: '#fff', borderRadius: 16, padding: 20 }, confirmTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 }, confirmText: { color: '#4b5563', marginBottom: 16 },
-  confirmActions: { flexDirection: 'row', gap: 10 }, confirmCancel: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' }, confirmCancelText: { fontWeight: '600' },
-  confirmDelete: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' }, confirmDeleteText: { color: '#fff', fontWeight: '600' },
-});
+const createCompanyHomeStyles = (theme: ScreenTheme) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: theme.panelScreenBg },
+    scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
+    card: { width: '100%', maxWidth: 460, backgroundColor: theme.surface, borderRadius: 16, padding: 24, elevation: 3 },
+    title: { fontSize: 24, fontWeight: '700', color: theme.title, textAlign: 'center', marginBottom: 12 },
+    companyHeader: { marginBottom: 14, alignItems: 'center' },
+    companyNameLabel: { fontSize: 12, color: theme.mutedText, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+    companyNameValue: { fontSize: 20, fontWeight: '700', color: theme.title, marginTop: 4, textAlign: 'center' },
+    companyEmail: { fontSize: 14, color: theme.mutedText, marginTop: 4 },
+    outlineButton: { marginBottom: 12, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: theme.border, alignItems: 'center' },
+    outlineButtonText: { color: theme.title, fontWeight: '600', fontSize: 14 },
+    nombreEditBlock: { marginBottom: 14 },
+    nombreEditLabel: { fontSize: 13, color: theme.secondaryText, fontWeight: '600', marginBottom: 6 },
+    nombreInput: { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: theme.inputText, backgroundColor: theme.inputBg, marginBottom: 10 },
+    nombreEditActions: { flexDirection: 'row', gap: 10 },
+    nombreCancelBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: theme.secondaryBtnBg, alignItems: 'center' },
+    nombreCancelBtnText: { fontWeight: '600', color: theme.secondaryBtnText },
+    nombreSaveBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: theme.primaryBtnBg, alignItems: 'center' },
+    nombreSaveBtnDisabled: { opacity: 0.55 },
+    nombreSaveBtnText: { fontWeight: '600', color: theme.primaryBtnText },
+    centered: { alignItems: 'center', gap: 10 },
+    muted: { fontSize: 14, color: theme.mutedText },
+    errorText: { color: theme.error, textAlign: 'center', marginBottom: 10 },
+    primaryButton: { marginTop: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.primaryBtnBg, alignItems: 'center' },
+    primaryButtonText: { color: theme.primaryBtnText, fontWeight: '600' },
+    secondaryButton: { marginTop: 10, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.secondaryBtnBg, alignItems: 'center' },
+    secondaryButtonText: { color: theme.secondaryBtnText, fontWeight: '600' },
+    logoutButton: { marginTop: 10, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.dangerBtnBg, alignItems: 'center' },
+    logoutButtonText: { color: theme.dangerBtnText, fontWeight: '600' },
+    section: { marginTop: 20, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 14 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: theme.title },
+    sectionLink: { fontWeight: '600', color: theme.link },
+    confirmBackdrop: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    confirmCard: { width: '100%', maxWidth: 340, backgroundColor: theme.surface, borderRadius: 16, padding: 20 },
+    confirmTitle: { fontSize: 18, fontWeight: '700', color: theme.title, marginBottom: 8 },
+    confirmText: { color: theme.secondaryText, marginBottom: 16 },
+    confirmActions: { flexDirection: 'row', gap: 10 },
+    confirmCancel: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: theme.secondaryBtnBg, alignItems: 'center' },
+    confirmCancelText: { fontWeight: '600', color: theme.secondaryBtnText },
+    confirmDelete: { flex: 1, paddingVertical: 11, borderRadius: 10, backgroundColor: theme.primaryBtnBg, alignItems: 'center' },
+    confirmDeleteText: { color: theme.primaryBtnText, fontWeight: '600' },
+  });

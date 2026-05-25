@@ -221,4 +221,62 @@ describe('AdminUsersScreen', () => {
     const { findByText } = render(<AdminUsersScreen />);
     await findByText(/servidor/);
   });
+
+  test('setUserBanStatus error shows error message', async () => {
+    mockGetPrivilegedToken.mockResolvedValue('token123');
+    mockPrivilegedFetch.mockResolvedValue(mockAdminMe);
+    mockListAdminUsers.mockResolvedValue([mockUser]);
+    mockSetUserBanStatus.mockRejectedValue(new Error('No se pudo actualizar'));
+    const { findByText, getAllByText, getByPlaceholderText } = render(<AdminUsersScreen />);
+    await findByText('testuser');
+    fireEvent.press(getAllByText('Banear')[0]);
+    await waitFor(() => expect(getAllByText('Banear').length).toBeGreaterThan(1));
+    fireEvent.changeText(getByPlaceholderText(/Incumplimiento/), 'Motivo');
+    const banBtns = getAllByText('Banear');
+    fireEvent.press(banBtns[banBtns.length - 1]);
+    await findByText('No se pudo actualizar');
+  });
+
+  test('setUserBanStatus fallback error when not Error instance', async () => {
+    mockGetPrivilegedToken.mockResolvedValue('token123');
+    mockPrivilegedFetch.mockResolvedValue(mockAdminMe);
+    mockListAdminUsers.mockResolvedValue([mockUser]);
+    mockSetUserBanStatus.mockRejectedValue('bad');
+    const { findByText, getAllByText, getByPlaceholderText } = render(<AdminUsersScreen />);
+    await findByText('testuser');
+    fireEvent.press(getAllByText('Banear')[0]);
+    await waitFor(() => expect(getAllByText('Banear').length).toBeGreaterThan(1));
+    fireEvent.changeText(getByPlaceholderText(/Incumplimiento/), 'Motivo');
+    const banBtns = getAllByText('Banear');
+    fireEvent.press(banBtns[banBtns.length - 1]);
+    await findByText('No se pudo actualizar el usuario');
+  });
+
+  test('loadUsers no-session sets error when token is null during refresh', async () => {
+    mockGetPrivilegedToken
+      .mockResolvedValueOnce('token123')
+      .mockResolvedValueOnce('token123')
+      .mockResolvedValueOnce(null);
+    mockPrivilegedFetch.mockResolvedValue(mockAdminMe);
+    mockListAdminUsers.mockResolvedValue([mockUser]);
+    const { findByText, getByText } = render(<AdminUsersScreen />);
+    await findByText('testuser');
+    fireEvent.press(getByText('Actualizar'));
+    await findByText(L.noSession);
+  });
+
+  test('loadUsers error shows in non-empty state', async () => {
+    mockGetPrivilegedToken
+      .mockResolvedValueOnce('token123')
+      .mockResolvedValueOnce('token123')
+      .mockResolvedValueOnce('token123');
+    mockPrivilegedFetch.mockResolvedValue(mockAdminMe);
+    mockListAdminUsers
+      .mockResolvedValueOnce([mockUser])
+      .mockRejectedValueOnce(new Error('Refresh failed'));
+    const { findByText, getByText } = render(<AdminUsersScreen />);
+    await findByText('testuser');
+    fireEvent.press(getByText('Actualizar'));
+    await findByText('Refresh failed');
+  });
 });

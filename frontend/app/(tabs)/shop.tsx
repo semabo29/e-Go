@@ -6,8 +6,8 @@ import { useTranslation } from 'react-i18next';
 
 import { getSkinImage } from '@/utils/skinsMapping';
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
-import { getSemanticColors } from '@/constants/accessibilityColors';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
@@ -23,8 +23,8 @@ export default function ShopScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { colorblindFriendly } = useColorblindPreference();
-  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createShopStyles(theme), [theme.isDark, theme.sem]);
 
   const [skins, setSkins] = useState<Skin[]>([]);
   const [userPoints, setUserPoints] = useState<number>(0);
@@ -159,7 +159,7 @@ export default function ShopScreen() {
     }
 
     return (
-      <View style={[styles.card, isActive && { borderColor: sem.accent, backgroundColor: `${sem.accent}15` }]}>
+      <View style={[styles.card, isActive && { borderColor: theme.sem.accent, backgroundColor: `${theme.sem.accent}15` }]}>
         <Image source={getSkinImage(item.arxiu_asset)} style={styles.image} resizeMode="contain" />
         <Text style={styles.skinName}>{item.nom}</Text>
         <Text style={styles.skinDesc} numberOfLines={2}>
@@ -169,8 +169,8 @@ export default function ShopScreen() {
         <TouchableOpacity
           style={[
             styles.button,
-            isOwned ? styles.ownedButton : { backgroundColor: sem.accent },
-            isActive && { backgroundColor: 'transparent', borderWidth: 2, borderColor: sem.accent },
+            isOwned ? styles.ownedButton : { backgroundColor: theme.sem.accent },
+            isActive && { backgroundColor: 'transparent', borderWidth: 2, borderColor: theme.sem.accent },
             isProcessing && { opacity: 0.7 },
           ]}
           onPress={() => handleAction(item)}
@@ -179,7 +179,7 @@ export default function ShopScreen() {
           {isProcessing ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={[styles.buttonText, isActive && { color: sem.accent }]}>{buttonLabel}</Text>
+            <Text style={[styles.buttonText, isActive && { color: theme.sem.accent }]}>{buttonLabel}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -188,19 +188,19 @@ export default function ShopScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: '#121212' }]}>
-        <ActivityIndicator size="large" color={sem.accent} />
+      <View style={[styles.center, { backgroundColor: theme.shopBg }]}>
+        <ActivityIndicator size="large" color={theme.sem.accent} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 10, backgroundColor: '#121212' }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 10, backgroundColor: theme.shopBg }]}>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: '#ffffff' }]}>{t('shop.title')}</Text>
-        <View style={[styles.pointsBadge, { borderColor: sem.accent }]}>
-          <MaterialIcons name="electric-bolt" size={16} color={sem.accent} />
-          <Text style={[styles.pointsText, { color: sem.accent }]}>
+        <Text style={[styles.headerTitle, { color: theme.shopText }]}>{t('shop.title')}</Text>
+        <View style={[styles.pointsBadge, { borderColor: theme.sem.accent }]}>
+          <MaterialIcons name="electric-bolt" size={16} color={theme.sem.accent} />
+          <Text style={[styles.pointsText, { color: theme.sem.accent }]}>
             {t('shop.points', { count: userPoints })}
           </Text>
         </View>
@@ -218,51 +218,52 @@ export default function ShopScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  headerTitle: { fontSize: 26, fontWeight: 'bold' },
-  pointsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 4,
-  },
-  pointsText: { fontWeight: 'bold', fontSize: 16 },
-  listContent: { paddingHorizontal: 10, paddingBottom: 80 },
-  card: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
-    margin: 8,
-    padding: 15,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#2C2C2C',
-    elevation: 3,
-  },
-  image: { width: 90, height: 90, marginBottom: 12 },
-  skinName: { color: '#fff', fontSize: 15, fontWeight: 'bold', textAlign: 'center', marginBottom: 4 },
-  skinDesc: { color: '#AAAAAA', fontSize: 11, textAlign: 'center', marginBottom: 15, height: 32 },
-  button: {
-    width: '100%',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  ownedButton: { backgroundColor: '#444444' },
-  buttonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-});
+const createShopStyles = (theme: ScreenTheme) =>
+  StyleSheet.create({
+    container: { flex: 1 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    headerTitle: { fontSize: 26, fontWeight: 'bold' },
+    pointsBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.shopCardBg,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      borderWidth: 1,
+      gap: 4,
+    },
+    pointsText: { fontWeight: 'bold', fontSize: 16 },
+    listContent: { paddingHorizontal: 10, paddingBottom: 80 },
+    card: {
+      flex: 1,
+      backgroundColor: theme.shopCardBg,
+      margin: 8,
+      padding: 15,
+      borderRadius: 16,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: theme.shopCardBorder,
+      elevation: 3,
+    },
+    image: { width: 90, height: 90, marginBottom: 12 },
+    skinName: { color: theme.shopText, fontSize: 15, fontWeight: 'bold', textAlign: 'center', marginBottom: 4 },
+    skinDesc: { color: theme.shopMuted, fontSize: 11, textAlign: 'center', marginBottom: 15, height: 32 },
+    button: {
+      width: '100%',
+      paddingVertical: 10,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 40,
+    },
+    ownedButton: { backgroundColor: theme.shopOwnedBtnBg },
+    buttonText: { color: theme.shopText, fontSize: 14, fontWeight: 'bold' },
+  });

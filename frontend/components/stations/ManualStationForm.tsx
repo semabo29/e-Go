@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -17,6 +17,8 @@ import {
 import { MapView, Marker } from '@/app/_components/MapWrapper';
 import { FormState } from '@/components/stations/types';
 import { GeoSuggestion, reverseGeoAddress, searchGeoAddress } from '@/services/geoService';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 
 const CATALUNYA_MUNICIPALITIES_BY_PROVINCE = require('@/constants/catalunyaMunicipalities.json') as Record<string, string[]>;
 const CATALUNYA_PROVINCES = Object.keys(CATALUNYA_MUNICIPALITIES_BY_PROVINCE);
@@ -52,6 +54,8 @@ type Props = {
 
 export function ManualStationForm(props: Props) {
   const { t } = useTranslation();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createManualStationFormStyles(theme), [theme.isDark, theme.sem]);
   const { title, subtitle, submitLabel, loading, error, success, form, onChange, onSubmit, onBack } = props;
   const scrollRef = useRef<ScrollView>(null);
   const direccionSectionYRef = useRef(0);
@@ -391,9 +395,10 @@ export function ManualStationForm(props: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createManualStationFormStyles = (theme: ScreenTheme) =>
+  StyleSheet.create({
   keyboardRoot: { flex: 1 },
-  screen: { flex: 1, backgroundColor: '#f5f5f5' },
+  screen: { flex: 1, backgroundColor: theme.panelScreenBg },
   scroll: {
     flexGrow: 1,
     alignItems: 'center',
@@ -402,22 +407,22 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 32,
   },
-  card: { width: '100%', maxWidth: 520, backgroundColor: '#fff', borderRadius: 18, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  title: { fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 6 }, subtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 18 },
-  section: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' }, sectionTitle: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: '#6b7280', marginBottom: 8 },
-  input: { width: '100%', paddingVertical: 12, paddingHorizontal: 14, fontSize: 15, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, backgroundColor: '#fafafa', marginBottom: 10 },
-  selectInput: { justifyContent: 'center' }, selectText: { fontSize: 15, color: '#111827' }, placeholderText: { fontSize: 15, color: '#9ca3af' }, disabledInput: { opacity: 0.55 },
-  row: { flexDirection: 'row', gap: 10 }, half: { flex: 1 }, primaryButton: { marginTop: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' }, secondaryButton: { marginTop: 10, paddingVertical: 12, borderRadius: 12, backgroundColor: '#e5e7eb', alignItems: 'center' },
-  secondaryButtonText: { color: '#111827', fontSize: 14, fontWeight: '600' }, mapButton: { alignSelf: 'flex-start', marginBottom: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#111827' },
-  mapButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' }, mapScreen: { flex: 1, backgroundColor: '#fff' }, mapHeader: { paddingTop: 16, paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mapTitle: { fontSize: 16, fontWeight: '700', color: '#111827' }, mapClose: { fontSize: 14, color: '#111827', fontWeight: '600' }, mapContainer: { flex: 1 }, mapFooter: { padding: 16, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
-  overlay: { flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 }, pickerCard: { width: '100%', maxWidth: 360, backgroundColor: '#fff', borderRadius: 18, padding: 18 },
-  pickerTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }, pickerList: { maxHeight: 320 }, pickerOption: { paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#f9fafb', marginBottom: 8 },
-  pickerOptionSelected: { backgroundColor: '#e5e7eb', borderWidth: 1, borderColor: '#9ca3af' }, pickerOptionText: { fontSize: 15, color: '#111827', fontWeight: '500' }, emptyText: { fontSize: 14, color: '#6b7280', textAlign: 'center', paddingVertical: 12 },
-  helperText: { fontSize: 12, color: '#6b7280', marginTop: -4, marginBottom: 8 },
-  suggestionList: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
-  suggestionItem: { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  suggestionText: { fontSize: 14, color: '#111827' },
-  errorText: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginTop: 8 }, successText: { color: '#047857', fontSize: 14, textAlign: 'center', marginTop: 8 },
+  card: { width: '100%', maxWidth: 520, backgroundColor: theme.surface, borderRadius: 18, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme.isDark ? 0.2 : 0.06, shadowRadius: 8, elevation: 3 },
+  title: { fontSize: 24, fontWeight: '700', color: theme.title, textAlign: 'center', marginBottom: 6 }, subtitle: { fontSize: 14, color: theme.mutedText, textAlign: 'center', marginBottom: 18 },
+  section: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.border }, sectionTitle: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: theme.mutedText, marginBottom: 8 },
+  input: { width: '100%', paddingVertical: 12, paddingHorizontal: 14, fontSize: 15, borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 12, backgroundColor: theme.inputBg, color: theme.inputText, marginBottom: 10 },
+  selectInput: { justifyContent: 'center' }, selectText: { fontSize: 15, color: theme.title }, placeholderText: { fontSize: 15, color: theme.placeholder }, disabledInput: { opacity: 0.55 },
+  row: { flexDirection: 'row', gap: 10 }, half: { flex: 1 }, primaryButton: { marginTop: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: theme.primaryBtnBg, alignItems: 'center' },
+  primaryButtonText: { color: theme.primaryBtnText, fontSize: 15, fontWeight: '600' }, secondaryButton: { marginTop: 10, paddingVertical: 12, borderRadius: 12, backgroundColor: theme.secondaryBtnBg, alignItems: 'center' },
+  secondaryButtonText: { color: theme.secondaryBtnText, fontSize: 14, fontWeight: '600' }, mapButton: { alignSelf: 'flex-start', marginBottom: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: theme.primaryBtnBg },
+  mapButtonText: { color: theme.primaryBtnText, fontSize: 13, fontWeight: '600' }, mapScreen: { flex: 1, backgroundColor: theme.surface }, mapHeader: { paddingTop: 16, paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mapTitle: { fontSize: 16, fontWeight: '700', color: theme.title }, mapClose: { fontSize: 14, color: theme.title, fontWeight: '600' }, mapContainer: { flex: 1 }, mapFooter: { padding: 16, borderTopWidth: 1, borderTopColor: theme.border },
+  overlay: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 }, pickerCard: { width: '100%', maxWidth: 360, backgroundColor: theme.surface, borderRadius: 18, padding: 18 },
+  pickerTitle: { fontSize: 18, fontWeight: '700', color: theme.title, marginBottom: 12 }, pickerList: { maxHeight: 320 }, pickerOption: { paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, backgroundColor: theme.chipBg, marginBottom: 8 },
+  pickerOptionSelected: { backgroundColor: theme.secondaryBtnBg, borderWidth: 1, borderColor: theme.border }, pickerOptionText: { fontSize: 15, color: theme.title, fontWeight: '500' }, emptyText: { fontSize: 14, color: theme.mutedText, textAlign: 'center', paddingVertical: 12 },
+  helperText: { fontSize: 12, color: theme.mutedText, marginTop: -4, marginBottom: 8 },
+  suggestionList: { borderWidth: 1, borderColor: theme.border, borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
+  suggestionItem: { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: theme.surface, borderBottomWidth: 1, borderBottomColor: theme.border },
+  suggestionText: { fontSize: 14, color: theme.title },
+  errorText: { color: theme.error, fontSize: 14, textAlign: 'center', marginTop: 8 }, successText: { color: theme.sem.chipActiveText, fontSize: 14, textAlign: 'center', marginTop: 8 },
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -7,6 +7,12 @@ import { StationRequestCard } from '@/components/stations/StationRequestCard';
 import { StationRequest } from '@/components/stations/types';
 import type { TFunction } from 'i18next';
 
+import {
+  adminPanelScrollBase,
+  createAdminPanelSharedStyles,
+} from '@/constants/adminPanelLayoutStyles';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import { approveRequest, listPendingRequests, rejectRequest } from '@/services/stationModeration';
 
 /** Orden de visualizacion: provincia arriba (tras direccion/municipio); promotor siempre al final. */
@@ -79,6 +85,8 @@ function formatPayloadRows(payload: Record<string, unknown> | undefined, t: TFun
 export default function AdminRequestsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createAdminRequestsStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -148,7 +156,7 @@ export default function AdminRequestsScreen() {
           <Text style={styles.backText}>{t('adminRequests.back')}</Text>
         </TouchableOpacity>
         {loading ? (
-          <ActivityIndicator size="large" color="#111827" />
+          <ActivityIndicator size="large" color={theme.primaryBtnBg} />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : requests.length === 0 ? (
@@ -241,7 +249,7 @@ export default function AdminRequestsScreen() {
               value={reason}
               onChangeText={setReason}
               placeholder={t('adminRequests.rejectPlaceholder')}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.placeholder}
               multiline
             />
             <View style={styles.actions}>
@@ -259,66 +267,133 @@ export default function AdminRequestsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f5f5' },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
-  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 16, padding: 24, elevation: 3 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
-  backButton: { marginBottom: 12, alignSelf: 'center' },
-  backText: { color: '#6b7280', fontWeight: '600' },
-  detailsButton: {
-    alignSelf: 'stretch',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    alignItems: 'center',
-    marginBottom: 10,
-    backgroundColor: '#fff',
-  },
-  detailsButtonText: { color: '#111827', fontWeight: '600', fontSize: 14 },
-  actions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  approve: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
-  approveText: { color: '#fff', fontWeight: '700' },
-  reject: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#fee2e2', alignItems: 'center' },
-  rejectText: { color: '#b91c1c', fontWeight: '700' },
-  cancel: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' },
-  cancelText: { color: '#111827', fontWeight: '700' },
-  errorText: { color: '#dc2626', textAlign: 'center' },
-  muted: { color: '#6b7280', textAlign: 'center' },
-  overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, padding: 20 },
-  detailModalCard: {
-    width: '100%',
-    maxWidth: 440,
-    maxHeight: '88%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-  },
-  detailScroll: { maxHeight: 420, marginBottom: 12 },
-  detailSection: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#374151',
-    marginTop: 14,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  detailLine: { fontSize: 14, color: '#111827', marginBottom: 6 },
-  detailKey: { fontWeight: '600', color: '#4b5563' },
-  detailRow: {
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  detailFieldLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
-  detailFieldValue: { fontSize: 15, color: '#111827' },
-  detailFieldValueEmpty: { color: '#9ca3af', fontStyle: 'italic' },
-  detailClose: { paddingVertical: 12, borderRadius: 10, backgroundColor: '#111827', alignItems: 'center' },
-  detailCloseText: { color: '#fff', fontWeight: '700' },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
-  input: { minHeight: 80, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, marginBottom: 12, color: '#111827' },
-});
+const createAdminRequestsStyles = (theme: ScreenTheme) =>
+  Object.assign(
+    {},
+    createAdminPanelSharedStyles(theme),
+    StyleSheet.create({
+      scroll: {
+        ...adminPanelScrollBase,
+        justifyContent: 'center',
+      },
+      card: {
+        width: '100%',
+        maxWidth: 620,
+        backgroundColor: theme.surface,
+        borderRadius: 16,
+        padding: 24,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: theme.isDark ? 0.2 : 0.06,
+        shadowRadius: 8,
+      },
+      title: {
+        fontSize: 24,
+        fontWeight: '700',
+        marginBottom: 12,
+        textAlign: 'center',
+        color: theme.title,
+      },
+      backButton: { marginBottom: 12, alignSelf: 'center' },
+      backText: { color: theme.mutedText, fontWeight: '600' },
+      detailsButton: {
+        alignSelf: 'stretch',
+        paddingVertical: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: theme.inputBorder,
+        alignItems: 'center',
+        marginBottom: 10,
+        backgroundColor: theme.surface,
+      },
+      detailsButtonText: { color: theme.title, fontWeight: '600', fontSize: 14 },
+      actions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+      approve: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        backgroundColor: theme.primaryBtnBg,
+        alignItems: 'center',
+      },
+      approveText: { color: theme.primaryBtnText, fontWeight: '700' },
+      reject: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        backgroundColor: theme.dangerBtnBg,
+        alignItems: 'center',
+      },
+      rejectText: { color: theme.dangerBtnText, fontWeight: '700' },
+      cancel: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        backgroundColor: theme.secondaryBtnBg,
+        alignItems: 'center',
+      },
+      cancelText: { color: theme.secondaryBtnText, fontWeight: '700' },
+      muted: { color: theme.mutedText, textAlign: 'center' },
+      overlay: {
+        flex: 1,
+        backgroundColor: theme.overlay,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+      },
+      modalCard: {
+        width: '100%',
+        maxWidth: 420,
+        backgroundColor: theme.modalSurface,
+        borderRadius: 16,
+        padding: 20,
+      },
+      detailModalCard: {
+        width: '100%',
+        maxWidth: 440,
+        maxHeight: '88%',
+        backgroundColor: theme.modalSurface,
+        borderRadius: 16,
+        padding: 20,
+      },
+      detailScroll: { maxHeight: 420, marginBottom: 12 },
+      detailSection: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: theme.secondaryText,
+        marginTop: 14,
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+      },
+      detailLine: { fontSize: 14, color: theme.title, marginBottom: 6 },
+      detailKey: { fontWeight: '600', color: theme.secondaryText },
+      detailRow: {
+        marginBottom: 10,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.border,
+      },
+      detailFieldLabel: { fontSize: 12, fontWeight: '600', color: theme.mutedText, marginBottom: 4 },
+      detailFieldValue: { fontSize: 15, color: theme.title },
+      detailFieldValueEmpty: { color: theme.placeholder, fontStyle: 'italic' },
+      detailClose: {
+        paddingVertical: 12,
+        borderRadius: 10,
+        backgroundColor: theme.primaryBtnBg,
+        alignItems: 'center',
+      },
+      detailCloseText: { color: theme.primaryBtnText, fontWeight: '700' },
+      modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10, color: theme.title },
+      input: {
+        minHeight: 80,
+        borderWidth: 1,
+        borderColor: theme.inputBorder,
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 12,
+        color: theme.inputText,
+        backgroundColor: theme.inputBg,
+      },
+    }),
+  ) as any;

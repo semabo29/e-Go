@@ -6,19 +6,28 @@ import {
   Alert,
   Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 
+import {
+  adminPanelScrollBase,
+  createAdminPanelChromeStyleObjects,
+  createAdminPanelScreenStyles,
+  createAdminPanelSearchStyleObjects,
+} from '@/constants/adminPanelLayoutStyles';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import { getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
 import { AdminUser, listAdminUsers, setUserBanStatus } from '@/services/adminUserModeration';
 
 export default function AdminUsersScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createAdminUsersStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -115,7 +124,7 @@ export default function AdminUsersScreen() {
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#111827" />
+            <ActivityIndicator size="large" color={theme.primaryBtnBg} />
             <Text style={styles.muted}>{t('adminUsers.loading')}</Text>
           </View>
         ) : error && users.length === 0 ? (
@@ -142,7 +151,7 @@ export default function AdminUsersScreen() {
                 <TextInput
                   style={styles.searchInput}
                   placeholder={t('adminUsers.searchPlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={theme.placeholder}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   autoCapitalize="none"
@@ -205,7 +214,7 @@ export default function AdminUsersScreen() {
                 <TextInput
                   style={styles.banReasonInput}
                   placeholder={t('adminUsers.banReasonPlaceholder')}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={theme.placeholder}
                   value={banReasonInput}
                   onChangeText={setBanReasonInput}
                   multiline
@@ -249,243 +258,112 @@ export default function AdminUsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scroll: {
-    flexGrow: 1,
-    padding: 24,
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  backButton: {
-    marginBottom: 20,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  backText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2563eb',
-  },
-  centered: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 16,
-  },
-  muted: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  primaryButton: {
-    marginTop: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  searchBlock: {
-    marginBottom: 14,
-  },
-  searchLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#f9fafb',
-  },
-  userRow: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  userEmail: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  userStatusActive: {
-    fontSize: 12,
-    color: '#16a34a',
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  userStatusBanned: {
-    fontSize: 12,
-    color: '#dc2626',
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  userBanReason: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginTop: 4,
-    lineHeight: 15,
-  },
-  banButton: {
-    backgroundColor: '#dc2626',
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  unbanButton: {
-    backgroundColor: '#16a34a',
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  banButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  confirmCardWide: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-  },
-  banReasonLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  banReasonInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#111827',
-    minHeight: 100,
-    marginBottom: 16,
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  confirmText: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginBottom: 18,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  confirmCancel: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  confirmCancelText: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmDelete: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#dc2626',
-    alignItems: 'center',
-  },
-  confirmDeleteText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmUnban: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#16a34a',
-    alignItems: 'center',
-  },
-});
+const createAdminUsersStyles = (theme: ScreenTheme) =>
+  createAdminPanelScreenStyles(theme, {
+      scroll: adminPanelScrollBase,
+      ...createAdminPanelChromeStyleObjects(theme),
+      ...createAdminPanelSearchStyleObjects(theme),
+      userRow: {
+        borderWidth: 1,
+        borderColor: theme.border,
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10,
+      },
+      userInfo: {
+        flex: 1,
+      },
+      userName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.title,
+      },
+      userEmail: {
+        fontSize: 13,
+        color: theme.mutedText,
+        marginTop: 2,
+      },
+      userStatusActive: {
+        fontSize: 12,
+        color: theme.sem.mapOk,
+        marginTop: 4,
+        fontWeight: '600',
+      },
+      userStatusBanned: {
+        fontSize: 12,
+        color: theme.sem.error,
+        marginTop: 4,
+        fontWeight: '600',
+      },
+      userBanReason: {
+        fontSize: 11,
+        color: theme.mutedText,
+        marginTop: 4,
+        lineHeight: 15,
+      },
+      banButton: {
+        backgroundColor: theme.sem.error,
+        paddingVertical: 9,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+      },
+      unbanButton: {
+        backgroundColor: theme.sem.mapOk,
+        paddingVertical: 9,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+      },
+      banButtonText: {
+        color: theme.textOnAccent,
+        fontSize: 13,
+        fontWeight: '700',
+      },
+      confirmCardWide: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: theme.surface,
+        borderRadius: 16,
+        padding: 20,
+      },
+      banReasonLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: theme.secondaryText,
+        marginBottom: 6,
+      },
+      banReasonInput: {
+        borderWidth: 1,
+        borderColor: theme.inputBorder,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 14,
+        color: theme.inputText,
+        backgroundColor: theme.inputBg,
+        minHeight: 100,
+        marginBottom: 16,
+      },
+      confirmDelete: {
+        flex: 1,
+        paddingVertical: 11,
+        borderRadius: 10,
+        backgroundColor: theme.sem.error,
+        alignItems: 'center',
+      },
+      confirmDeleteText: {
+        color: theme.textOnAccent,
+        fontSize: 14,
+        fontWeight: '600',
+      },
+      confirmUnban: {
+        flex: 1,
+        paddingVertical: 11,
+        borderRadius: 10,
+        backgroundColor: theme.sem.mapOk,
+        alignItems: 'center',
+      },
+  });

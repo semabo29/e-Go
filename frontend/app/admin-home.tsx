@@ -12,30 +12,27 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
-import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import {
+  adminPanelScrollBase,
+  adminPanelSectionHeaderBase,
+  createAdminPanelSharedStyles,
+} from '@/constants/adminPanelLayoutStyles';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import { ManualStationCard } from '@/components/stations/ManualStationCard';
 import { ManualStation } from '@/components/stations/types';
+import { fetchAdminSession, type AdminSessionPayload } from '@/lib/adminSession';
 import { clearPrivilegedSession, getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
 import { deleteAdminStation, listAdminStations } from '@/services/stationModeration';
-
-type AdminPayload = {
-  sub: number;
-  email: string;
-  role: string;
-  iat?: number;
-  exp?: number;
-};
 
 export default function AdminHomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { setUser } = useAuth();
-  const { colorblindFriendly } = useColorblindPreference();
-  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
-  const styles = useMemo(() => createAdminStyles(sem), [sem]);
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createAdminStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
-  const [admin, setAdmin] = useState<AdminPayload | null>(null);
+  const [admin, setAdmin] = useState<AdminSessionPayload | null>(null);
   const [error, setError] = useState('');
   const [stations, setStations] = useState<ManualStation[]>([]);
   const [loadingStations, setLoadingStations] = useState(false);
@@ -45,22 +42,19 @@ export default function AdminHomeScreen() {
     (async () => {
       setLoading(true);
       setError('');
+      const session = await fetchAdminSession({
+        noSession: t('adminHome.noSession'),
+        unauthorized: t('adminHome.unauthorized'),
+        connectionError: t('adminHome.connectionError'),
+      });
+      if (!session.ok) {
+        setError(session.error);
+        setLoading(false);
+        return;
+      }
+      setAdmin(session.admin);
       try {
-        const token = await getPrivilegedToken('admin');
-        if (!token) {
-          setError(t('adminHome.noSession'));
-          return;
-        }
-        const res = await privilegedFetch('admin', '/admin/me');
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || t('adminHome.unauthorized'));
-          return;
-        }
-        setAdmin(data.admin);
         await loadMyStations();
-      } catch (err) {
-        setError(t('adminHome.connectionError'));
       } finally {
         setLoading(false);
       }
@@ -163,6 +157,13 @@ export default function AdminHomeScreen() {
               accessibilityLabel={t('adminHome.incidentHistoryA11y')}
             >
               <Text style={styles.primaryButtonAltText}>{t('adminHome.incidentHistory')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-stations' as Href)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.manageStations')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
@@ -278,34 +279,19 @@ export default function AdminHomeScreen() {
   );
 }
 
-const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    paddingVertical: 40,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  title: {
+const createAdminStyles = (theme: ScreenTheme) =>
+  Object.assign(
+    {},
+    createAdminPanelSharedStyles(theme),
+    StyleSheet.create({
+      scroll: {
+        ...adminPanelScrollBase,
+        justifyContent: 'center',
+      },
+      title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: theme.title,
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -316,47 +302,29 @@ const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
   },
   muted: {
     fontSize: 14,
-    color: '#6b7280',
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 12,
+    color: theme.mutedText,
   },
   infoBox: {
     marginBottom: 12,
   },
   infoLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: theme.mutedText,
   },
   infoValue: {
     fontSize: 16,
-    color: '#111827',
-    fontWeight: '600',
-  },
-  primaryButton: {
-    marginTop: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: theme.title,
     fontWeight: '600',
   },
   primaryButtonAlt: {
     marginTop: 10,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: theme.secondaryBtnBg,
     alignItems: 'center',
   },
   primaryButtonAltText: {
-    color: '#111827',
+    color: theme.secondaryBtnText,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -364,7 +332,7 @@ const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
     marginTop: 16,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: sem.error,
+    backgroundColor: theme.sem.error,
     alignItems: 'center',
   },
   secondaryButtonText: {
@@ -375,72 +343,18 @@ const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
   section: {
     marginTop: 24,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: theme.border,
     paddingTop: 16,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    ...adminPanelSectionHeaderBase,
     gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  confirmCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  confirmText: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginBottom: 18,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  confirmCancel: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  confirmCancelText: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '600',
   },
   confirmDelete: {
     flex: 1,
     paddingVertical: 11,
     borderRadius: 10,
-    backgroundColor: sem.error,
+    backgroundColor: theme.sem.error,
     alignItems: 'center',
   },
   confirmDeleteText: {
@@ -448,4 +362,5 @@ const createAdminStyles = (sem: SemanticColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-});
+    }),
+  ) as any;

@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 
 import { createPrivilegedLoginStyles } from '@/components/auth/privilegedLoginStyles';
-import { getSemanticColors } from '@/constants/accessibilityColors';
-import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import { usePrivilegedLogin, type PrivilegedLoginConfig } from '@/hooks/usePrivilegedLogin';
 import SvgComponent from '@/app/_assets/logo.jsx';
 
@@ -27,7 +26,7 @@ function PrivilegedLoginBody({
   t,
 }: Readonly<{
   vm: ReturnType<typeof usePrivilegedLogin>;
-  sem: ReturnType<typeof getSemanticColors>;
+  sem: ReturnType<typeof useScreenTheme>['sem'];
   styles: ReturnType<typeof createPrivilegedLoginStyles>;
   t: ReturnType<typeof useTranslation>['t'];
 }>) {
@@ -119,9 +118,8 @@ function PrivilegedLoginBody({
 
 export function PrivilegedLoginView({ config }: Props) {
   const { t } = useTranslation();
-  const { colorblindFriendly } = useColorblindPreference();
-  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
-  const styles = useMemo(() => createPrivilegedLoginStyles(sem), [sem]);
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createPrivilegedLoginStyles(theme), [theme.isDark, theme.sem]);
   const vm = usePrivilegedLogin(config);
 
   return (
@@ -133,7 +131,7 @@ export function PrivilegedLoginView({ config }: Props) {
 
         {vm.showGoogleHint ? <Text style={styles.hintText}>{vm.labels.googleHint}</Text> : null}
 
-        <PrivilegedLoginBody vm={vm} sem={sem} styles={styles} t={t} />
+        <PrivilegedLoginBody vm={vm} sem={theme.sem} styles={styles} t={t} />
 
         <TouchableOpacity style={styles.backLink} onPress={vm.goBack}>
           <Text style={styles.backLinkText}>{vm.labels.backToLogin}</Text>

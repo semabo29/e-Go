@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Href, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -6,10 +6,14 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { StationRequestCard } from '@/components/stations/StationRequestCard';
 import { StationRequest } from '@/components/stations/types';
 import { listCompanyRequests } from '@/services/stationModeration';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 
 export default function CompanyRequestsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createCompanyRequestsStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [requests, setRequests] = useState<StationRequest[]>([]);
@@ -47,7 +51,7 @@ export default function CompanyRequestsScreen() {
           </Text>
         </TouchableOpacity>
         {loading ? (
-          <ActivityIndicator size="large" color="#111827" />
+          <ActivityIndicator size="large" color={theme.sem.accent} />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : requests.length === 0 ? (
@@ -60,15 +64,16 @@ export default function CompanyRequestsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f5f5' },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
-  card: { width: '100%', maxWidth: 560, backgroundColor: '#fff', borderRadius: 16, padding: 24, elevation: 3 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
-  backButton: { marginBottom: 10, alignSelf: 'center' },
-  backText: { color: '#6b7280', fontWeight: '600' },
-  refreshButton: { marginBottom: 16, alignSelf: 'center' },
-  refreshText: { color: '#111827', fontWeight: '700' },
-  errorText: { color: '#dc2626', textAlign: 'center' },
-  muted: { color: '#6b7280', textAlign: 'center' },
-});
+const createCompanyRequestsStyles = (theme: ScreenTheme) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: theme.panelScreenBg },
+    scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24, paddingVertical: 40 },
+    card: { width: '100%', maxWidth: 560, backgroundColor: theme.surface, borderRadius: 16, padding: 24, elevation: 3 },
+    title: { fontSize: 24, fontWeight: '700', marginBottom: 12, textAlign: 'center', color: theme.title },
+    backButton: { marginBottom: 10, alignSelf: 'center' },
+    backText: { color: theme.mutedText, fontWeight: '600' },
+    refreshButton: { marginBottom: 16, alignSelf: 'center' },
+    refreshText: { color: theme.title, fontWeight: '700' },
+    errorText: { color: theme.error, textAlign: 'center' },
+    muted: { color: theme.mutedText, textAlign: 'center' },
+  });
