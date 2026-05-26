@@ -303,7 +303,7 @@ describe('E2E: Login amb mail/contrasenya → mapa amb estacions (sense Google)'
       expect(mockSetUser).toHaveBeenCalled();
     });
 
-    const guestUser = mockSetUser.mock.calls[0][0];
+    const guestUser = mockSetUser.mock.calls[0][0] as { email: string; username: string };
     expect(guestUser.email).toBe('guest@ego.app');
     expect(guestUser.username).toBe('Guest User');
 
