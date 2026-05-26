@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 
 import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
@@ -22,6 +23,7 @@ export function ChargingActionCard({
   onFinishCharging,
   onCancelCharging,
 }: ChargingActionCardProps) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { colorblindFriendly } = useColorblindPreference();
@@ -59,9 +61,9 @@ export function ChargingActionCard({
         <View style={styles.statusSection}>
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: sem.accent }]} />
-            <Text style={[styles.statusText, { color: sem.accent }]}>Cargando...</Text>
+            <Text style={[styles.statusText, { color: sem.accent }]}>{t('charging.statusCharging')}</Text>
           </View>
-          <Text style={styles.minutesText}>{minutes} min de carga</Text>
+          <Text style={styles.minutesText}>{t('charging.minutesOfCharge', { minutes })}</Text>
         </View>
 
         <View style={styles.buttonContainer}>
@@ -76,7 +78,7 @@ export function ChargingActionCard({
             ) : (
               <>
                 <MaterialIcons name="check-circle" size={20} color="#fff" />
-                <Text style={styles.finishButtonText}>Finalizar Carga</Text>
+                <Text style={styles.finishButtonText}>{t('charging.finishCharge')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -95,7 +97,7 @@ export function ChargingActionCard({
         {(distanceToStation !== null && distanceToStation > 30) && (
           <View style={styles.warningSection}>
             <MaterialIcons name="warning" size={16} color={sem.error} />
-            <Text style={[styles.warningText, { color: sem.error }]}>Te estás alejando del punto de carga</Text>
+            <Text style={[styles.warningText, { color: sem.error }]}>{t('charging.movingAway')}</Text>
           </View>
         )}
       </View>
@@ -103,10 +105,10 @@ export function ChargingActionCard({
       <Modal visible={showConfirmModal} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>¿Finalizar carga?</Text>
+            <Text style={styles.modalTitle}>{t('charging.confirmFinishTitle')}</Text>
             <Text style={styles.modalMessage}>
-              Habrás completado {minutes} minutos de carga y recibirás {minutes * 10} puntos{'\n'}
-              {minutes > 0 ? '(puede ser más con bonificación Premium)' : ''}
+              {t('charging.confirmFinishBody', { minutes, points: minutes * 10 })}{'\n'}
+              {minutes > 0 ? t('charging.premiumBonus') : ''}
             </Text>
 
             <View style={styles.modalButtons}>
@@ -114,13 +116,13 @@ export function ChargingActionCard({
                 style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => setShowConfirmModal(false)}
               >
-                <Text style={styles.modalCancelText}>Continuar cargando</Text>
+                <Text style={styles.modalCancelText}>{t('charging.continueCharging')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalConfirmButton, { backgroundColor: sem.accent }]}
                 onPress={handleConfirmFinish}
               >
-                <Text style={styles.modalConfirmText}>Confirmar</Text>
+                <Text style={styles.modalConfirmText}>{t('charging.confirm')}</Text>
               </TouchableOpacity>
             </View>
           </View>

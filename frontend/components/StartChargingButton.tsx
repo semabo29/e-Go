@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 
 import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
@@ -27,6 +28,7 @@ export function StartChargingButton({
   onError,
 }: StartChargingButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
   const { colorblindFriendly } = useColorblindPreference();
   const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
 
@@ -39,7 +41,7 @@ export function StartChargingButton({
       await onStartCharging();
 
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al iniciar carga';
+      const message = error instanceof Error ? error.message : t('startCharging.errorGeneric');
       onError(message);
     } finally {
       setIsLoading(false);
@@ -58,7 +60,7 @@ export function StartChargingButton({
       ) : (
         <>
           <MaterialIcons name="bolt" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Cargar Vehículo</Text>
+          <Text style={styles.buttonText}>{t('startCharging.label')}</Text>
         </>
       )}
     </TouchableOpacity>

@@ -18,10 +18,8 @@
     "android": {
       "package": "com.ego.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./app/_assets/favicon.png",
-        "backgroundImage": "./app/_assets/favicon.png",
-        "monochromeImage": "./app/_assets/favicon.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./app/_assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [

@@ -399,12 +399,13 @@ function StationSheetEventsSection({
   styles: SheetStyles;
 }>) {
   const coords = getStationCoordinates(station);
+  const { t } = useTranslation();
   return (
     <View>
       <View style={styles.eventsSectionHeader}>
         <MaterialIcons name="event" size={22} color={isDark ? '#34d399' : '#10b981'} />
         <Text style={styles.sectionTitle} numberOfLines={1}>
-          Eventos cercanos
+          {t('stationSheet.nearbyEvents')}
         </Text>
       </View>
       <StationNearbyEventsCarousel

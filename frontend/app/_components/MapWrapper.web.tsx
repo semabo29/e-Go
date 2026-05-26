@@ -1,6 +1,7 @@
 import React from 'react';
 import { GoogleMap, useJsApiLoader, Marker as GoogleMarker } from '@react-google-maps/api';
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 const containerStyle = {
   width: '100%',
@@ -21,6 +22,7 @@ const defaultOptions = {
 };
 
 export const MapView = ({ children, initialRegion, center, zoom, style, onPress, options, ...props }: any) => {
+  const { t } = useTranslation();
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -49,7 +51,7 @@ export const MapView = ({ children, initialRegion, center, zoom, style, onPress,
   if (!isLoaded) {
     return (
       <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, style]}>
-        <Text>Cargando Mapa...</Text>
+        <Text>{t('common.loadingMap')}</Text>
       </View>
     );
   }

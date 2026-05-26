@@ -193,7 +193,7 @@ export default function PerfilScreen() {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) {
-        throw new Error('Error enviando solicitud');
+        throw new Error(t('userProfile.friendSendError'));
       }
       setEsAmic(2);
     } catch (error) {
@@ -212,7 +212,7 @@ export default function PerfilScreen() {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) {
-        throw new Error('Error eliminando amigo');
+        throw new Error(t('userProfile.friendRemoveError'));
       }
       setEsAmic(0);
     } catch (error) {
@@ -231,7 +231,7 @@ export default function PerfilScreen() {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) {
-        throw new Error('Error aceptando solicitud');
+        throw new Error(t('userProfile.friendAcceptError'));
       }
       // Actualizar llista d'amics
       fetchAmics();
@@ -251,7 +251,7 @@ export default function PerfilScreen() {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) {
-        throw new Error('Error rechazando solicitud');
+        throw new Error(t('userProfile.friendRejectError'));
       }
       // Actualizar llista d'amics
       fetchAmics();
@@ -271,7 +271,7 @@ export default function PerfilScreen() {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) {
-        throw new Error('Error cancelando solicitud');
+        throw new Error(t('userProfile.friendCancelError'));
       }
       // Actualizar llista d'amics
       fetchAmics();
@@ -293,7 +293,7 @@ export default function PerfilScreen() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Error saving profile');
+        throw new Error(data.error || t('userProfile.saveProfileError'));
       }
       setPerfil({ ...perfil, username: data.username, email: data.email });
       setUser({ ...user, username: data.username, email: data.email });

@@ -239,7 +239,7 @@ const stripHtmlTags = (text: string): string => {
 };
 
 export default function InicioScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preference, setPreference } = useThemePreference();
@@ -459,11 +459,11 @@ export default function InicioScreen() {
 
       // Condición principal: ¿Llega al destino y le sobran 50 km?
       if (directDistKm <= (autonomy - 50)) {
-        Alert.alert("Ruta directa", "Tienes autonomía suficiente para llegar a tu destino con más de 50km de margen.");
+        Alert.alert(t('navigation.directRouteTitle'), t('navigation.directRouteBody'));
         startFinalNavigation(origin, destination, null);
       } else {
         //No llega, toca buscar el cargador que genere el menor desvío posible
-        Alert.alert("Parada necesaria", "No tienes suficiente autonomía. Buscando un cargador en tu ruta...");
+        Alert.alert(t('navigation.stopNeededTitle'), t('navigation.stopNeededBody'));
 
         let bestStation = null;
         let minDetour = Infinity;
@@ -518,13 +518,13 @@ export default function InicioScreen() {
         }
 
         if (bestStation) {
-          Alert.alert("Parada añadida", `Se ha modificado la ruta para parar en: ${bestStation.nom}`);
+          Alert.alert(t('navigation.stopAddedTitle'), t('navigation.stopAddedBody', { name: bestStation.nom }));
           startFinalNavigation(origin, destination, {
             latitude: parseFloat(bestStation.latitud),
             longitude: parseFloat(bestStation.longitud)
           });
         } else {
-          Alert.alert("Atención", "No hemos encontrado ningún cargador intermedio al que puedas llegar. ¡Precaución!");
+          Alert.alert(t('navigation.noChargerTitle'), t('navigation.noChargerBody'));
           startFinalNavigation(origin, destination, null);
         }
       }
@@ -547,7 +547,8 @@ export default function InicioScreen() {
     ) => {
     try {
       const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-      let url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${apiKey}&language=ca`;
+      const mapsLang = i18n.language || 'es';
+      let url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=${apiKey}&language=${mapsLang}`;
       if (waypoint) {//Añadimos la parada a la URL si hay
           url += `&waypoints=${waypoint.latitude},${waypoint.longitude}`;
       }
@@ -1975,6 +1976,7 @@ useEffect(() => {
                       destination={routeDestination}
                       waypoints={routeWaypoint ? [routeWaypoint] : []}
                       apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+                      language={i18n.language || 'es'}
                       strokeWidth={0}
                       strokeColor={sem.routeLine}
                       mode="DRIVING"
@@ -2499,15 +2501,15 @@ useEffect(() => {
           <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 }}>
             <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, elevation: 10 }}>
               <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#1f2937' }}>
-                🔋 Autonomía del Vehículo
+                {t('navigation.autonomyModalTitle')}
               </Text>
               <Text style={{ marginBottom: 20, color: '#4b5563', lineHeight: 20 }}>
-                Introduce los km de autonomía que te quedan (opcional). Si no tienes suficiente para llegar con 50km de margen, desviaremos la ruta a un cargador de paso.
+                {t('navigation.autonomyModalBody')}
               </Text>
 
               <TextInput
                 style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 16 }}
-                placeholder="Ej: 150 (km)"
+                placeholder={t('navigation.autonomyPlaceholder')}
                 keyboardType="numeric"
                 value={autonomyInput}
                 onChangeText={setAutonomyInput}
@@ -2517,7 +2519,7 @@ useEffect(() => {
               {vehicles.length > 0 && (
                 <View style={{ marginTop: 16, marginBottom: 8, width: '100%' }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748b', marginBottom: 8 }}>
-                    ¿Con qué coche viajas? (Filtra conectores automáticamente):
+                    {t('navigation.autonomyCarPrompt')}
                   </Text>
                   <ScrollView
                     horizontal
@@ -2577,13 +2579,13 @@ useEffect(() => {
                   onPress={() => processRouteWithAutonomy('')}
                   style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#f3f4f6' }}
                 >
-                  <Text style={{ color: '#4b5563', fontWeight: 'bold' }}>Saltar</Text>
+                  <Text style={{ color: '#4b5563', fontWeight: 'bold' }}>{t('navigation.skip')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => processRouteWithAutonomy(autonomyInput)}
                   style={{ backgroundColor: '#10b981', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 }}
                 >
-                  <Text style={{ color: 'white', fontWeight: 'bold' }}>Calcular Ruta</Text>
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('navigation.calculateRoute')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

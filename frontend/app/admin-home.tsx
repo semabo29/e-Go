@@ -71,7 +71,7 @@ export default function AdminHomeScreen() {
     try {
       setStations(await listAdminStations());
     } catch (err) {
-      setError('No se pudo conectar con el servidor');
+      setError(t('adminHome.connectionError'));
     } finally {
       setLoadingStations(false);
     }
@@ -93,7 +93,7 @@ export default function AdminHomeScreen() {
       }
       setStations((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
-      setError('No se pudo conectar con el servidor');
+      setError(t('adminHome.connectionError'));
     } finally {
       setLoadingStations(false);
     }
