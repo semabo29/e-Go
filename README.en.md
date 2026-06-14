@@ -136,7 +136,7 @@ npm install
 npx nodemon index.jsx
 ```
 
-### 4. Frontend Setup (May take longer on first run))
+### 4. Frontend Setup (May take longer on first run)
 ```bash
 cd frontend
 ```
@@ -163,6 +163,34 @@ cd backend
 $env:RUN_DB_INTEGRATION="true"
 npm run test:integration
 ```
+---
+
+- `GET /` (complete health check including database connectivity).
+- Full `POST /car`, `GET /car`, and `DELETE /car` workflow using isolated test data.
+
+---
+
+## 🧪 E2E Testing (Frontend)
+
+From the terminal (Jest, no emulator or backend required):
+
+```bash
+cd frontend
+npm run test:e2e
+```
+
+Run a single test:
+
+```bash
+npm run test:e2e -- searchStationPanel
+npm run test:e2e -- eventNavigationFlow
+```
+
+Files located in `frontend/tests/e2e/`:
+
+- `searchStationPanel.e2e.test.tsx` — station search → station details panel
+- `eventNavigationFlow.e2e.test.tsx` — station panel → events → map → navigation
+
 ---
 
 ## 👥 Development Team
