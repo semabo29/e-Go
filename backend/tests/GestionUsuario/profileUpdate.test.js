@@ -30,8 +30,9 @@ describe('Endpoint PUT /user (Modificación de perfil)', () => {
       }]
     };
 
-    // Retorn de la consulta
-    pool.query.mockResolvedValue(mockUpdatedUser);
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] })
+      .mockResolvedValueOnce(mockUpdatedUser);
 
     // Petició PUT
     const response = await request(app)
@@ -44,12 +45,11 @@ describe('Endpoint PUT /user (Modificación de perfil)', () => {
     // Comprovació
     expect(response.status).toBe(200);
     expect(response.body).toEqual(mockUpdatedUser.rows[0]);
-    expect(pool.query).toHaveBeenCalledTimes(1);
+    expect(pool.query).toHaveBeenCalledTimes(2);
   });
 
   it('Debería devolver error 400 si faltan campos requeridos', async () => {
-    // Retorn de la consulta (error)
-    pool.query.mockRejectedValue(new Error('Campos requeridos faltantes'));
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] });
 
     // Petició PUT sense dades
     const response = await request(app)
@@ -59,11 +59,13 @@ describe('Endpoint PUT /user (Modificación de perfil)', () => {
     // Comprovació
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error');
+    expect(pool.query).toHaveBeenCalledTimes(1);
   });
 
   it('Debería devolver error 404 si el usuario no existe', async () => {
-    // Retorn de la consulta (no hi ha usuari)
-    pool.query.mockResolvedValue({ rows: [] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
 
     // Petició PUT
     const response = await request(app)
@@ -77,11 +79,13 @@ describe('Endpoint PUT /user (Modificación de perfil)', () => {
     expect(response.status).toBe(404);
     expect(response.body).toHaveProperty('error');
     expect(response.body.error).toBe('Usuario no encontrado');
+    expect(pool.query).toHaveBeenCalledTimes(2);
   });
 
   it('Debería manejar errores de base de datos y devolver Status 500', async () => {
-    // Retorn de la consulta (error de BD)
-    pool.query.mockRejectedValue(new Error('Fallo de conexión a la BD'));
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, is_banned: false }] })
+      .mockRejectedValueOnce(new Error('Fallo de conexión a la BD'));
 
     // Petició PUT
     const response = await request(app)
@@ -95,5 +99,22 @@ describe('Endpoint PUT /user (Modificación de perfil)', () => {
     expect(response.status).toBe(500);
     expect(response.body).toHaveProperty('error');
     expect(response.body.error).toBe('Error actualizando información del usuario');
+    expect(pool.query).toHaveBeenCalledTimes(2);
+  });
+
+  it('Debería devolver 403 si el usuario está baneado', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, is_banned: true }] });
+
+    const response = await request(app)
+      .put('/user?usuari_id=1')
+      .send({
+        username: 'X',
+        email: 'x@test.com',
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe('USER_BANNED');
+    expect(response.body.error).toMatch(/baneada/i);
+    expect(pool.query).toHaveBeenCalledTimes(1);
   });
 });

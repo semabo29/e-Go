@@ -1,5 +1,4 @@
 const path = require('path');
-// Cargamos variables de entorno (Prioriza las de AWS Lambda)
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
@@ -11,12 +10,18 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const companyRoutes = require('./routes/company');
 const stationRoutes = require('./routes/stations');
+const geoRoutes = require('./routes/geo');
 const favoriteRoutes = require('./routes/favorits'); // Importamos la ruta de favoritos
 const vehicleRoutes = require('./routes/vehicles');//Importamos la ruta de vehiculos
 const subscriptionRoutes = require('./routes/subscription');
 const chargingRoutes = require('./routes/charging'); // Importamos la ruta de carga
+const reviewsRoutes = require('./routes/reviews');
 const rankingRoutes = require('./routes/ranking');
 const userRoutes = require('./routes/users');
+const friendsRoutes = require('./routes/amics');
+const incidenciaRoutes = require('./routes/incidencias');
+const geocodeRoutes = require('./routes/geocode');
+const skinRoutes = require('./routes/skinRoutes');
 const { handleWebhook } = require('./controllers/stripeWebhookController');
 const { canReach } = require('./services/rangeCalculationService');
 
@@ -35,18 +40,48 @@ app.post(
 );
 app.use(express.json());
 
+// API Gateway u otros proxies con prefijo de etapa (/prod, /dev): quitarlo para que coincidan las rutas.
+// En Lambda, define API_PATH_PREFIX=/prod (o el valor que use tu despliegue).
+const apiPathPrefix = (process.env.API_PATH_PREFIX || '').trim();
+if (apiPathPrefix) {
+  const prefix = apiPathPrefix.startsWith('/') ? apiPathPrefix : `/${apiPathPrefix}`;
+  app.use((req, res, next) => {
+    const url = req.url || '';
+    const q = url.indexOf('?');
+    const pathPart = q === -1 ? url : url.slice(0, q);
+    const query = q === -1 ? '' : url.slice(q);
+    if (pathPart === prefix || pathPart.startsWith(`${prefix}/`)) {
+      const rest = pathPart.slice(prefix.length) || '/';
+      req.url = rest + query;
+    }
+    next();
+  });
+}
+
+const authController = require('./controllers/authController');
+// Login local admin/empresa: rutas explícitas en la app principal (antes del mount /auth).
+// Así se evitan 404 en despliegues donde el sub-router no recibe bien la ruta.
+app.post('/auth/admin/local/login', authController.adminLocalLogin);
+app.post('/auth/company/local/login', authController.companyLocalLogin);
+
 // --- RUTAS ---
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/company', companyRoutes);
 app.use('/stations', stationRoutes);
+app.use('/geo', geoRoutes);
 // Cualquier petición que empiece con la URL /favorites debe ser gestionada por las reglas de favoriteRoutes
 app.use('/favorites', favoriteRoutes);
 app.use('/car', vehicleRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/charging', chargingRoutes); // Rutas para sesiones de carga y puntos
+app.use('/', reviewsRoutes);
 app.use('/ranking', rankingRoutes);
 app.use('/user', userRoutes);
+app.use('/friends', friendsRoutes);
+app.use('/incidencias', incidenciaRoutes);
+app.use('/geocode', geocodeRoutes);
+app.use('/skins', skinRoutes);
 
 // Can Reach endpoint (range calculation)
 app.get('/can-reach', async (req, res) => {

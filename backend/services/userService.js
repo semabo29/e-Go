@@ -7,8 +7,8 @@ async function getUser(userId) {
   return info;
 }
 
-async function updateUser(userId, username, email) {
-  const updated = await userModel.updateUser(userId, username, email);
+async function updateUser(userId, username) {
+  const updated = await userModel.updateUser(userId, username);
   return updated;
 }
 

@@ -53,7 +53,7 @@ export async function getPrivilegedUser<TUser>(role: PrivilegedRole) {
   if (!raw) return null;
   try {
     return JSON.parse(raw) as TUser;
-  } catch {
+  } catch (_e) {
     return null;
   }
 }

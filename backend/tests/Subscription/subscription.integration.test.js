@@ -9,11 +9,13 @@ jest.mock('../../models/subscriptionModel', () => ({
 
 jest.mock('../../models/userModel', () => ({
   findById: jest.fn(),
+  findByIdWithBanStatus: jest.fn(),
 }));
 
 jest.mock('../../lib/stripe', () => ({
   isStripeConfigured: jest.fn(),
   getStripe: jest.fn(),
+  stripePriceIdMonthly: jest.fn(() => 'price_test_monthly'),
 }));
 
 const subscriptionModel = require('../../models/subscriptionModel');
@@ -41,7 +43,7 @@ describe('Integración Stripe subscription routes', () => {
 
   test('POST /subscription/create-checkout-session -> 200 con session válida', async () => {
     stripeLib.isStripeConfigured.mockReturnValue(true);
-    userModel.findById.mockResolvedValue({ id: 1, email: 'user@test.com' });
+    userModel.findById.mockResolvedValue({ id: 1, email: 'user@test.com', is_banned: false });
     stripeLib.getStripe.mockReturnValue({
       checkout: {
         sessions: {
@@ -64,6 +66,7 @@ describe('Integración Stripe subscription routes', () => {
   });
 
   test('GET /subscription/status -> inactive cuando no hay fila', async () => {
+    userModel.findByIdWithBanStatus.mockResolvedValue({ id: 1, is_banned: false });
     subscriptionModel.findByUserId.mockResolvedValue(null);
     const res = await request(app).get('/subscription/status?userId=1');
     expect(res.status).toBe(200);

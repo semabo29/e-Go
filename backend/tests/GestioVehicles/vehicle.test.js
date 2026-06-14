@@ -5,7 +5,8 @@ const express = require('express');
 
 //Importem rutes i connexió a bd
 const vehiclesRouter = require('../../routes/vehicles');
-const { pool } = require('../../lib/db');
+const { pool, USUARIOS_TABLE } = require('../../lib/db');
+const e = require('express');
 
 //Creem una aplicació Express
 const app = express();
@@ -114,5 +115,53 @@ describe('Proves dintegració de vehicles', () => {
                                           [testUserId, testCarName]);
     //No s'esperen resultats
     expect(comprovaDb.rows.length).toBe(0);
+  });
+
+  test('Inserció falla si lusuari està banejat', async () => {
+      await pool.query(`UPDATE ${USUARIOS_TABLE}
+           SET is_banned = true,
+               banned_at = NOW(),
+               banned_reason = 'Motiu de baneig',
+               updated_at = NOW()
+           WHERE id = $1`, [testUserId]);
+
+      const response = await request(app)
+        .post('/car')
+        .send({ usuari_id: testUserId, v_nom: 'Test 5000', v_potencia: testCarPotencia, v_corrent: testCarCorrent, v_conector: testCarConector });
+      
+      expect(response.status).toBe(403);
+      expect(response.body.code).toBe('USER_BANNED');
+  });
+
+  test('Consulta falla si lusuari està banejat', async () => {
+      await pool.query(`UPDATE ${USUARIOS_TABLE}
+           SET is_banned = true,
+               banned_at = NOW(),
+               banned_reason = 'Motiu de baneig',
+               updated_at = NOW()
+           WHERE id = $1`, [testUserId]);
+
+      const response = await request(app)
+        .get('/car')
+        .query({ usuari_id: testUserId });
+      
+      expect(response.status).toBe(403);
+      expect(response.body.code).toBe('USER_BANNED');
+  });
+
+  test('Eliminació falla si lusuari està banejat', async () => {
+      await pool.query(`UPDATE ${USUARIOS_TABLE}
+           SET is_banned = true,
+               banned_at = NOW(),
+               banned_reason = 'Motiu de baneig',
+               updated_at = NOW()
+           WHERE id = $1`, [testUserId]);
+
+      const response = await request(app)
+        .delete('/car')
+        .send({ usuari_id: testUserId, v_nom: 'Test 5000' });
+      
+      expect(response.status).toBe(403);
+      expect(response.body.code).toBe('USER_BANNED');
   });
 });

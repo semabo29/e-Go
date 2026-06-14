@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.jsx",
   "scripts": {
-    "test": "jest --runInBand",
+    "test": "jest --config jest.config.js --runInBand",
+    "test:coverage": "jest --config jest.config.js --runInBand --coverage",
     "test:integration": "jest --config jest.integration.config.js --runInBand",
-    "package:lambda": "node scripts/build-lambda-zip.js"
+    "package:lambda": "node scripts/build-lambda-zip.js",
+    "set-privileged-password:dev": "node scripts/setPrivilegedDevPassword.js --yes"
   },
   "keywords": [],
   "author": "",
@@ -22,7 +24,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "google-auth-library": "^10.6.1",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "multer-s3": "^3.0.1",
     "pg": "^8.20.0",

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -16,9 +17,16 @@ import {
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+import { getSemanticColors, type SemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+
 export default function FiltersScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const styles = useMemo(() => createFiltersStyles(sem), [sem]);
 
   // Estats per guardar els valors temporals abans d'aplicar
   const [minKw, setMinKw] = useState((params.minKw as string) || '');
@@ -42,7 +50,7 @@ export default function FiltersScreen() {
       const max = parseFloat(maxKw);
 
       if (min > max) {
-        setErrorMessage('La potencia mínima no puede ser mayor que la máxima');
+        setErrorMessage(t('mapFilters.minGreaterThanMax'));
         return;
       }
     }
@@ -74,7 +82,7 @@ export default function FiltersScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
-        <Text style={styles.title}>Filtrar Estaciones</Text>
+        <Text style={styles.title}>{t('mapFilters.title')}</Text>
         {/* Espai buit per centrar el títol */}
         <View style={{ width: 24 }} />
       </View>
@@ -89,20 +97,18 @@ export default function FiltersScreen() {
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
           <View style={{flex: 1}}>
 
-          <Text style={styles.description}>
-                Ajusta los parámetros para encontrar el punto de carga ideal.
-              </Text>
+          <Text style={styles.description}>{t('mapFilters.description')}</Text>
 
               {/* INTERRUPTOR DE FAVORITOS */}
               <View style={styles.switchGroup}>
-                <Text style={styles.label}>Mis Estaciones</Text>
+                <Text style={styles.label}>{t('mapFilters.myStations')}</Text>
                 <View style={styles.switchRow}>
-                  <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? "#ef4444" : "#64748b"} />
-                  <Text style={styles.switchDescription}>Mostrar solo mis favoritos</Text>
+                  <MaterialIcons name={showFavorites ? "favorite" : "favorite-border"} size={22} color={showFavorites ? sem.favorite : "#64748b"} />
+                  <Text style={styles.switchDescription}>{t('mapFilters.favoritesOnly')}</Text>
                   <Switch
                     value={showFavorites}
                     onValueChange={setShowFavorites}
-                    trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+                    trackColor={{ false: '#cbd5e1', true: sem.accent }}
                     thumbColor="#fff"
                   />
                 </View>
@@ -110,7 +116,7 @@ export default function FiltersScreen() {
 
             {/* Input Mínim */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Potencia Mínima (kW)</Text>
+              <Text style={styles.label}>{t('mapFilters.minPower')}</Text>
               <TextInput
                 style={[
                   styles.input, focusedInput === 'min' && styles.inputFocused,
@@ -119,7 +125,7 @@ export default function FiltersScreen() {
                 placeholder="50"
                 placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
-                cursorColor="#10b981"
+                cursorColor={sem.accent}
                 value={minKw}
                 onChangeText={setMinKw}
                 maxLength={4}
@@ -130,7 +136,7 @@ export default function FiltersScreen() {
 
             {/* Input Màxim */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Potencia Máxima (kW)</Text>
+              <Text style={styles.label}>{t('mapFilters.maxPower')}</Text>
               <TextInput
                 style={[
                   styles.input, focusedInput === 'max' && styles.inputFocused,
@@ -139,7 +145,7 @@ export default function FiltersScreen() {
                 placeholder="150"
                 placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
-                cursorColor="#10b981"
+                cursorColor={sem.accent}
                 value={maxKw}
                 onChangeText={setMaxKw}
                 maxLength={4}
@@ -150,7 +156,7 @@ export default function FiltersScreen() {
 
             {/* Secció Tipo de corriente */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Corriente</Text>
+              <Text style={styles.label}>{t('mapFilters.currentType')}</Text>
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 {['AC', 'DC'].map((type) => (
                   <TouchableOpacity
@@ -175,7 +181,7 @@ export default function FiltersScreen() {
 
             {/* Secció Tipus de Connector */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tipo de Conector</Text>
+              <Text style={styles.label}>{t('mapFilters.connectorType')}</Text>
               <View style={styles.chipContainer}>
                 {CONNECTOR_TYPES.map((type) => (
                   <TouchableOpacity
@@ -204,11 +210,11 @@ export default function FiltersScreen() {
       {/* Botons d'acció */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.clearBtn} onPress={handleClear} activeOpacity={0.8}>
-          <Text style={styles.clearBtnText}>Limpiar</Text>
+          <Text style={styles.clearBtnText}>{t('common.clear')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.applyBtn} onPress={handleApply} activeOpacity={0.8}>
-          <Text style={styles.applyBtnText}>Aplicar Filtros</Text>
+          <Text style={styles.applyBtnText}>{t('mapFilters.apply')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -222,7 +228,7 @@ export default function FiltersScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalPopup}>
             <View style={styles.modalContent}>
-              <MaterialIcons name="error" size={28} color="#ef4444" />
+              <MaterialIcons name="error" size={28} color={sem.error} />
               <Text style={styles.modalText}>{errorMessage}</Text>
             </View>
             <TouchableOpacity
@@ -238,7 +244,7 @@ export default function FiltersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createFiltersStyles = (sem: SemanticColors) => StyleSheet.create({
   switchGroup: {
       marginBottom: 24,
     },
@@ -314,7 +320,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputFocused: {
-    borderColor: '#10b981',
+    borderColor: sem.accent,
     borderWidth: 2,
   },
   footer: {
@@ -343,7 +349,7 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#10b981',
+    backgroundColor: sem.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -367,8 +373,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   chipActive: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#10b981',
+    backgroundColor: sem.chipActiveBg,
+    borderColor: sem.accent,
   },
   chipText: {
     fontSize: 14,
@@ -376,7 +382,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   chipTextActive: {
-    color: '#10b981',
+    color: sem.accent,
     fontWeight: '700',
   },
   typeBtn: {
@@ -389,8 +395,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   typeBtnActive: {
-    borderColor: '#10b981',
-    backgroundColor: '#ecfdf5',
+    borderColor: sem.accent,
+    backgroundColor: sem.chipActiveBg,
   },
   typeBtnText: {
     fontSize: 15,
@@ -398,7 +404,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   typeBtnTextActive: {
-    color: '#10b981',
+    color: sem.accent,
   },
   modalBackdrop: {
     flex: 1,

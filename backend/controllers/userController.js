@@ -1,11 +1,12 @@
 const userService = require('../services/userService');
-
+const { respondIfBannedUserId } = require('../middleware/requireNotBanned');
 
 // informació del usuari
 async function getUser(req, res) {
   try {
     // Agafem els possibles paràmetres de la URL
     const { usuari_id } = req.query;
+    if (await respondIfBannedUserId(res, usuari_id)) return;
 
     const info = await userService.getUser(usuari_id);
 
@@ -19,16 +20,17 @@ async function getUser(req, res) {
 async function updateUser(req, res) {
   try {
     const { usuari_id } = req.query;
-    const { username, email } = req.body;
+    const { username } = req.body;
 
     if (!usuari_id) {
       return res.status(400).json({ error: 'Falta usuari_id' });
     }
-    if (!username && !email) {
-      return res.status(400).json({ error: 'Faltan campos para actualizar' });
+    if (await respondIfBannedUserId(res, usuari_id)) return;
+    if (!username) {
+      return res.status(400).json({ error: 'Falta el campo username' });
     }
 
-    const updated = await userService.updateUser(usuari_id, username, email);
+    const updated = await userService.updateUser(usuari_id, username);
     if (!updated) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }

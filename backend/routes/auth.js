@@ -12,6 +12,9 @@ router.post('/local/login', authController.localLogin);
 router.post('/local/register', authController.localRegister);
 router.post('/register', authController.register);
 
+router.post('/admin/local/login', authController.adminLocalLogin);
+router.post('/company/local/login', authController.companyLocalLogin);
+
 async function loginPrivilegedUser(req, res, { role, relationTable, selectFields, forbiddenMessage }) {
   const hasIdToken = !!req.body.idToken;
   const hasCode = !!(req.body.code && req.body.redirectUri);
@@ -20,10 +23,20 @@ async function loginPrivilegedUser(req, res, { role, relationTable, selectFields
   }
 
   const payload = await getGooglePayload(req.body);
-  if (!payload || !payload.email) {
+  if (!payload?.email) {
     return res.status(401).json({ error: 'Token de Google no valido. Envia idToken o code + redirectUri.' });
   }
   const email = payload.email;
+  const banCheck = await pool.query(
+    `SELECT is_banned, banned_reason FROM ${USUARIOS_TABLE} WHERE email = $1`,
+    [email]
+  );
+  if (banCheck.rows[0]?.is_banned) {
+    return res.status(403).json({
+      error: 'Esta cuenta esta baneada',
+      banned_reason: banCheck.rows[0].banned_reason ?? null,
+    });
+  }
 
   const result = await pool.query(
     `SELECT ${selectFields}

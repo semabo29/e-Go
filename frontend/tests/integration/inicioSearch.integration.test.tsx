@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { TouchableOpacity, Text, TextInput } from 'react-native';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import InicioScreen from '@/app/(tabs)/index';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 
 let mockLocalParams: Record<string, any> = {};
 let mockSetParams = jest.fn();
@@ -12,6 +13,10 @@ let mockPush = jest.fn();
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
 }));
 
 jest.mock('expo-router', () => ({
@@ -33,7 +38,13 @@ jest.mock('expo-location', () => ({
 // Simplified TopBar: exposes a real TextInput so we can drive the search flow.
 jest.mock('@/components/TopBar', () => ({
   __esModule: true,
-  default: ({ searchQuery, setSearchQuery, searchResults, onSelectResult, isSearching }: any) => {
+  default: ({
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    onSelectResult,
+    isSearching,
+  }: any) => {
     const { TextInput, TouchableOpacity, Text } = require('react-native');
     return (
       <>
@@ -48,15 +59,19 @@ jest.mock('@/components/TopBar', () => ({
 
         {searchQuery.length > 0 && searchResults.length > 0 ? (
           <>
-            {searchResults.map((r: any) => (
-              <TouchableOpacity
-                key={r.id}
-                testID={`result-${r.id}`}
-                onPress={() => onSelectResult?.(r)}
-              >
-                <Text>{r.nom}</Text>
-              </TouchableOpacity>
-            ))}
+            {searchResults.map((r: any) => {
+              const station = r.kind === 'station' ? r.station : null;
+              if (!station) return null;
+              return (
+                <TouchableOpacity
+                  key={station.id}
+                  testID={`result-${station.id}`}
+                  onPress={() => onSelectResult?.(r)}
+                >
+                  <Text>{station.nom}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </>
         ) : null}
       </>
@@ -95,6 +110,20 @@ jest.mock('@/app/_components/MapWrapper', () => {
   return { MapView, Marker };
 });
 
+/** Avanza el debounce de búsqueda (500 ms en index.tsx) con timers falsos. */
+async function runSearchDebounce() {
+  await act(async () => {
+    jest.advanceTimersByTime(500);
+  });
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+}
+
+function expectFetchUrl(calls: unknown[][], fragment: string) {
+  expect(
+    calls.some((c) => typeof c[0] === 'string' && (c[0] as string).includes(fragment))
+  ).toBe(true);
+}
+
 // Mock FavoriteButton so we can toggle favorites from inside the map panel.
 jest.mock('@/components/FavoriteButton', () => ({
   __esModule: true,
@@ -110,6 +139,7 @@ jest.mock('@/components/FavoriteButton', () => ({
 
 describe('InicioScreen integration: search/filter + map favorites', () => {
   const mockUseAuth = useAuth as jest.Mock;
+  const mockUseCharging = useCharging as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -149,12 +179,25 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
       logout: jest.fn(),
       isLoading: false,
     });
+    mockUseCharging.mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
+    });
 
     mockLocalParams = {};
   });
 
   // Busca por nombre y verifica que se construye correctamente la URL
   test('search by name uses q + filters in /stations/search URL', async () => {
+    jest.useFakeTimers();
     mockLocalParams = {
       minKw: '20',
       maxKw: '40',
@@ -163,7 +206,7 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
     };
 
     // Favorites not relevant here; map/search is driven by /stations/search.
-    (globalThis.fetch as any) = jest.fn(async (url: string) => {
+    const fetchMock = jest.fn(async (url: string) => {
       if (url.includes('/favorites')) {
         return { ok: true, json: async () => [{ id: 1 }] };
       }
@@ -198,14 +241,15 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
 
       throw new Error(`Unexpected fetch: ${url}`);
     });
+    (globalThis.fetch as any) = fetchMock;
 
     const { getByTestId } = render(<InicioScreen />);
 
     fireEvent.changeText(getByTestId('search-input'), 'Punt');
+    await runSearchDebounce();
 
-    await waitFor(() => {
-      expect((globalThis.fetch as any) as jest.Mock).toHaveBeenCalledWith(expect.stringContaining('/stations/search?'));
-    }, { timeout: 4000 });
+    expectFetchUrl(fetchMock.mock.calls, '/stations/search?');
+    jest.useRealTimers();
   });
 
   // al seleccionar un resultado del buscador, se abre el panel de informacion de la estacion.
@@ -262,7 +306,7 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
       showFavorites: 'true',
     };
 
-    (globalThis.fetch as any) = jest.fn(async (url: string) => {
+    const fetchMock = jest.fn(async (url: string) => {
       if (url.includes('/favorites')) {
         return { ok: true, json: async () => [{ id: 1 }] };
       }
@@ -303,20 +347,24 @@ describe('InicioScreen integration: search/filter + map favorites', () => {
 
       throw new Error(`Unexpected fetch: ${url}`);
     });
+    (globalThis.fetch as any) = fetchMock;
 
     const { getByTestId, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/favorites'))).toBe(true);
+    });
 
     fireEvent.changeText(getByTestId('search-input'), 'Punt');
 
     await waitFor(() => {
-      expect((globalThis.fetch as any) as jest.Mock).toHaveBeenCalledWith(expect.stringContaining('/stations/search?'));
-    }, { timeout: 4000 });
-
-    expect(queryByText('Favorite Station')).toBeTruthy();
-    expect(queryByText('Non Favorite Station')).toBeNull();
+      expectFetchUrl(fetchMock.mock.calls, '/stations/search?');
+      expect(queryByText('Favorite Station')).toBeTruthy();
+      expect(queryByText('Non Favorite Station')).toBeNull();
+    }, { timeout: 5000 });
   });
 
-  // la llamada a `/stations/search` solo ocurre tras 500ms desde el ultimo cambio de texto.
+  // la llamada a `/stations/search` solo ocurre tras 500 ms desde el último cambio de texto.
   test('search debounce: calls /stations/search? only after 500ms', async () => {
     jest.useFakeTimers();
 

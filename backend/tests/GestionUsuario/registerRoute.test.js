@@ -56,7 +56,7 @@ describe('POST /auth/register', () => {
     expect(res.status).toBe(201);
     expect(res.body.user).toBeDefined();
     expect(res.body.user.email).toBe('test@example.com');
-    expect(pool.query).toHaveBeenCalledTimes(1);
+    expect(pool.query).toHaveBeenCalledTimes(2);
   });
 });
 

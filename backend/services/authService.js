@@ -14,6 +14,19 @@ const AuthError = (code, message) => {
   return err;
 };
 
+function bannedUserError(user) {
+  const err = new Error('Esta cuenta esta baneada');
+  err.code = 'USER_BANNED';
+  err.banned_reason = user?.banned_reason ?? null;
+  return err;
+}
+
+function ensureNotBanned(user) {
+  if (user?.is_banned) {
+    throw bannedUserError(user);
+  }
+}
+
 async function loginWithGoogle(body) {
   const hasIdToken = !!body.idToken;
   const hasCode = !!(body.code && body.redirectUri);
@@ -27,9 +40,16 @@ async function loginWithGoogle(body) {
   }
   const email = payload.email;
 
-  const user = await userModel.findByEmail(email);
+  const user = await userModel.findConductorByEmail(email);
   if (user) {
+    ensureNotBanned(user);
     return { user, needsUsername: false };
+  }
+  const existingUser = await userModel.findByEmail(email);
+  if (existingUser) {
+    ensureNotBanned(existingUser);
+    await userModel.ensureConductorForUser(existingUser.id);
+    return { user: existingUser, needsUsername: false };
   }
   const pending_token = createPendingToken(email);
   return { needsUsername: true, email, pending_token };
@@ -61,6 +81,7 @@ async function register(body) {
   }
 
   const user = await userModel.createUser(email, name);
+  await userModel.ensureConductorForUser(user.id);
   return { user };
 }
 
@@ -102,20 +123,33 @@ async function registerWithEmail(body) {
   }
 
   if (existingUser && !existingUser.password_hash) {
+    ensureNotBanned(existingUser);
     const updatedUser = await userModel.setPasswordHashByUserId(existingUser.id, passwordHash);
+    if (updatedUser) {
+      await userModel.ensureConductorForUser(updatedUser.id);
+    }
     return { user: updatedUser };
   }
 
   const user = await userModel.createLocalUser(normalizedEmail, normalizedUsername, passwordHash);
+  await userModel.ensureConductorForUser(user.id);
   return { user };
 }
 
 async function loginWithEmail(body) {
   const { normalizedEmail } = validateLocalCredentials(body, false);
-  const user = await userModel.findByEmailWithPassword(normalizedEmail);
+  let user = await userModel.findConductorByEmailWithPassword(normalizedEmail);
+  if (!user) {
+    const existingUser = await userModel.findByEmailWithPassword(normalizedEmail);
+    if (existingUser) {
+      await userModel.ensureConductorForUser(existingUser.id);
+      user = existingUser;
+    }
+  }
   if (!user || !user.password_hash) {
     throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
   }
+  ensureNotBanned(user);
   const ok = await bcrypt.compare(body.password, user.password_hash);
   if (!ok) {
     throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
@@ -132,9 +166,54 @@ async function loginWithEmail(body) {
   };
 }
 
+async function loginAdminWithEmail(body) {
+  const { normalizedEmail } = validateLocalCredentials(body, false);
+  const row = await userModel.findAdminByEmailWithPassword(normalizedEmail);
+  if (!row || !row.password_hash) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  const ok = await bcrypt.compare(body.password, row.password_hash);
+  if (!ok) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  return {
+    admin: {
+      id: row.id,
+      user_id: row.user_id,
+      email: row.email,
+      username: row.username,
+      admin_since: row.admin_since,
+    },
+  };
+}
+
+async function loginCompanyWithEmail(body) {
+  const { normalizedEmail } = validateLocalCredentials(body, false);
+  const row = await userModel.findCompanyByEmailWithPassword(normalizedEmail);
+  if (!row || !row.password_hash) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  const ok = await bcrypt.compare(body.password, row.password_hash);
+  if (!ok) {
+    throw AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos');
+  }
+  return {
+    company: {
+      id: row.id,
+      user_id: row.user_id,
+      email: row.email,
+      username: row.username,
+      nombre: row.nombre,
+      company_since: row.company_since,
+    },
+  };
+}
+
 module.exports = {
   loginWithGoogle,
   loginWithEmail,
+  loginAdminWithEmail,
+  loginCompanyWithEmail,
   register,
   registerWithEmail,
 };

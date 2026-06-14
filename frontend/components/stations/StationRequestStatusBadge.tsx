@@ -1,19 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   status: 'pending' | 'approved' | 'rejected';
 };
 
-const STATUS_LABEL: Record<Props['status'], string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobada',
-  rejected: 'Rechazada',
-};
-
 export function StationRequestStatusBadge({ status }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.badge, status === 'approved' ? styles.approved : status === 'rejected' ? styles.rejected : styles.pending]}>
-      <Text style={styles.text}>{STATUS_LABEL[status]}</Text>
+      <Text style={styles.text}>{t(`stationRequest.status.${status}`)}</Text>
     </View>
   );
 }

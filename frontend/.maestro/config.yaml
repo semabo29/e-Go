@@ -1,0 +1,3 @@
+# Maestro E2E — requereix l'app instal·lada (expo run:android / dev client)
+# Android: com.ego.app | iOS: com.anonymous.frontend
+appId: com.ego.app

@@ -18,10 +18,8 @@
     "android": {
       "package": "com.ego.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./app/_assets/favicon.png",
-        "backgroundImage": "./app/_assets/favicon.png",
-        "monochromeImage": "./app/_assets/favicon.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./app/_assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -53,6 +51,10 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "react-native-google-mobile-ads": {
+      "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+      "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
     }
   }
 }

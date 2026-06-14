@@ -1,0 +1,195 @@
+﻿import React from 'react';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+
+const mockBack = jest.fn<any>();
+const mockLocalSearchParams: Record<string, string> = {};
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ back: mockBack }),
+  useLocalSearchParams: () => mockLocalSearchParams,
+}));
+
+jest.mock('@/app/_components/MapWrapper', () => ({
+  MapView: ({ children }: { children?: React.ReactNode }) => {
+    const React = require('react');
+    const { View } = require('react-native');
+    return React.createElement(View, { testID: 'map-view' }, children);
+  },
+  Marker: () => null,
+}));
+
+jest.mock('@/services/geoService', () => ({
+  searchGeoAddress: jest.fn<any>().mockResolvedValue([]),
+  reverseGeoAddress: jest.fn<any>().mockResolvedValue(null),
+}));
+
+jest.mock('@/constants/catalunyaMunicipalities.json', () => ({
+  Barcelona: ['Barcelona', 'Badalona'],
+  Girona: ['Girona'],
+  Lleida: ['Lleida'],
+  Tarragona: ['Tarragona'],
+}));
+
+jest.mock('@/services/stationModeration', () => ({
+  createAdminStation: jest.fn<any>(),
+  updateAdminStation: jest.fn<any>(),
+}));
+
+import AdminStationNewScreen from '@/app/admin-station-new';
+import es from '@/tests/helpers/localeEs';
+
+const S = es.adminStation;
+import { createAdminStation, updateAdminStation } from '@/services/stationModeration';
+
+function makeMockResponse(ok: boolean, data: object, status = ok ? 200 : 400) {
+  return {
+    ok,
+    status,
+    json: async () => data,
+  } as any;
+}
+
+describe('AdminStationNewScreen', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    for (const key of Object.keys(mockLocalSearchParams)) {
+      delete mockLocalSearchParams[key];
+    }
+  });
+
+  describe('Create mode', () => {
+    test('renders create title and submit label', () => {
+      const { getByText } = render(<AdminStationNewScreen />);
+      expect(getByText(S.newTitle)).toBeTruthy();
+      expect(getByText(S.create)).toBeTruthy();
+    });
+
+    test('back button calls router.back', () => {
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(es.common.back));
+      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+
+    test('submit creates station and shows success', async () => {
+      (createAdminStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(true, { id: 1 }));
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.create));
+      await waitFor(() => {
+        expect(getByText(S.created)).toBeTruthy();
+      });
+      expect(createAdminStation).toHaveBeenCalledTimes(1);
+    });
+
+    test('submit shows error from API', async () => {
+      (createAdminStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, { error: 'Campos requeridos' }));
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.create));
+      await waitFor(() => {
+        expect(getByText('Campos requeridos')).toBeTruthy();
+      });
+    });
+
+    test('submit shows fallback error when API error is empty', async () => {
+      (createAdminStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, {}));
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.create));
+      await waitFor(() => {
+        expect(getByText(S.saveError)).toBeTruthy();
+      });
+    });
+
+    test('submit shows NO_SESSION error', async () => {
+      (createAdminStation as jest.Mock<any>).mockRejectedValue(new Error('NO_SESSION'));
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.create));
+      await waitFor(() => {
+        expect(getByText(S.noSession)).toBeTruthy();
+      });
+    });
+
+    test('submit shows generic network error', async () => {
+      (createAdminStation as jest.Mock<any>).mockRejectedValue(new Error('Network error'));
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.create));
+      await waitFor(() => {
+        expect(getByText(S.connectionError)).toBeTruthy();
+      });
+    });
+
+    test('typing in name input clears previous error', async () => {
+      (createAdminStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, { error: 'Error previo' }));
+      const { getByText, getByPlaceholderText, queryByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.create));
+      await waitFor(() => expect(getByText('Error previo')).toBeTruthy());
+      fireEvent.changeText(getByPlaceholderText('Nombre de la estacion'), 'Nueva estacion');
+      await waitFor(() => expect(queryByText('Error previo')).toBeNull());
+    });
+  });
+
+  describe('Edit mode', () => {
+    beforeEach(() => {
+      Object.assign(mockLocalSearchParams, {
+        mode: 'edit',
+        id: '42',
+        nom: 'Estacion Edit',
+        latitud: '41.5',
+        longitud: '2.1',
+        kw: '22',
+        ac_dc: 'AC',
+        tipus_connexio: 'MENNEKES.M',
+        tipus_velocitat: 'Normal',
+        adreca: 'Calle Test 1',
+        municipi: 'Barcelona',
+        provincia: 'Barcelona',
+        promotor: 'Test SA',
+        acces: 'Publico',
+      });
+    });
+
+    test('renders edit title and submit label', () => {
+      const { getByText } = render(<AdminStationNewScreen />);
+      expect(getByText(S.editTitle)).toBeTruthy();
+      expect(getByText(S.saveChanges)).toBeTruthy();
+    });
+
+    test('pre-fills form from route params', async () => {
+      const { getByPlaceholderText } = render(<AdminStationNewScreen />);
+      await waitFor(() => {
+        expect(getByPlaceholderText('Nombre de la estacion').props.value).toBe('Estacion Edit');
+      });
+    });
+
+    test('submit updates station and shows success', async () => {
+      (updateAdminStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(true, { id: 42 }));
+      const { getByText } = render(<AdminStationNewScreen />);
+      await waitFor(() => expect(getByText(S.saveChanges)).toBeTruthy());
+      fireEvent.press(getByText(S.saveChanges));
+      await waitFor(() => {
+        expect(getByText(S.updated)).toBeTruthy();
+      });
+      expect(updateAdminStation).toHaveBeenCalledWith(42, expect.anything());
+    });
+
+    test('submit shows error from API in edit mode', async () => {
+      (updateAdminStation as jest.Mock<any>).mockResolvedValue(makeMockResponse(false, { error: 'Sin permisos' }));
+      const { getByText } = render(<AdminStationNewScreen />);
+      await waitFor(() => expect(getByText(S.saveChanges)).toBeTruthy());
+      fireEvent.press(getByText(S.saveChanges));
+      await waitFor(() => {
+        expect(getByText('Sin permisos')).toBeTruthy();
+      });
+    });
+  });
+
+  describe('Edit mode with invalid ID', () => {
+    test('shows error for invalid station ID', async () => {
+      Object.assign(mockLocalSearchParams, { mode: 'edit', id: 'notanumber' });
+      const { getByText } = render(<AdminStationNewScreen />);
+      fireEvent.press(getByText(S.saveChanges));
+      await waitFor(() => {
+        expect(getByText(S.invalidId)).toBeTruthy();
+      });
+    });
+  });
+});

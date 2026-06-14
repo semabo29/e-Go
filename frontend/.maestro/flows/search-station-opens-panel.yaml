@@ -1,0 +1,30 @@
+# E2E: buscar punt de càrrega → clicar resultat → s'obre el panell de l'estació
+#
+# Prerequisits:
+#   - Backend en marxa i accessible des del dispositiu
+#   - Usuari ja autenticat a la pantalla del mapa (home)
+#   - Maestro CLI: https://maestro.mobile.dev/docs/getting-started/installation
+#
+# Execució (des de frontend/):
+#   maestro test .maestro/flows/search-station-opens-panel.yaml
+
+appId: com.ego.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-map-screen
+    timeout: 30000
+- tapOn:
+    id: topbar-search-input
+- inputText: "Punt"
+- extendedWaitUntil:
+    visible:
+      id: search-result-station-42
+    timeout: 15000
+- tapOn:
+    id: search-result-station-42
+- extendedWaitUntil:
+    visible:
+      id: station-bottom-sheet
+    timeout: 10000

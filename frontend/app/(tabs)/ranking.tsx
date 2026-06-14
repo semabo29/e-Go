@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface RankingUser {
   id: number;
@@ -11,21 +17,73 @@ interface RankingUser {
 }
 
 export default function RankingScreen() {
+  const { t } = useTranslation();
+  const colorScheme = useColorScheme();
+  const { colorblindFriendly } = useColorblindPreference();
+  const { user } = useAuth();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const themeIndex = colorScheme === 'dark' ? 1 : 0;
+  const pick = (values: [string, string]) => values[themeIndex];
   const router = useRouter();
   const [ranking, setRanking] = useState<RankingUser[]>([]);
+  const [isGlobalRanking, setIsGlobalRanking] = useState(true);
   const [loading, setLoading] = useState(true);
+  const theme = {
+    background: pick(['#f8fafc', '#0f172a']),
+    surface: pick(['#ffffff', '#1e293b']),
+    border: pick(['#e2e8f0', '#334155']),
+    cardBorder: pick(['#f1f5f9', '#334155']),
+    title: pick(['#1f2937', '#f1f5f9']),
+    subtitle: pick(['#64748b', '#94a3b8']),
+    loading: pick(['#64748b', '#94a3b8']),
+    username: pick(['#334155', '#e2e8f0']),
+    topUsername: colorblindFriendly
+      ? sem.chipActiveText
+      : pick(['#065f46', '#6ee7b7']),
+    points: sem.accent,
+    ptsLabel: pick(['#64748b', '#94a3b8']),
+    empty: pick(['#94a3b8', '#94a3b8']),
+    rankNumber: pick(['#94a3b8', '#cbd5e1']),
+    topCardBg: colorblindFriendly ? sem.chipActiveBg : pick(['#ecfdf5', '#052e16']),
+    topCardBorder: colorblindFriendly ? sem.accent : pick(['#a7f3d0', '#14532d']),
+  };
+  const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
 
   useEffect(() => {
-    fetchRanking();
-  }, []);
+    if (isGlobalRanking) {
+      fetchGlobalRanking();
+    } else {
+      fetchFriendsRanking();
+    }
+  }, [isGlobalRanking]);
 
-  const fetchRanking = async () => {
+  const fetchGlobalRanking = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${getApiUrl()}/ranking`);
       const data = await response.json();
       setRanking(data);
     } catch (error) {
-      console.error('Error cargando ranking:', error);
+      console.error('Error cargando ranking global:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFriendsRanking = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/ranking/friends?usuari_id=${user.id}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setRanking(data);
+      } else {
+        setRanking([]);
+      }
+    } catch (error) {
+      console.error('Error cargando ranking de amigos:', error);
+      setRanking([]);
     } finally {
       setLoading(false);
     }
@@ -41,18 +99,39 @@ export default function RankingScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#10b981" />
-        <Text style={styles.loadingText}>Cargando líderes...</Text>
+        <ActivityIndicator testID="ranking-loading-indicator" size="large" color={sem.accent} />
+        <Text style={styles.loadingText}>{t('ranking.loading')}</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="ranking-screen-root">
       <View style={styles.header}>
-        <MaterialIcons name="emoji-events" size={32} color="#10b981" />
-        <Text style={styles.title}>Ranking e-Go</Text>
-        <Text style={styles.subtitle}>Los conductores más sostenibles</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.titleContainer}>
+            <MaterialIcons name="emoji-events" size={32} color={sem.accent} />
+            <View style={styles.titleText}>
+              <Text style={styles.title}>{t('ranking.title')}</Text>
+              <Text style={styles.subtitle}>
+                {isGlobalRanking ? t('ranking.subtitle') : t('ranking.friendsSubtitle')}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.tabButton, isGlobalRanking && styles.tabButtonActive]}
+            onPress={() => setIsGlobalRanking(!isGlobalRanking)}
+          >
+            <MaterialIcons
+              name={isGlobalRanking ? 'public' : 'group'}
+              size={20}
+              color={isGlobalRanking ? '#fff' : theme.title}
+            />
+            <Text style={[styles.tabButtonText, isGlobalRanking && styles.tabButtonTextActive]}>
+              {isGlobalRanking ? t('ranking.tabGlobal') : t('ranking.tabFriends')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -72,29 +151,47 @@ export default function RankingScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.username, index < 3 && styles.topUsername]}>
-                  {item.username || 'Usuario Anónimo'}
+                  {item.username || t('ranking.anonymousUser')}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.pointsCol}>
               <Text style={styles.points}>{item.punts}</Text>
-              <Text style={styles.ptsLabel}>pts</Text>
+              <Text style={styles.ptsLabel}>{t('ranking.pts')}</Text>
             </View>
           </View>
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Aún no hay puntuaciones.</Text>
+          <Text style={styles.emptyText}>
+            {isGlobalRanking ? t('ranking.empty') : t('ranking.emptyFriends')}
+          </Text>
         }
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: {
+  background: string;
+  surface: string;
+  border: string;
+  cardBorder: string;
+  title: string;
+  subtitle: string;
+  loading: string;
+  username: string;
+  topUsername: string;
+  points: string;
+  ptsLabel: string;
+  empty: string;
+  rankNumber: string;
+  topCardBg: string;
+  topCardBorder: string;
+}) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.background,
   },
   centered: {
     justifyContent: 'center',
@@ -102,27 +199,59 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: '#64748b',
+    color: theme.loading,
     fontSize: 16,
   },
   header: {
-    padding: 24,
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.border,
     marginBottom: 8,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 24,
+    paddingRight: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  titleText: {
+    marginLeft: 12,
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1f2937',
-    marginTop: 8,
+    color: theme.title,
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: theme.subtitle,
     marginTop: 4,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: theme.border,
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: '#2563eb',
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.title,
+  },
+  tabButtonTextActive: {
+    color: '#fff',
   },
   listContainer: {
     padding: 16,
@@ -131,7 +260,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     padding: 16,
     borderRadius: 16,
     marginBottom: 12,
@@ -141,11 +270,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: theme.cardBorder,
   },
   topCard: {
-    backgroundColor: '#ecfdf5', // Fondo verdecito para el Top 3
-    borderColor: '#a7f3d0',
+    backgroundColor: theme.topCardBg,
+    borderColor: theme.topCardBorder,
   },
   rankCol: {
     width: 40,
@@ -154,7 +283,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: theme.rankNumber,
   },
   nameCol: {
     flex: 1,
@@ -163,10 +292,10 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#334155',
+    color: theme.username,
   },
   topUsername: {
-    color: '#065f46',
+    color: theme.topUsername,
     fontWeight: '700',
   },
   pointsCol: {
@@ -175,16 +304,16 @@ const styles = StyleSheet.create({
   points: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#10b981',
+    color: theme.points,
   },
   ptsLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: theme.ptsLabel,
     fontWeight: '500',
   },
   emptyText: {
     textAlign: 'center',
-    color: '#94a3b8',
+    color: theme.empty,
     marginTop: 40,
     fontSize: 16,
   },

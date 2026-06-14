@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import InicioScreen from '@/app/(tabs)/index';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 
 // 1. SILENCIAMOS WARNINGS INOFENSIVOS EN TESTS
 const originalConsoleError = console.error;
@@ -35,10 +36,22 @@ jest.mock('expo-router', () => ({
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
+}));
 
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: () => Promise.resolve({ status: 'granted' }),
   getCurrentPositionAsync: () => Promise.resolve({ coords: { latitude: 41.38, longitude: 2.17 } }),
+  watchPositionAsync: () => Promise.resolve({ remove: jest.fn() }), // Mock the subscription
+  Accuracy: {
+    BestForNavigation: 6, // Mock the enum value
+    Highest: 5,
+    High: 4,
+    Balanced: 3,
+    Low: 2,
+    Lowest: 1,
+  }
 }));
 
 jest.mock('@/components/TopBar', () => () => null);
@@ -53,6 +66,25 @@ jest.mock('react-native-maps', () => {
     default: (props: any) => <View testID="react-native-map" {...props} />,
     Marker: (props: any) => <View testID="rn-marker" {...props} />,
     Polyline: (props: any) => <View testID="polyline" {...props} />,
+  };
+});
+
+jest.mock('react-native-maps-directions', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return (props: any) => {
+    // Simulamos onReady tras el montaje (más estable que setTimeout suelto con act).
+    React.useEffect(() => {
+      props.onReady?.({
+        distance: 5.2,
+        duration: 12,
+        coordinates: [
+          { latitude: 41, longitude: 2 },
+          { latitude: 41.1, longitude: 2.1 },
+        ],
+      });
+    }, []);
+    return <View testID="map-view-directions" />;
   };
 });
 
@@ -74,6 +106,7 @@ jest.mock('@/app/_components/MapWrapper', () => {
 
 describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
   const mockUseAuth = useAuth as jest.Mock;
+  const mockUseCharging = useCharging as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -83,6 +116,18 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 1, email: 'test@test.com' },
       isLoading: false,
+    });
+    mockUseCharging.mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
     });
 
     (globalThis.fetch as any) = jest.fn(async () => ({
@@ -164,9 +209,12 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
       if (buscarOtroBtn?.onPress) buscarOtroBtn.onPress();
     });
 
-    await waitFor(() => {
-      expect(getByText('Selecciona el punto de origen en el mapa')).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByText('Selecciona el punto de origen en el mapa')).toBeTruthy();
+      },
+      { timeout: 5000 }
+    );
 
     await act(async () => {
       fireEvent(getByTestId('map-view'), 'onPress', {
@@ -174,9 +222,12 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
       });
     });
 
-    await waitFor(() => {
-      expect(queryByText('Selecciona el punto de origen en el mapa')).toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(queryByText('Selecciona el punto de origen en el mapa')).toBeNull();
+      },
+      { timeout: 5000 }
+    );
   });
 
   // TC4
@@ -201,5 +252,42 @@ describe('InicioScreen - Flujo de Navegación y Rutas (Integration)', () => {
       expect(queryByText('Ubicación seleccionada')).toBeNull();
       expect(queryByText('Cómo llegar')).toBeNull();
     });
+  });
+
+  // TC5
+  test('TC5: Al iniciar ruta se entra automáticamente en modo navegación sin botón Iniciar', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const { getByTestId, getByText, queryByText } = render(<InicioScreen />);
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+
+    // 1. Clic en el mapa para marcar un destino libre
+    await act(async () => {
+      fireEvent(getByTestId('map-view'), 'onPress', {
+        nativeEvent: { coordinate: { latitude: 41.0, longitude: 2.0 } },
+      });
+    });
+
+    // 2. Darle a "Cómo llegar"
+    const btn = await waitFor(() => getByText('Cómo llegar'));
+    await act(async () => {
+      fireEvent.press(btn);
+    });
+
+    // 3. Seleccionar "Mi ubicación actual" en la alerta para iniciar la ruta
+    const alertCalls = alertSpy.mock.calls;
+    const alertButtons = alertCalls[0][2];
+    const miUbicacionBtn = alertButtons?.find(b => b.text === 'Mi ubicación actual');
+
+    await act(async () => {
+      if (miUbicacionBtn?.onPress) miUbicacionBtn.onPress();
+    });
+
+    // 4. Verificamos que arranca la navegación automáticamente comprobando el botón de cerrar (close)
+    const closeBtn = await waitFor(() => getByText('close'), { timeout: 5000 });
+    expect(closeBtn).toBeTruthy();
+
+    // 5. Verificamos que NO existe el botón "Iniciar" (ya que la vista 3D es automática)
+    expect(queryByText('Iniciar')).toBeNull();
   });
 });

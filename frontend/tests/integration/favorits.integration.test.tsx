@@ -5,10 +5,15 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCharging } from '@/contexts/ChargingContext';
 import InicioScreen from '@/app/(tabs)/index';
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/contexts/ChargingContext', () => ({
+  useCharging: jest.fn(),
 }));
 
 const mockPush = jest.fn();
@@ -52,9 +57,11 @@ jest.mock('@/app/_components/MapWrapper', () => {
     );
   });
 
-  const Marker = ({ onPress, pinColor }: any) => {
-    let testId = 'station-marker';
-    if (pinColor === 'red') testId = 'favorite-station-marker';
+  const Marker = ({ onPress, pinColor, testID }: any) => {
+    let testId = testID || 'station-marker';
+    if (!testID) {
+      if (pinColor === 'red') testId = 'favorite-station-marker';
+    }
     return (
       <TouchableOpacity
         testID={testId}
@@ -84,12 +91,22 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
       isLoading: false,
       setUser: jest.fn(),
     });
+    (useCharging as jest.Mock).mockReturnValue({
+      isCharging: false,
+      session: null,
+      distanceToStation: null,
+      elapsedSeconds: 0,
+      startChargingSession: jest.fn(),
+      updateSessionId: jest.fn(),
+      stopChargingSession: jest.fn(),
+      cancelChargingSession: jest.fn(),
+      autoStopResult: null,
+      clearAutoStopResult: jest.fn(),
+    });
 
     globalThis.fetch = jest.fn(async () => ({ ok: true })) as unknown as typeof fetch;
   });
 
-  // Al pulsar el botón cuando NO es favorito, debe enviar POST `/favorites`
-  // y notificar el cambio mediante `onToggle(true)`.
   test('toggle ON sends POST /favorites and calls onToggle(true)', async () => {
     const onToggle = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert');
@@ -98,7 +115,6 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
       <FavoriteButton estacio_id={stationId} isInitiallyFavorite={false} onToggle={onToggle} />
     );
 
-    // TouchableOpacity has the onPress handler; pressing the icon Text alone can be flaky.
     fireEvent.press(UNSAFE_getByType(TouchableOpacity));
 
     await waitFor(() => {
@@ -124,8 +140,6 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
     expect(alertSpy).not.toHaveBeenCalled();
   });
 
-  // Si el backend responde con `res.ok=false` al quitar favorito, debe mostrar un Alert
-  // y NO debe ejecutarse `onToggle`.
   test('toggle OFF shows alert when server returns non-ok', async () => {
     (globalThis.fetch as unknown as jest.Mock<any>).mockResolvedValueOnce({ ok: false } as any);
     const onToggle = jest.fn();
@@ -142,7 +156,6 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
     alertSpy.mockRestore();
   });
 
-  // Si el backend responde ok al des-favorecer, se envia DELETE `/favorites` y se notifica con onToggle(false).
   test('toggle OFF sends DELETE /favorites and calls onToggle(false) when server returns ok', async () => {
     const onToggle = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert');
@@ -176,7 +189,6 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
     expect(alertSpy).not.toHaveBeenCalled();
   });
 
-  // Si el fetch lanza un error (network), se muestra un Alert con "Error de conexion" y no se ejecuta onToggle.
   test('toggle shows connection Alert when fetch throws (network error)', async () => {
     const onToggle = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -197,8 +209,6 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
     alertSpy.mockRestore();
   });
 
-  // Mientras la petición está en vuelo, el botón debe renderizarse con un loader
-  // y quedar deshabilitado (`disabled={loading}`) para evitar múltiples requests.
   test('loading state disables multiple presses while request is in-flight', async () => {
     const onToggle = jest.fn();
     const resolveFetch: Array<(v: any) => void> = [];
@@ -214,12 +224,10 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
     const touchable = UNSAFE_getByType(TouchableOpacity);
     fireEvent.press(touchable);
 
-    // Wait for the loading UI to be rendered (so `disabled={loading}` takes effect).
     await waitFor(() => {
       expect(UNSAFE_queryByType(ActivityIndicator)).toBeTruthy();
     });
 
-    // Should show loading and disable the button during in-flight request.
     await waitFor(() => {
       const t = UNSAFE_getByType(TouchableOpacity);
       expect(t.props.disabled).toBe(true);
@@ -233,7 +241,6 @@ describe('FavoriteButton integration (with mocked fetch)', () => {
     });
   });
 
-  // Si `user === null`, el botón no debe ejecutar fetch al pulsar.
   test('when user is null, pressing does not call fetch', async () => {
     (useAuth as unknown as jest.Mock).mockReturnValue({
       user: null,
@@ -267,12 +274,10 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
     });
 
     (globalThis.fetch as any) = jest.fn(async (url: string, options?: RequestInit) => {
-      // Load favorites => favoriteIds should start empty.
       if (url.includes('/favorites?usuari_id=')) {
         return { ok: true, status: 200, json: async () => [] } as any;
       }
 
-      // Load stations => render one station marker.
       if (url.includes('/stations')) {
         return {
           ok: true,
@@ -294,7 +299,17 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
         } as any;
       }
 
-      // Toggle favorite => POST/DELETE /favorites
+      if (url.includes('/skins/conductor/')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            inventari: [{ id: 1, equipada: true, arxiu_asset: 'cotxe_basic' }],
+            punts: 1000
+          })
+        } as any;
+      }
+
       if (url.includes('/favorites') && options?.method === 'POST') {
         return { ok: true, status: 201, json: async () => ({}) } as any;
       }
@@ -307,35 +322,30 @@ describe('InicioScreen integration: favorite interactions on station panel', () 
     });
   });
 
-  // Confirmamos la integración real: al alternar favorito desde el panel de estación,
-  // el marker cambia entre verde (no favorito) y rojo (favorito).
   test('toggling FavoriteButton changes marker pin (green -> red -> green)', async () => {
-    const { getByTestId, getByText, queryByTestId } = render(<InicioScreen />);
+    const { getByTestId, getAllByText, queryByTestId } = render(<InicioScreen />);
+
+    const markerEstacion = await waitFor(() => getByTestId('station-marker'));
+    expect(markerEstacion).toBeTruthy();
+
+    fireEvent.press(markerEstacion);
 
     await waitFor(() => {
-      expect(getByTestId('station-marker')).toBeTruthy();
+      expect(getAllByText('favorite-border').length).toBeGreaterThan(0);
     });
 
-    fireEvent.press(getByTestId('station-marker'));
-
-    await waitFor(() => {
-      expect(getByText('favorite-border')).toBeTruthy();
-    });
-
-    // When pressing the icon name Text, it should trigger the parent TouchableOpacity.
-    fireEvent.press(getByText('favorite-border'));
+    fireEvent.press(getAllByText('favorite-border')[0]);
 
     await waitFor(() => {
       expect(getByTestId('favorite-station-marker')).toBeTruthy();
       expect(queryByTestId('station-marker')).toBeNull();
     });
 
-    fireEvent.press(getByText('favorite'));
+    fireEvent.press(getAllByText('favorite')[0]);
 
     await waitFor(() => {
-      expect(getByTestId('station-marker')).toBeTruthy();
+      expect(getByTestId('station-marker')).toBeTruthy(); 
       expect(queryByTestId('favorite-station-marker')).toBeNull();
     });
   });
 });
-

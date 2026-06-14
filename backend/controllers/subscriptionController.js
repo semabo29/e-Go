@@ -1,6 +1,16 @@
-const { getStripe, isStripeConfigured } = require('../lib/stripe');
+const { getStripe, isStripeConfigured, getStripeEnvMissing, stripePriceIdMonthly } = require('../lib/stripe');
 const userModel = require('../models/userModel');
 const subscriptionModel = require('../models/subscriptionModel');
+const { respondIfBannedUserId } = require('../middleware/requireNotBanned');
+const { scheduleSubscriptionCancelAtPeriodEnd } = require('../services/stripeSubscriptionCancelAtPeriodEnd');
+
+function respondStripeNotConfigured(res) {
+  return res.status(503).json({
+    error:
+      'Stripe no configurado. Añade STRIPE_SECRET_KEY y STRIPE_PRICE_ID_MONTHLY en backend/.env (no en frontend/.env) y reinicia el servidor.',
+    missing_env: getStripeEnvMissing(),
+  });
+}
 
 /**
  * POST /subscription/create-checkout-session
@@ -10,10 +20,7 @@ const subscriptionModel = require('../models/subscriptionModel');
 async function createCheckoutSession(req, res) {
   try {
     if (!isStripeConfigured()) {
-      return res.status(503).json({
-        error:
-          'Stripe no configurado. Añade STRIPE_SECRET_KEY y STRIPE_PRICE_ID_MONTHLY en .env.',
-      });
+      return respondStripeNotConfigured(res);
     }
 
     const { userId, successUrl, cancelUrl } = req.body;
@@ -29,9 +36,16 @@ async function createCheckoutSession(req, res) {
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
+    if (user.is_banned) {
+      return res.status(403).json({
+        code: 'USER_BANNED',
+        error: 'Esta cuenta esta baneada',
+        banned_reason: user.banned_reason ?? null,
+      });
+    }
 
     const stripe = getStripe();
-    const priceId = process.env.STRIPE_PRICE_ID_MONTHLY;
+    const priceId = stripePriceIdMonthly();
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -65,6 +79,7 @@ async function getStatus(req, res) {
     if (!uid || Number.isNaN(uid)) {
       return res.status(400).json({ error: 'Falta userId válido' });
     }
+    if (await respondIfBannedUserId(res, uid)) return;
     const row = await subscriptionModel.findByUserId(uid);
     if (!row) {
       return res.json({
@@ -94,37 +109,30 @@ async function getStatus(req, res) {
 async function cancelSubscription(req, res) {
   try {
     if (!isStripeConfigured()) {
-      return res.status(503).json({
-        error:
-          'Stripe no configurado. Añade STRIPE_SECRET_KEY y STRIPE_PRICE_ID_MONTHLY en .env.',
-      });
+      return respondStripeNotConfigured(res);
     }
 
     const uid = Number(req.body?.userId);
     if (!uid || Number.isNaN(uid)) {
       return res.status(400).json({ error: 'userId inválido' });
     }
+    if (await respondIfBannedUserId(res, uid)) return;
 
-    const row = await subscriptionModel.findByUserId(uid);
-    if (!row?.stripe_subscription_id) {
-      return res.status(404).json({ error: 'No hay suscripción activa para cancelar' });
+    const result = await scheduleSubscriptionCancelAtPeriodEnd(uid);
+    if (!result.ok) {
+      if (result.reason === 'no_stripe_subscription') {
+        return res.status(404).json({ error: 'No hay suscripción activa para cancelar' });
+      }
+      if (result.reason === 'stripe_unconfigured') {
+        return respondStripeNotConfigured(res);
+      }
+      return res.status(500).json({
+        error: 'No se pudo cancelar la suscripción',
+        details: result.error || result.reason,
+      });
     }
 
-    const stripe = getStripe();
-    const sub = await stripe.subscriptions.update(row.stripe_subscription_id, {
-      cancel_at_period_end: true,
-    });
-
-    const updated = await subscriptionModel.upsertFromStripe(uid, {
-      stripe_customer_id: sub.customer,
-      stripe_subscription_id: sub.id,
-      status: sub.status,
-      current_period_end: sub.current_period_end
-        ? new Date(sub.current_period_end * 1000)
-        : null,
-      cancel_at_period_end: Boolean(sub.cancel_at_period_end),
-    });
-
+    const updated = result.subscription;
     return res.json({
       ok: true,
       subscription: updated,
@@ -147,16 +155,14 @@ async function cancelSubscription(req, res) {
 async function reactivateSubscription(req, res) {
   try {
     if (!isStripeConfigured()) {
-      return res.status(503).json({
-        error:
-          'Stripe no configurado. Añade STRIPE_SECRET_KEY y STRIPE_PRICE_ID_MONTHLY en .env.',
-      });
+      return respondStripeNotConfigured(res);
     }
 
     const uid = Number(req.body?.userId);
     if (!uid || Number.isNaN(uid)) {
       return res.status(400).json({ error: 'userId inválido' });
     }
+    if (await respondIfBannedUserId(res, uid)) return;
 
     const row = await subscriptionModel.findByUserId(uid);
     if (!row?.stripe_subscription_id) {
@@ -200,10 +206,7 @@ async function reactivateSubscription(req, res) {
 async function confirmCheckoutSession(req, res) {
   try {
     if (!isStripeConfigured()) {
-      return res.status(503).json({
-        error:
-          'Stripe no configurado. Añade STRIPE_SECRET_KEY y STRIPE_PRICE_ID_MONTHLY en .env.',
-      });
+      return respondStripeNotConfigured(res);
     }
 
     const uid = Number(req.body?.userId);
@@ -214,6 +217,8 @@ async function confirmCheckoutSession(req, res) {
     if (!sessionId || !sessionId.startsWith('cs_')) {
       return res.status(400).json({ error: 'sessionId inválido' });
     }
+
+    if (await respondIfBannedUserId(res, uid)) return;
 
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId, {

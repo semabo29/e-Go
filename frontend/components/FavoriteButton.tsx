@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react'; // Añadido useEffect
+import React, { useState, useEffect, useMemo } from 'react'; // Añadido useEffect
 import { TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { appFetch } from '@/services/appFetch';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 interface Props {
   estacio_id: number;
@@ -12,6 +15,8 @@ interface Props {
 
 export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Props) {
   const { user } = useAuth();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const [isFavorite, setIsFavorite] = useState(isInitiallyFavorite);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +31,7 @@ export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Pr
 
     try {
       const method = isFavorite ? 'DELETE' : 'POST';
-      const res = await fetch(`${getApiUrl()}/favorites`, {
+      const res = await appFetch('/favorites', {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuari_id: user.id, estacio_id }),
@@ -36,7 +41,7 @@ export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Pr
         const newStatus = !isFavorite;
         setIsFavorite(newStatus);
         if (onToggle) onToggle(newStatus);
-      } else {
+      } else if (res.status !== 403) {
         Alert.alert("Error", "No se pudo actualizar el favorito");
       }
     } catch (e) {
@@ -48,14 +53,19 @@ export function FavoriteButton({ estacio_id, isInitiallyFavorite, onToggle }: Pr
   };
 
   return (
-    <TouchableOpacity onPress={toggleFavorite} disabled={loading} style={{ padding: 8 }}>
+    <TouchableOpacity
+      testID="favorite-button"
+      onPress={toggleFavorite}
+      disabled={loading}
+      style={{ padding: 8 }}
+    >
       {loading ? (
-        <ActivityIndicator size="small" color="#ef4444" />
+        <ActivityIndicator size="small" color={sem.favorite} />
       ) : (
         <MaterialIcons
           name={isFavorite ? 'favorite' : 'favorite-border'}
           size={28}
-          color={isFavorite ? '#ef4444' : '#6b7280'}
+          color={isFavorite ? sem.favorite : '#6b7280'}
         />
       )}
     </TouchableOpacity>

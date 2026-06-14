@@ -44,32 +44,13 @@ async function upsertStation(est) {
 
 // Obtenemos la lógica avanzada de filtros de development
 async function getAllStations(filters = {}) {
-  const {minKw, maxKw, connectorType, ac_dc, north, south, east, west} = filters;
+  const { minKw, maxKw, connectorType, ac_dc } = filters;
 
   // Base de la consulta.
   let query = 'SELECT * FROM ego.estaciones';
   const conditions = [];
   const values = [];
   let paramIndex = 1;
-
-  // Filtre per Viewport (Caja de coordenadas)
-  if (north && south && east && west) {
-    conditions.push(`latitud <= $${paramIndex}`);
-    values.push(parseFloat(north));
-    paramIndex++;
-
-    conditions.push(`latitud >= $${paramIndex}`);
-    values.push(parseFloat(south));
-    paramIndex++;
-
-    conditions.push(`longitud <= $${paramIndex}`);
-    values.push(parseFloat(east));
-    paramIndex++;
-
-    conditions.push(`longitud >= $${paramIndex}`);
-    values.push(parseFloat(west));
-    paramIndex++;
-  }
 
   // Filtre: Potència mínima
   if (minKw) {
@@ -173,6 +154,8 @@ async function searchStations(q, filters = {}) {
 module.exports = {
   upsertStation,
   getAllStations,
+  getAllStationsForAdmin,
+  setStationOperatiu,
   createManualStation,
   updateManualStation,
   deleteManualStation,
@@ -183,6 +166,44 @@ module.exports = {
   deleteCompanyOwnedManualStation,
   searchStations
 };
+
+async function getAllStationsForAdmin({ q = '', limit = 51, offset = 0 } = {}) {
+  const conditions = [];
+  const values = [];
+  let idx = 1;
+
+  if (q) {
+    conditions.push(
+      `(nom ILIKE $${idx} OR municipi ILIKE $${idx} OR provincia ILIKE $${idx})`
+    );
+    values.push(`%${q}%`);
+    idx++;
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  values.push(limit, offset);
+
+  const result = await pool.query(
+    `SELECT id, nom, municipi, provincia, adreca, kw, ac_dc, tipus_connexio, is_manual, operatiu
+     FROM ego.estaciones
+     ${where}
+     ORDER BY nom ASC
+     LIMIT $${idx} OFFSET $${idx + 1}`,
+    values
+  );
+  return result.rows;
+}
+
+async function setStationOperatiu(id, operatiu) {
+  const result = await pool.query(
+    `UPDATE ego.estaciones
+     SET operatiu = $2, updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, nom, municipi, provincia, adreca, kw, ac_dc, tipus_connexio, is_manual, operatiu`,
+    [id, operatiu]
+  );
+  return result.rows[0] || null;
+}
 
 async function createManualStation(data, dbClient = pool) {
   const query = `

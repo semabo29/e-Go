@@ -3,7 +3,11 @@
  * https://docs.expo.dev/guides/color-schemes/
  */
 
+import { useMemo } from 'react';
+
 import { Colors } from '@/constants/theme';
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function useThemeColor(
@@ -12,11 +16,15 @@ export function useThemeColor(
 ) {
   const scheme = useColorScheme();
   const theme: 'light' | 'dark' = scheme === 'dark' ? 'dark' : 'light';
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
   const colorFromProps = props[theme];
 
   if (colorFromProps) {
     return colorFromProps;
-  } else {
-    return Colors[theme][colorName];
   }
+  if (theme === 'light' && (colorName === 'tint' || colorName === 'tabIconSelected')) {
+    return sem.accent;
+  }
+  return Colors[theme][colorName];
 }

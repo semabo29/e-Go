@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,13 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { appFetch } from '@/services/appFetch';
 import { getApiUrl } from '@/constants/api';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Station {
   id: number;
@@ -27,6 +32,7 @@ interface Station {
 }
 
 export default function MyFavoriteStationsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
   const [favorites, setFavorites] = useState<Station[]>([]);
@@ -34,6 +40,11 @@ export default function MyFavoriteStationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createFavoriteStyles(theme), [theme.isDark, theme.sem]);
+
+  // Obtenim els marges de l'àrea segura del mòbil
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (user) {
@@ -45,7 +56,7 @@ export default function MyFavoriteStationsScreen() {
     if (!user) return;
     try {
       setLoading(true);
-      const response = await fetch(`${getApiUrl()}/favorites?usuari_id=${user.id}`, {
+      const response = await appFetch(`/favorites?usuari_id=${user.id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -55,11 +66,11 @@ export default function MyFavoriteStationsScreen() {
         setFavorites(Array.isArray(data) ? data : []);
         setSelectedIds(new Set());
       } else {
-        Alert.alert('Error', 'No se pudieron cargar los favoritos');
+        Alert.alert(t('common.error'), t('favorites.loadError'));
       }
     } catch (error) {
       console.error('Error fetching favorites:', error);
-      Alert.alert('Error', 'Error de conexión');
+      Alert.alert(t('common.error'), t('favorites.connectionError'));
     } finally {
       setLoading(false);
     }
@@ -91,22 +102,24 @@ export default function MyFavoriteStationsScreen() {
 
   const removeSelected = async () => {
     if (selectedIds.size === 0) {
-      Alert.alert('Atención', 'Selecciona al menos una estación');
+      Alert.alert(t('common.attention'), t('favorites.selectOne'));
       return;
     }
 
     Alert.alert(
-      'Confirmar eliminación',
-      `¿Eliminar ${selectedIds.size} ${selectedIds.size > 1 ? 'estaciones' : 'estación'}?`,
+      t('favorites.confirmDeleteTitle'),
+      selectedIds.size > 1
+        ? t('favorites.confirmDeleteMany', { count: selectedIds.size })
+        : t('favorites.confirmDeleteOne'),
       [
-        { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
+        { text: t('common.cancel'), onPress: () => {}, style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           onPress: async () => {
             setDeleting(true);
             try {
               const deletePromises = Array.from(selectedIds).map((estacio_id) =>
-                fetch(`${getApiUrl()}/favorites`, {
+                appFetch('/favorites', {
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ usuari_id: user!.id, estacio_id }),
@@ -119,13 +132,13 @@ export default function MyFavoriteStationsScreen() {
               if (allSuccess) {
                 setFavorites(favorites.filter((f) => !selectedIds.has(f.id)));
                 setSelectedIds(new Set());
-                Alert.alert('Éxito', 'Estaciones eliminadas correctamente');
+                Alert.alert(t('common.success'), t('favorites.deletedOk'));
               } else {
-                Alert.alert('Error', 'Algunas estaciones no se pudieron eliminar');
+                Alert.alert(t('common.error'), t('favorites.partialDelete'));
               }
             } catch (error) {
               console.error('Error removing favorites:', error);
-              Alert.alert('Error', 'Error al eliminar estaciones');
+              Alert.alert(t('common.error'), t('favorites.deleteFailed'));
             } finally {
               setDeleting(false);
             }
@@ -138,10 +151,16 @@ export default function MyFavoriteStationsScreen() {
 
   // --- BOTONS D'ACCIÓ ---
 
-  const handleComoLlegar = () => {
-    // Aquest botó està temporalment desactivat
-    // L'altre desenvolupador implementarà aquesta funció
-    console.log('Botón "Cómo llegar" en desarrollo');
+  // Funció per demanar ruta des de la llista de favorits
+  const handleStartRoute = (station: Station) => {
+    router.navigate({
+      pathname: '/', // Això ens porta a la pantalla principal (index.tsx)
+      params: {
+        action: 'start_route_from_fav',
+        destLat: station.latitud,
+        destLng: station.longitud,
+      }
+    });
   };
 
   const handleCargarVehiculo = (station: Station) => {
@@ -175,21 +194,21 @@ export default function MyFavoriteStationsScreen() {
 
           <View style={styles.stationInfo}>
             <Text style={styles.stationName} numberOfLines={1}>
-              {item.nom || 'Estación sin nombre'}
+              {item.nom || t('home.stationNoName')}
             </Text>
-            {item.municipi && (
+            {Boolean(item.municipi) && (
               <Text style={styles.stationDetail} numberOfLines={1}>
-                <MaterialIcons name="location-on" size={14} color="#64748b" /> {item.municipi}
+                <MaterialIcons name="location-on" size={14} color={theme.mutedText} /> {item.municipi}
               </Text>
             )}
-            {item.adreca && (
+            {Boolean(item.adreca) && (
               <Text style={styles.stationDetail} numberOfLines={1}>
                 {item.adreca}
               </Text>
             )}
-            {item.kw && (
+            {Boolean(item.kw) && (
               <Text style={styles.stationDetail}>
-                <MaterialIcons name="bolt" size={14} color="#10b981" /> {item.kw} kW
+                <MaterialIcons name="bolt" size={14} color={theme.sem.accent} /> {item.kw} kW
               </Text>
             )}
           </View>
@@ -197,14 +216,14 @@ export default function MyFavoriteStationsScreen() {
 
         {/* --- FILA DE BOTONS D'ACCIÓ --- */}
         <View style={styles.actionButtonsRow}>
-          {/* Botó Cómo Llegar (Actualment inactiu) */}
+          {/* Botó Cómo Llegar */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.routeBtn]}
-            onPress={handleComoLlegar}
+            onPress={() => handleStartRoute(item)}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="directions" size={16} color="#10b981" />
-            <Text style={styles.routeBtnText}>Cómo llegar</Text>
+            <MaterialIcons name="directions" size={16} color={theme.sem.accent} />
+            <Text style={styles.routeBtnText}>{t('favorites.howToArrive')}</Text>
           </TouchableOpacity>
 
           {/* Botó Cargar Vehículo */}
@@ -214,7 +233,7 @@ export default function MyFavoriteStationsScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="bolt" size={16} color="#fff" />
-            <Text style={styles.chargeBtnText}>Cargar</Text>
+            <Text style={styles.chargeBtnText}>{t('favorites.charge')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -224,17 +243,17 @@ export default function MyFavoriteStationsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#10b981" />
-          <Text style={styles.loadingText}>Cargando estaciones...</Text>
+          <ActivityIndicator size="large" color={theme.sem.accent} />
+          <Text style={styles.loadingText}>{t('favorites.loading')}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -245,9 +264,9 @@ export default function MyFavoriteStationsScreen() {
           <MaterialIcons name="close" size={24} color="#1f2937" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Mis Estaciones de Carga</Text>
+          <Text style={styles.headerTitle}>{t('favorites.title')}</Text>
           <Text style={styles.headerSubtitle}>
-            {favorites.length} {favorites.length !== 1 ? 'estaciones' : 'estación'}
+            {t('favorites.headerSubtitle', { count: favorites.length })}
           </Text>
         </View>
       </View>
@@ -256,10 +275,8 @@ export default function MyFavoriteStationsScreen() {
       {favorites.length === 0 ? (
         <View style={styles.centerContent}>
           <MaterialIcons name="favorite-border" size={64} color="#cbd5e1" />
-          <Text style={styles.emptyText}>No tienes estaciones favoritas</Text>
-          <Text style={styles.emptySubtext}>
-            Añade estaciones a favoritos desde el mapa
-          </Text>
+          <Text style={styles.emptyText}>{t('favorites.empty')}</Text>
+          <Text style={styles.emptySubtext}>{t('favorites.emptyHint')}</Text>
         </View>
       ) : (
         <>
@@ -288,12 +305,12 @@ export default function MyFavoriteStationsScreen() {
                       : 'done'
                   }
                   size={20}
-                  color={selectedIds.size > 0 ? '#10b981' : '#cbd5e1'}
+                  color={selectedIds.size > 0 ? theme.sem.accent : theme.inputBorder}
                 />
                 <Text style={styles.selectAllText}>
                   {selectedIds.size === favorites.length
-                    ? 'Deseleccionar todo'
-                    : 'Seleccionar todo'}
+                    ? t('favorites.deselectAll')
+                    : t('favorites.selectAll')}
                 </Text>
               </TouchableOpacity>
 
@@ -309,7 +326,7 @@ export default function MyFavoriteStationsScreen() {
                     <>
                       <MaterialIcons name="delete" size={20} color="#fff" />
                       <Text style={styles.removeButtonText}>
-                        Eliminar ({selectedIds.size})
+                        {t('favorites.remove', { count: selectedIds.size })}
                       </Text>
                     </>
                   )}
@@ -319,23 +336,23 @@ export default function MyFavoriteStationsScreen() {
           )}
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createFavoriteStyles = (theme: ScreenTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.containerBg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surfaceElevated,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.border,
   },
   closeButton: {
     padding: 8,
@@ -347,11 +364,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0f172a',
+    color: theme.title,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: theme.mutedText,
     marginTop: 2,
   },
   centerContent: {
@@ -363,18 +380,18 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#64748b',
+    color: theme.mutedText,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#475569',
+    color: theme.secondaryText,
     marginTop: 16,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: theme.mutedText,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -385,11 +402,11 @@ const styles = StyleSheet.create({
 
   // --- NOU CONTENIDOR PRINCIPAL DE LA TARGETA ---
   stationItemWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     marginVertical: 6,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.border,
     overflow: 'hidden',
   },
   stationItemTop: {
@@ -399,8 +416,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   stationItemSelected: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#10b981',
+    backgroundColor: theme.sem.chipActiveBg,
+    borderColor: theme.sem.accent,
   },
   checkboxContainer: {
     marginRight: 12,
@@ -410,13 +427,13 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderColor: theme.inputBorder,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: theme.sem.accent,
+    borderColor: theme.sem.accent,
   },
   stationInfo: {
     flex: 1,
@@ -424,12 +441,12 @@ const styles = StyleSheet.create({
   stationName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0f172a',
+    color: theme.title,
     marginBottom: 6,
   },
   stationDetail: {
     fontSize: 13,
-    color: '#64748b',
+    color: theme.mutedText,
     marginBottom: 4,
   },
 
@@ -437,8 +454,8 @@ const styles = StyleSheet.create({
   actionButtonsRow: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    backgroundColor: '#f8fafc',
+    borderTopColor: theme.border,
+    backgroundColor: theme.chipBg,
   },
   actionBtn: {
     flex: 1,
@@ -450,15 +467,15 @@ const styles = StyleSheet.create({
   },
   routeBtn: {
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
+    borderRightColor: theme.border,
   },
   routeBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10b981',
+    color: theme.sem.accent,
   },
   chargeBtn: {
-    backgroundColor: '#10b981',
+    backgroundColor: theme.sem.accent,
   },
   chargeBtnText: {
     fontSize: 13,
@@ -468,9 +485,9 @@ const styles = StyleSheet.create({
 
   // --- RESTA D'ESTILS ---
   selectionBar: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surfaceElevated,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: theme.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -483,19 +500,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.chipBg,
     borderRadius: 6,
     gap: 8,
   },
   selectAllText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#475569',
+    color: theme.secondaryText,
   },
   removeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: theme.sem.error,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 6,

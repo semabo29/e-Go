@@ -1,0 +1,375 @@
+import { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Image,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  Dimensions,
+} from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
+
+const { width, height } = Dimensions.get('window');
+const LANE_WIDTH = (width*0.9) / 2;
+const CAR_SIZE = 50;
+const OBSTACLE_SIZE = 40;
+
+// Simple pseudo-random number generator (Linear Congruential Generator)
+let seed = Date.now();
+const pseudoRandom = () => {
+  seed = (seed * 1664525 + 1013904223) % 4294967296;
+  return seed / 4294967296;
+};
+
+interface Obstacle {
+  id: number;
+  lane: number;
+  y: number;
+}
+
+interface VoltixGameProps {
+  visible: boolean;
+  onClose: () => void;
+  theme: {
+    accent: string;
+    danger: string;
+    title: string;
+    surface: string;
+    overlay: string;
+  };
+}
+
+export default function Egg({ visible, onClose, theme }: VoltixGameProps) {
+  const { t } = useTranslation();
+  const [playerLane, setPlayerLane] = useState(0);
+  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+
+  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
+  const obstacleIdRef = useRef(0);
+  const gameStateRef = useRef({
+    score: 0,
+    lastObstacleScore: 0,
+    lastFrameTime: 0,
+    elapsedTime: 0,
+  });
+
+  const resetGame = () => {
+    setObstacles([]);
+    if(score > highScore) setHighScore(score);
+    setScore(0);
+    setGameOver(false);
+    setGameStarted(true);
+    obstacleIdRef.current = 0;
+    gameStateRef.current = {
+      score: 0,
+      lastObstacleScore: 0,
+      lastFrameTime: Date.now(),
+      elapsedTime: 0,
+    };
+  };
+
+  // Col·lisió
+  const checkCollision = (obstacles: Obstacle[], playerLane: number, playerY: number): boolean => {
+    for (const obs of obstacles) {
+      if (
+        obs.y + OBSTACLE_SIZE > playerY &&
+        obs.y < playerY + CAR_SIZE &&
+        obs.lane === playerLane
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const updateObstacles = (prev: Obstacle[]): Obstacle[] => {
+    const baseSpeed = 8 + (gameStateRef.current.score / 150); // Aumenta velocitat gradualment
+    const moved = prev.map(obs => ({ ...obs, y: obs.y + baseSpeed }));
+    const filtered = moved.filter(obs => obs.y < height + OBSTACLE_SIZE);
+
+    // Obstacle mínim cada 20 punts
+    if (gameStateRef.current.score - gameStateRef.current.lastObstacleScore >= 20 && pseudoRandom() < 0.05) {
+      gameStateRef.current.lastObstacleScore = gameStateRef.current.score;
+      const newLane = pseudoRandom() < 0.5 ? 0 : 1;
+      filtered.push({
+        id: obstacleIdRef.current++,
+        lane: newLane,
+        y: -150, // Per radere del header de la finestra
+      });
+    }
+
+    return filtered;
+  };
+
+  const startGameLoop = () => {
+    if (gameLoopRef.current) {
+      clearInterval(gameLoopRef.current);
+    }
+
+    gameStateRef.current.lastFrameTime = Date.now();
+
+    gameLoopRef.current = setInterval(() => {
+      const now = Date.now();
+      const deltaTime = now - gameStateRef.current.lastFrameTime;
+      gameStateRef.current.lastFrameTime = now;
+      gameStateRef.current.elapsedTime += deltaTime;
+
+      // Incrementar puntuació depenent del temps que ha passat (1 punt cada ~33ms = 30 FPS)
+      const pointsToAdd = Math.floor(gameStateRef.current.elapsedTime / 33);
+      if (pointsToAdd > 0) {
+        gameStateRef.current.elapsedTime -= pointsToAdd * 33;
+        gameStateRef.current.score += pointsToAdd;
+        setScore(gameStateRef.current.score);
+      }
+
+      setObstacles(updateObstacles);
+    }, 16); // ~60 FPS
+  };
+
+  useEffect(() => {
+    if (visible && gameStarted && !gameOver) {
+      startGameLoop();
+    } else if (gameLoopRef.current) {
+        clearInterval(gameLoopRef.current);
+    }
+
+    return () => {
+      if (gameLoopRef.current) {
+        clearInterval(gameLoopRef.current);
+      }
+    };
+  }, [visible, gameStarted, gameOver]);
+
+  useEffect(() => {
+    if (!gameStarted || gameOver) return;
+
+    const playerY = (0.8 * height) - 100 - CAR_SIZE;
+
+    if (checkCollision(obstacles, playerLane, playerY)) {
+      setGameOver(true);
+      if (gameLoopRef.current) {
+        clearInterval(gameLoopRef.current);
+      }
+    }
+  }, [obstacles, playerLane, gameStarted, gameOver]);
+
+  const handlePress = () => { //Al premer la finestra
+    if (gameOver) {
+      resetGame();
+    } else if (!gameStarted) {
+      resetGame();
+    } else {
+      setPlayerLane(prev => prev === 0 ? 1 : 0);
+    }
+  };
+
+  const handleClose = () => {
+    if (gameLoopRef.current) {
+      clearInterval(gameLoopRef.current);
+    }
+    setGameStarted(false);
+    setGameOver(false);
+    onClose();
+  };
+
+  // Exportar funcions per a testing
+  (Egg as any).resetGame = resetGame;
+  (Egg as any).startGameLoop = startGameLoop;
+  (Egg as any).handlePress = handlePress;
+  (Egg as any).handleClose = handleClose;
+  (Egg as any).checkCollision = checkCollision;
+  (Egg as any).updateObstacles = updateObstacles;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={handleClose}
+    >
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.gameContainer, { backgroundColor: theme.surface }]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[styles.score, { color: theme.title }]}>{t('egg.score')}: {score}</Text>
+            <Text style={[styles.highScore, { color: theme.title }]}>{t('egg.highScore')}: {highScore}</Text>
+            <TouchableOpacity testID="close-button" onPress={handleClose} style={styles.closeButton}>
+              <MaterialIcons name="close" size={24} color={theme.title} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Game Area */}
+          <TouchableOpacity
+            testID="game-area"
+            style={styles.gameArea}
+            onPress={handlePress}
+            activeOpacity={1}
+          >
+            {/* Lane dividers */}
+            <View style={[styles.laneDivider, { left: LANE_WIDTH }]} />
+
+            {/* Obstacles */}
+            {obstacles.map(obs => (
+              <View
+                key={obs.id}
+                style={[
+                  styles.obstacle,
+                  {
+                    left: obs.lane === 0 ? LANE_WIDTH / 2 - OBSTACLE_SIZE / 2 : LANE_WIDTH + LANE_WIDTH / 2 - OBSTACLE_SIZE / 2,
+                    top: obs.y,
+                    backgroundColor: theme.danger,
+                  },
+                ]}
+              >
+                <MaterialIcons name="oil-barrel" size={24} color="#fff" />
+              </View>
+            ))}
+
+            {/* Player Car */}
+            <View
+              style={[
+                styles.car,
+                {
+                  left: playerLane === 0 ? LANE_WIDTH / 2 - CAR_SIZE / 2 : LANE_WIDTH + LANE_WIDTH / 2 - CAR_SIZE / 2,
+                  bottom: 15,
+                },
+              ]}
+            >
+              <Image 
+                source={require('../assets/images/voltix.png')} 
+                style={{ width: '135%', height: '135%' }} 
+                resizeMode="contain"
+                fadeDuration={0}
+              />
+            </View>
+
+            {/* Start Screen */}
+            {!gameStarted && (
+              <View style={styles.overlay}>
+                <Text style={[styles.overlayTitle, { color: theme.title }]}>VOLTIX</Text>
+                <Text style={[styles.overlayText, { color: theme.title }]}>
+                  {t('egg.tap')}
+                </Text>
+                <Text style={[styles.overlayText, { color: theme.title }]}>
+                  {t('egg.avoid')}
+                </Text>
+                <TouchableOpacity style={[styles.startButton, { backgroundColor: theme.accent }]} onPress={handlePress}>
+                  <Text style={styles.startButtonText}>{t('egg.start')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Game Over Screen */}
+            {gameOver && (
+              <View style={styles.overlay}>
+                <Text style={[styles.overlayTitle, { color: theme.danger }]}>{t('egg.gameOver')}</Text>
+                <Text style={[styles.overlayText, { color: theme.title }]}>
+                  {t('egg.score')}: {score}
+                </Text>
+                <TouchableOpacity style={[styles.startButton, { backgroundColor: theme.accent }]} onPress={handlePress}>
+                  <Text style={styles.startButtonText}>{t('egg.playAgain')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gameContainer: {
+    width: width * 0.9,
+    height: height * 0.8,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  score: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  highScore: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  gameArea: {
+    flex: 1,
+    position: 'relative',
+  },
+  laneDivider: {
+    position: 'absolute',
+    width: 2,
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  car: {
+    position: 'absolute',
+    width: CAR_SIZE,
+    height: CAR_SIZE,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  obstacle: {
+    position: 'absolute',
+    width: OBSTACLE_SIZE,
+    height: OBSTACLE_SIZE,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.54)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  overlayTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  overlayText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  startButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -6,6 +6,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
+
+import { getSemanticColors } from '@/constants/accessibilityColors';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
 
 interface StartChargingButtonProps {
   stationId: number;
@@ -24,6 +28,9 @@ export function StartChargingButton({
   onError,
 }: StartChargingButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
 
   const handleStartPress = async () => {
     setIsLoading(true);
@@ -34,7 +41,7 @@ export function StartChargingButton({
       await onStartCharging();
 
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al iniciar carga';
+      const message = error instanceof Error ? error.message : t('startCharging.errorGeneric');
       onError(message);
     } finally {
       setIsLoading(false);
@@ -43,7 +50,7 @@ export function StartChargingButton({
 
   return (
     <TouchableOpacity
-      style={[styles.button, isCharging && styles.buttonDisabled]}
+      style={[styles.button, { backgroundColor: sem.accent }, isCharging && styles.buttonDisabled]}
       onPress={handleStartPress}
       disabled={isCharging || isLoading}
       activeOpacity={0.8}
@@ -53,7 +60,7 @@ export function StartChargingButton({
       ) : (
         <>
           <MaterialIcons name="bolt" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Cargar Vehículo</Text>
+          <Text style={styles.buttonText}>{t('startCharging.label')}</Text>
         </>
       )}
     </TouchableOpacity>
@@ -65,7 +72,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10b981',
     paddingVertical: 14,
     borderRadius: 8,
     marginBottom: 8,

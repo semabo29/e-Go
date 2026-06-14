@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type Href, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Modal,
@@ -11,24 +12,27 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  adminPanelScrollBase,
+  adminPanelSectionHeaderBase,
+  createAdminPanelSharedStyles,
+} from '@/constants/adminPanelLayoutStyles';
+import type { ScreenTheme } from '@/constants/screenTheme';
+import { useScreenTheme } from '@/hooks/use-screen-theme';
 import { ManualStationCard } from '@/components/stations/ManualStationCard';
 import { ManualStation } from '@/components/stations/types';
+import { fetchAdminSession, type AdminSessionPayload } from '@/lib/adminSession';
 import { clearPrivilegedSession, getPrivilegedToken, privilegedFetch } from '@/services/privilegedAuth';
 import { deleteAdminStation, listAdminStations } from '@/services/stationModeration';
 
-type AdminPayload = {
-  sub: number;
-  email: string;
-  role: string;
-  iat?: number;
-  exp?: number;
-};
-
 export default function AdminHomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { setUser } = useAuth();
+  const theme = useScreenTheme();
+  const styles = useMemo(() => createAdminStyles(theme), [theme.isDark, theme.sem]);
   const [loading, setLoading] = useState(true);
-  const [admin, setAdmin] = useState<AdminPayload | null>(null);
+  const [admin, setAdmin] = useState<AdminSessionPayload | null>(null);
   const [error, setError] = useState('');
   const [stations, setStations] = useState<ManualStation[]>([]);
   const [loadingStations, setLoadingStations] = useState(false);
@@ -38,22 +42,19 @@ export default function AdminHomeScreen() {
     (async () => {
       setLoading(true);
       setError('');
+      const session = await fetchAdminSession({
+        noSession: t('adminHome.noSession'),
+        unauthorized: t('adminHome.unauthorized'),
+        connectionError: t('adminHome.connectionError'),
+      });
+      if (!session.ok) {
+        setError(session.error);
+        setLoading(false);
+        return;
+      }
+      setAdmin(session.admin);
       try {
-        const token = await getPrivilegedToken('admin');
-        if (!token) {
-          setError('No hay sesion admin');
-          return;
-        }
-        const res = await privilegedFetch('admin', '/admin/me');
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'No autorizado');
-          return;
-        }
-        setAdmin(data.admin);
         await loadMyStations();
-      } catch (err) {
-        setError('No se pudo conectar con el servidor');
       } finally {
         setLoading(false);
       }
@@ -70,7 +71,7 @@ export default function AdminHomeScreen() {
     try {
       setStations(await listAdminStations());
     } catch (err) {
-      setError('No se pudo conectar con el servidor');
+      setError(t('adminHome.connectionError'));
     } finally {
       setLoadingStations(false);
     }
@@ -79,7 +80,7 @@ export default function AdminHomeScreen() {
   async function deleteStation(id: number) {
     const token = await getPrivilegedToken('admin');
     if (!token) {
-      setError('No hay sesion admin');
+      setError(t('adminHome.noSession'));
       return;
     }
     setLoadingStations(true);
@@ -87,12 +88,12 @@ export default function AdminHomeScreen() {
       const res = await deleteAdminStation(id);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'No se pudo borrar la estacion');
+        setError(data.error || t('adminHome.deleteStationError'));
         return;
       }
       setStations((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
-      setError('No se pudo conectar con el servidor');
+      setError(t('adminHome.connectionError'));
     } finally {
       setLoadingStations(false);
     }
@@ -101,41 +102,68 @@ export default function AdminHomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Admin Home</Text>
+        <Text style={styles.title}>{t('adminHome.title')}</Text>
 
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#111827" />
-            <Text style={styles.muted}>Verificando token…</Text>
+            <Text style={styles.muted}>{t('adminHome.verifying')}</Text>
           </View>
         ) : error ? (
           <>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/admin-login')}>
-              <Text style={styles.primaryButtonText}>Volver al login admin</Text>
+              <Text style={styles.primaryButtonText}>{t('adminHome.backLogin')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>{t('adminHome.email')}</Text>
               <Text style={styles.infoValue}>{admin?.email}</Text>
-            </View>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Rol</Text>
-              <Text style={styles.infoValue}>{admin?.role}</Text>
             </View>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => router.push('/admin-station-new' as Href)}
             >
-              <Text style={styles.primaryButtonText}>Anadir estacion manual</Text>
+              <Text style={styles.primaryButtonText}>{t('adminHome.addStation')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButtonAlt}
               onPress={() => router.push('/admin-requests' as Href)}
             >
-              <Text style={styles.primaryButtonAltText}>Revisar solicitudes pendientes</Text>
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.reviewRequests')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-users' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel={t('adminHome.userModerationA11y')}
+            >
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.userModeration')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-incidencias' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel={t('adminHome.pendingIncidentsA11y')}
+            >
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.pendingIncidents')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-incidencias-history' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel={t('adminHome.incidentHistoryA11y')}
+            >
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.incidentHistory')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButtonAlt}
+              onPress={() => router.push('/admin-stations' as Href)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryButtonAltText}>{t('adminHome.manageStations')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
@@ -146,39 +174,39 @@ export default function AdminHomeScreen() {
                     const userRes = await privilegedFetch('admin', '/admin/user');
                     const userData = await userRes.json();
                     if (!userRes.ok || !userData.user) {
-                      setError(userData.error || 'No se pudo cargar el usuario');
+                      setError(userData.error || t('adminHome.loadUserError'));
                       return;
                     }
                     setUser(userData.user);
                     router.replace('/(tabs)');
                   } catch (err) {
-                    setError('No se pudo conectar con el servidor');
+                    setError(t('adminHome.connectionError'));
                   }
                 })();
               }}
             >
-              <Text style={styles.primaryButtonText}>Ir a la aplicacion</Text>
+              <Text style={styles.primaryButtonText}>{t('adminHome.goToApp')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={logoutAdmin}>
-              <Text style={styles.secondaryButtonText}>Cerrar sesion admin</Text>
+              <Text style={styles.secondaryButtonText}>{t('adminHome.logout')}</Text>
             </TouchableOpacity>
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Tus estaciones manuales</Text>
+                <Text style={styles.sectionTitle}>{t('adminHome.manualStations')}</Text>
                 <TouchableOpacity
                   onPress={loadMyStations}
                   disabled={loadingStations}
                 >
                   <Text style={styles.sectionLink}>
-                    {loadingStations ? 'Actualizando…' : 'Actualizar'}
+                    {loadingStations ? t('adminHome.updating') : t('adminHome.refresh')}
                   </Text>
                 </TouchableOpacity>
               </View>
               {loadingStations ? (
-                <Text style={styles.muted}>Cargando estaciones…</Text>
+                <Text style={styles.muted}>{t('adminHome.loadingStations')}</Text>
               ) : stations.length === 0 ? (
-                <Text style={styles.muted}>No has creado estaciones manuales.</Text>
+                <Text style={styles.muted}>{t('adminHome.noManualStations')}</Text>
               ) : (
                 stations.map((s) => (
                   <ManualStationCard
@@ -223,14 +251,14 @@ export default function AdminHomeScreen() {
       >
         <View style={styles.confirmBackdrop}>
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>Borrar estacion</Text>
-            <Text style={styles.confirmText}>Esta accion no se puede deshacer.</Text>
+            <Text style={styles.confirmTitle}>{t('adminHome.deleteStationTitle')}</Text>
+            <Text style={styles.confirmText}>{t('adminHome.deleteStationBody')}</Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity
                 style={styles.confirmCancel}
                 onPress={() => setConfirmDeleteId(null)}
               >
-                <Text style={styles.confirmCancelText}>Cancelar</Text>
+                <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmDelete}
@@ -241,7 +269,7 @@ export default function AdminHomeScreen() {
                   setConfirmDeleteId(null);
                 }}
               >
-                <Text style={styles.confirmDeleteText}>Borrar</Text>
+                <Text style={styles.confirmDeleteText}>{t('adminHome.delete')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -251,42 +279,21 @@ export default function AdminHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    paddingVertical: 40,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  title: {
+const createAdminStyles = (theme: ScreenTheme) =>
+  Object.assign(
+    {},
+    createAdminPanelSharedStyles(theme),
+    StyleSheet.create({
+      scroll: {
+        ...adminPanelScrollBase,
+        justifyContent: 'center',
+      },
+      title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: theme.title,
     textAlign: 'center',
     marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 22,
   },
   centered: {
     alignItems: 'center',
@@ -295,47 +302,29 @@ const styles = StyleSheet.create({
   },
   muted: {
     fontSize: 14,
-    color: '#6b7280',
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 12,
+    color: theme.mutedText,
   },
   infoBox: {
     marginBottom: 12,
   },
   infoLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: theme.mutedText,
   },
   infoValue: {
     fontSize: 16,
-    color: '#111827',
-    fontWeight: '600',
-  },
-  primaryButton: {
-    marginTop: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: theme.title,
     fontWeight: '600',
   },
   primaryButtonAlt: {
     marginTop: 10,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: theme.secondaryBtnBg,
     alignItems: 'center',
   },
   primaryButtonAltText: {
-    color: '#111827',
+    color: theme.secondaryBtnText,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -343,7 +332,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#ef4444',
+    backgroundColor: theme.sem.error,
     alignItems: 'center',
   },
   secondaryButtonText: {
@@ -354,71 +343,18 @@ const styles = StyleSheet.create({
   section: {
     marginTop: 24,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: theme.border,
     paddingTop: 16,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  confirmCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  confirmText: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginBottom: 18,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  confirmCancel: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  confirmCancelText: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '600',
+    ...adminPanelSectionHeaderBase,
+    gap: 8,
   },
   confirmDelete: {
     flex: 1,
     paddingVertical: 11,
     borderRadius: 10,
-    backgroundColor: '#dc2626',
+    backgroundColor: theme.sem.error,
     alignItems: 'center',
   },
   confirmDeleteText: {
@@ -426,4 +362,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-});
+    }),
+  ) as any;

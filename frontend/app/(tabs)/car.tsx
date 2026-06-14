@@ -1,22 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Platform,
   ScrollView,
-  Keyboard,
-  TouchableWithoutFeedback,
   Alert,
   Modal
 } from 'react-native';
-import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, Stack } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { appFetch } from '@/services/appFetch';
 import { getApiUrl } from '@/constants/api';
+import { getSemanticColors } from '@/constants/accessibilityColors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorblindPreference } from '@/contexts/ColorblindPreferenceContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
+import Egg from '../egg';
 
 interface Vehicle {
   usuari: number;
@@ -28,15 +32,48 @@ interface Vehicle {
 
 
 export default function VehiclesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const colorScheme = useColorScheme();
+  const { colorblindFriendly } = useColorblindPreference();
+  const sem = useMemo(() => getSemanticColors(colorblindFriendly), [colorblindFriendly]);
+  const themeIndex = colorScheme === 'dark' ? 1 : 0;
 
-  // Estats per guardar els valors del formulari abans de guardar el vehicle
-  const [nom, setNom] = useState((params.potencia as string) || '');
-  const [potencia, setPotencia] = useState((params.potencia as string) || '');
-  const [connectorType, setConnectorType] = useState((params.connectorType as string) || '');
-  const [acDc, setAcDc] = useState((params.ac_dc as string) || '');
+  const getThemeColor = (values: [string, string]) => values[themeIndex];
+  const theme = {
+    containerBg: getThemeColor(['#f8fafc', '#0f172a']),
+    surface: getThemeColor(['#ffffff', '#1e293b']),
+    border: getThemeColor(['#e2e8f0', '#334155']),
+    title: getThemeColor(['#1f2937', '#f1f5f9']),
+    secondaryText: getThemeColor(['#475569', '#cbd5e1']),
+    mutedText: getThemeColor(['#64748b', '#94a3b8']),
+    inputBg: getThemeColor(['#ffffff', '#0f172a']),
+    inputBorder: getThemeColor(['#cbd5e1', '#475569']),
+    chipBg: getThemeColor(['#f1f5f9', '#334155']),
+    chipBorder: getThemeColor(['#e2e8f0', '#475569']),
+    chipText: getThemeColor(['#64748b', '#cbd5e1']),
+    typeBtnBg: getThemeColor(['#f1f5f9', '#334155']),
+    overlay: getThemeColor(['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.55)']),
+    modalCloseBg: getThemeColor(['#f1f5f9', '#334155']),
+    modalCloseIcon: getThemeColor(['#94a3b8', '#cbd5e1']),
+    badgeBg: sem.badgeBg,
+    badgeIcon: sem.badgeIcon,
+    badgeText: sem.badgeLabel,
+    textPrimaryInverse: '#ffffff',
+    accent: sem.accent,
+    danger: sem.error,
+    chipHighlightBg: sem.chipActiveBg,
+    placeholder: getThemeColor(['#94a3b8', '#94a3b8']),
+  };
+  const styles = useMemo(() => createStyles(theme), [colorScheme, colorblindFriendly]);
+
+  // Estats per a guardar els valors del formulari
+  const [nom, setNom] = useState('');
+  const [potencia, setPotencia] = useState('');
+  const [connectorType, setConnectorType] = useState('');
+  const [acDc, setAcDc] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showEgg, setShowEgg] = useState(false);
   
   // Llista de vehicles
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -51,10 +88,9 @@ export default function VehiclesScreen() {
   const fetchVehicles = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`${getApiUrl()}/car?usuari_id=${user.id}`); // vehicles d'un usuari
+      const response = await appFetch(`/car?usuari_id=${user.id}`); // vehicles d'un usuari
       const data = await response.json();
       setVehicles(Array.isArray(data) ? data : []);
-      console.log(data);
     } catch (error) {
       console.error("Error cargando vehiculos:", error);
     }
@@ -72,14 +108,22 @@ export default function VehiclesScreen() {
     // Netegem l'error abans de tornar a comprovar
     setErrorMessage('');
     
+	  if(nom === "Voltix") {
+      setShowEgg(true);
+      setNom('');
+      setPotencia('');
+      setConnectorType('');
+      setAcDc('');
+      return;
+    }
+
     if ((nom === '') || (potencia === '') || (connectorType === '') || (acDc === '')) {
-	setErrorMessage('Los vehículos deben estar completamente especificados (nombre, potencia, tipo de conector y de corriente)');
+	setErrorMessage(t('car.validationIncomplete'));
 	return;
     }
-	  
     try {
       const method = 'POST';
-      const res = await fetch(`${getApiUrl()}/car`, {
+      const res = await appFetch('/car', {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuari_id: user!.id, v_nom: nom, v_potencia: potencia, v_conector: connectorType, v_corrent: acDc}),
@@ -88,14 +132,13 @@ export default function VehiclesScreen() {
       if (res.ok) {
         try {
           // És fetchvehicles() però fa la cerca després
-          const response = await fetch(`${getApiUrl()}/car?usuari_id=${user!.id}`);
+          const response = await appFetch(`/car?usuari_id=${user!.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
-          console.log(data);
           router.navigate({
             pathname: '/',
             params: {// Paràmetres de la cerca
-              minKw: Number(potencia) - 20, // L'òptim és 20 kW menys de la potencia màxima
+              maxKw: Number(potencia),
               ac_dc: acDc,
               connectorType: connectorType
             }
@@ -108,11 +151,11 @@ export default function VehiclesScreen() {
           console.error("Error cargando vehiculos:", error);
         }
       } else {
-        Alert.alert("Error", "No se ha podido guardar el vehículo");
+        Alert.alert(t('common.error'), t('car.saveError'));
       }
     } catch (e) {
       console.error('Error al guardar vehiculo', e);
-      Alert.alert("Error", "Error de conexión");
+      Alert.alert(t('common.error'), t('car.connectionError'));
     }
   };
 
@@ -123,7 +166,7 @@ export default function VehiclesScreen() {
 	  
     try {
       const method = 'DELETE';
-      const res = await fetch(`${getApiUrl()}/car`, {
+      const res = await appFetch('/car', {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuari_id: user!.id, v_nom: nomV }),
@@ -132,30 +175,27 @@ export default function VehiclesScreen() {
       if (res.ok) {
         try {
           // És fetchvehicles()
-          const response = await fetch(`${getApiUrl()}/car?usuari_id=${user!.id}`);
+          const response = await appFetch(`/car?usuari_id=${user!.id}`);
           const data = await response.json();
           setVehicles(Array.isArray(data) ? data : []);
-          console.log(data);
         } catch (error) {
           console.error("Error cargando vehiculos:", error);
         }
       } else {
-        Alert.alert("Error", "No se ha podido eliminar el vehículo");
+        Alert.alert(t('common.error'), t('car.deleteError'));
       }
     } catch (e) {
       console.error('Error al eliminar vehiculo', e);
-      Alert.alert("Error", "Error de conexión");
+      Alert.alert(t('common.error'), t('car.connectionError'));
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="garage-screen-root">
       <Stack.Screen options={{ headerShown: false }} />
       {/* Capçalera */}
       <View style={styles.header}>
-				<Text></Text>
-        <Text style={styles.titleHeader}>Garaje</Text>
-        <Text></Text>
+        <Text style={styles.titleHeader}>{t('car.garage')}</Text>
       </View>
 
       <ScrollView
@@ -165,151 +205,155 @@ export default function VehiclesScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {vehicles.map((v) => { // Llistat de vehicles
+        {vehicles.map((v) => {
           return (
             <View key={v.nom} style={styles.infoPanel}>
-				      <Text style={styles.title}>
-				        {v.nom}
-				      </Text>
-              {/* Informació del vahicle */}
+              <Text style={styles.title}>{v.nom}</Text>
+              {/* Informació del vehicle */}
               <View style={styles.infoBadgeRow}>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="bolt" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.kw} kW</Text>
+                <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
+                  <MaterialIcons name="bolt" size={14} color={theme.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: theme.badgeText }]}>{v.kw} kW</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="ev-station" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.ac_dc}</Text>
+                <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
+                  <MaterialIcons name="ev-station" size={14} color={theme.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: theme.badgeText }]}>{v.ac_dc}</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: '#ecfdf5' }]}>
-                  <MaterialIcons name="electrical-services" size={14} color="#10b981" />
-                  <Text style={[styles.badgeText, { color: '#047857' }]}>{v.tipus_connexio}</Text>
+                <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
+                  <MaterialIcons name="electrical-services" size={14} color={theme.badgeIcon} />
+                  <Text style={[styles.badgeText, { color: theme.badgeText }]}>{v.tipus_connexio}</Text>
                 </View>
               </View>
-			
-              <TouchableOpacity style={styles.applyBtn} onPress={() => router.navigate({
-                        pathname: '/',
-                        params: { // Filtre en el mapa
-                            minKw: Number(v.kw) - 20,
-                            ac_dc: v.ac_dc,
-                            connectorType: v.tipus_connexio
-                        }
-                  })} activeOpacity={0.8}>
-                <Text style={styles.applyBtnText}>Buscar estaciones</Text>
+              <TouchableOpacity
+                style={styles.applyBtn}
+                onPress={() => router.navigate({
+                  pathname: '/',
+                  params: {
+                    maxKw: Number(v.kw),
+                    ac_dc: v.ac_dc,
+                    connectorType: v.tipus_connexio
+                  }
+                })}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.applyBtnText}>{t('car.searchStations')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteCar(v.nom)} activeOpacity={0.8}>
-                <Text style={styles.deleteBtnText}>Eliminar vehículo</Text>
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => deleteCar(v.nom)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.deleteBtnText}>{t('car.deleteVehicle')}</Text>
               </TouchableOpacity>
             </View>
           );
         })}
         <View style={styles.lastinfoPanel}>
-        	{/* Això fa que si toques qualsevol espai buit, s'amagui el teclat */}
-        	<TouchableWithoutFeedback onPress={() => Keyboard.dismiss}>
-        	  <View style={{flex: 1}}>
-            
-        	  	<Text style={styles.titleNew}>
-        	  	  Nuevo vehículo
-        	  	</Text>
+          <Text style={styles.titleNew}>{t('car.newVehicle')}</Text>
 
-				      {/* Input Nom */}
-				      <View style={styles.inputGroup}>
-				        <Text style={styles.label}>Nombre</Text>
-				        <TextInput
-				          style={[
-				            styles.input, focusedInput === 'nom' && styles.inputFocused,
-				            Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
-				          ]}
-				          keyboardType="default"
-				          cursorColor="#10b981"
-				          value={nom}
-				          onChangeText={setNom}
-				          maxLength={50}
-				          onFocus={() => setFocusedInput('nom')}
-				          onBlur={() => setFocusedInput(null)}
-				        />
-				      </View>
+          {/* Input Nom */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('car.name')}</Text>
+            <TextInput
+              testID="vehicle-name-input"
+              style={[
+                styles.input, focusedInput === 'nom' && styles.inputFocused,
+                Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
+              ]}
+              keyboardType="default"
+              cursorColor={theme.accent}
+              value={nom}
+              onChangeText={setNom}
+              maxLength={50}
+              onFocus={() => setFocusedInput('nom')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
 
-				      {/* Input Màxim */}
-				      <View style={styles.inputGroup}>
-				        <Text style={styles.label}>Potencia máxima (kW)</Text>
-				        <TextInput
-				          style={[
-				            styles.input, focusedInput === 'max' && styles.inputFocused,
-				            Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
-				          ]}
-				          placeholderTextColor="#94a3b8"
-				          keyboardType="numeric"
-				          cursorColor="#10b981"
-				          value={potencia}
-				          onChangeText={setPotencia}
-				          maxLength={4}
-				          onFocus={() => setFocusedInput('max')}
-				          onBlur={() => setFocusedInput(null)}
-				        />
-				      </View>
+          {/* Input Màxim */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('car.maxPower')}</Text>
+            <TextInput
+              testID="vehicle-power-input"
+              style={[
+                styles.input, focusedInput === 'max' && styles.inputFocused,
+                Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}
+              ]}
+              placeholderTextColor={theme.placeholder}
+              keyboardType="numeric"
+              cursorColor={theme.accent}
+              value={potencia}
+              onChangeText={setPotencia}
+              maxLength={4}
+              onFocus={() => setFocusedInput('max')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
 
-				      {/*Secció Tipo de corriente*/}
-				      <View style={styles.inputGroup}>
-				        <Text style={styles.label}>Tipo de Corriente</Text>
-				        <View style={{ flexDirection: 'row', gap: 12 }}>
-				          {['AC', 'DC'].map((type) => (
-				            <TouchableOpacity
-				              key={type}
-				              style={[
-				                styles.typeBtn,
-				                acDc === type && styles.typeBtnActive
-				              ]}
-				              // Si ja estava seleccionat i hi tornem a clicar, el desmarquem
-				              onPress={() => setAcDc(acDc === type ? '' : type)}
-				              activeOpacity={0.8}
-				            >
-				              <Text style={[
-				                styles.typeBtnText,
-				                acDc === type && styles.typeBtnTextActive
-				              ]}>
-				                {type === 'AC' ? 'AC' : 'DC'}
-				              </Text>
-				            </TouchableOpacity>
-				          ))}
-				        </View>
-				      </View>
+          {/* Tipus de Corrent */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('car.currentType')}</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              {['AC', 'DC'].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  testID={`current-type-${type.toLowerCase()}`}
+                  style={[
+                    styles.typeBtn,
+                    acDc === type && styles.typeBtnActive
+                  ]}
+                  onPress={() => setAcDc(acDc === type ? '' : type)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.typeBtnText,
+                    acDc === type && styles.typeBtnTextActive
+                  ]}>
+                    {type === 'AC' ? 'AC' : 'DC'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-				      {/* Secció Tipus de Connector */}
-				      <View style={styles.inputGroup}>
-				        <Text style={styles.label}>Tipo de Conector</Text>
-				        <View style={styles.chipContainer}>
-				          {CONNECTOR_TYPES.map((type) => (
-				            <TouchableOpacity
-				              key={type}
-				              style={[
-				                styles.chip,
-				                connectorType === type && styles.chipActive
-				              ]}
-				              // Si clica el que ja està actiu, el desmarca (el deixa buit)
-				              onPress={() => setConnectorType(connectorType === type ? '' : type)}
-				              activeOpacity={0.7}
-				            >
-				              <Text style={[
-				                styles.chipText,
-				                connectorType === type && styles.chipTextActive
-				              ]}>
-			                  {type}
-			                </Text>
-			              </TouchableOpacity>
-			            ))}
-		          	</View>
-		       	 </View>
-		     	 </View>
-		    	</TouchableWithoutFeedback>
-		    	{/* Guardar vehicle */}
-		    	<View style={styles.footer}>
-		    	  <TouchableOpacity style={styles.applyBtn} onPress={saveCar} activeOpacity={0.8}>
-		    	    <Text style={styles.applyBtnText}>Guardar vehículo</Text>
-		    	  </TouchableOpacity>
-		    	</View>
-		  	</View>
-			</ScrollView> {/*<-- Final de content*/}
+          {/* Tipus de Connector */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('car.connectorType')}</Text>
+            <View style={styles.chipContainer}>
+              {CONNECTOR_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  testID={`connector-type-${type.replace(/\s+/g, '-').toLowerCase()}`}
+                  style={[
+                    styles.chip,
+                    connectorType === type && styles.chipActive
+                  ]}
+                  onPress={() => setConnectorType(connectorType === type ? '' : type)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.chipText,
+                    connectorType === type && styles.chipTextActive
+                  ]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <TouchableOpacity
+              testID="garage-save-vehicle-button"
+              style={styles.applyBtn}
+              onPress={saveCar}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.applyBtnText}>{t('car.saveVehicle')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
 
       {/* --- POP-UP FLOTANT D'ERROR --- */}
       <Modal
@@ -323,42 +367,67 @@ export default function VehiclesScreen() {
 
             {/* Capçalera del pop-up amb la icona i el text */}
             <View style={styles.modalContent}>
-              <MaterialIcons name="error" size={28} color="#ef4444" />
+              <MaterialIcons name="error" size={28} color={theme.danger} />
               <Text style={styles.modalText}>{errorMessage}</Text>
             </View>
 
             {/* Botó per tancar / Creueta */}
             <TouchableOpacity
+              testID="modal-close-button"
               style={styles.modalCloseButton}
               onPress={() => setErrorMessage('')}
             >
-              <MaterialIcons name="close" size={24} color="#94a3b8" />
+              <MaterialIcons name="close" size={24} color={theme.modalCloseIcon} />
             </TouchableOpacity>
 
           </View>
         </View>
       </Modal>
+      <Egg
+        visible={showEgg}
+        onClose={() => setShowEgg(false)}
+        theme={theme}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: {
+  containerBg: string;
+  surface: string;
+  border: string;
+  title: string;
+  secondaryText: string;
+  mutedText: string;
+  inputBg: string;
+  inputBorder: string;
+  chipBg: string;
+  chipBorder: string;
+  chipText: string;
+  typeBtnBg: string;
+  overlay: string;
+  modalCloseBg: string;
+  textPrimaryInverse: string;
+  accent: string;
+  danger: string;
+  chipHighlightBg: string;
+}) => StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc', // Fons clar
+    backgroundColor: theme.containerBg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.border,
   },
   backButton: {
     padding: 4,
@@ -366,18 +435,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: theme.title,
   },
   titleHeader: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: theme.title,
     marginTop: 20,
   },
   titleNew: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: theme.title,
     marginBottom: 16,
   },
   content: {
@@ -386,7 +455,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    color: '#64748b',
+    color: theme.mutedText,
     marginBottom: 32,
     lineHeight: 22,
   },
@@ -398,43 +467,43 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#475569',
+    color: theme.secondaryText,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.inputBg,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: theme.inputBorder,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1f2937',
+    color: theme.title,
     width: '100%',
   },
   inputFocused: {
-    borderColor: '#10b981', // El verd de la teva App
+    borderColor: theme.accent, // El verd de la teva App
     borderWidth: 2,
   },
   footer: {
     flexDirection: 'row',
     padding: 24,
     paddingBottom: 40, // Espai pel bottom
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: theme.border,
     gap: 12,
   },
   clearBtn: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.chipBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   clearBtnText: {
-    color: '#64748b',
+    color: theme.mutedText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -442,13 +511,13 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#10b981', // El verd de la teva App
+    backgroundColor: theme.accent, // El verd de la teva App
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 15,
   },
   applyBtnText: {
-    color: '#fff',
+    color: theme.textPrimaryInverse,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -456,13 +525,13 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#ef4444',
+    backgroundColor: theme.danger,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 15,
   },
   deleteBtnText: {
-    color: '#fff',
+    color: theme.textPrimaryInverse,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -477,21 +546,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.chipBg,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.chipBorder,
   },
   chipActive: {
-    backgroundColor: '#ecfdf5', // Verd molt claret de fons
-    borderColor: '#10b981',     // Vora verda
+    backgroundColor: theme.chipHighlightBg,
+    borderColor: theme.accent,
   },
   chipText: {
     fontSize: 14,
-    color: '#64748b',
+    color: theme.chipText,
     fontWeight: '500',
   },
   chipTextActive: {
-    color: '#10b981',
+    color: theme.accent,
     fontWeight: '700',
   },
   // --- Estils per els botons de les corrents ---
@@ -499,33 +568,33 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: theme.inputBorder,
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.typeBtnBg,
   },
   typeBtnActive: {
-    borderColor: '#10b981',
-    backgroundColor: '#ecfdf5',
+    borderColor: theme.accent,
+    backgroundColor: theme.chipHighlightBg,
   },
   typeBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#64748b',
+    color: theme.mutedText,
   },
   typeBtnTextActive: {
-    color: '#10b981',
+    color: theme.accent,
   },
   // --- Estils del Pop-up Modal ---
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Fons semi-transparent per ressaltar el pop-up
+    backgroundColor: theme.overlay, // Fons semi-transparent per ressaltar el pop-up
     justifyContent: 'center', // Centra verticalment
     alignItems: 'center',     // Centra horitzontalment
     padding: 20,              // Marge de seguretat perquè no toqui les vores en pantalles petites
   },
   modalPopup: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -548,18 +617,18 @@ const styles = StyleSheet.create({
   modalText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.title,
     flexShrink: 1, // Fa que el text salti de línia si és llarg en comptes de tallar-se
     lineHeight: 24,
   },
   modalCloseButton: {
     marginLeft: 16,
     padding: 4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.modalCloseBg,
     borderRadius: 20,
   },
   infoPanel: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)', // width, height, blur, color amb opacitat
@@ -567,7 +636,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   lastinfoPanel: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 20,
     boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.1)',

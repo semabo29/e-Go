@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 jest.mock('../../lib/db', () => ({
   pool: { query: jest.fn() },
   USUARIOS_TABLE: '"ego"."usuarios"',
+  CONDUCTORES_TABLE: '"ego"."conductor"',
   ADMINS_TABLE: '"ego"."admins"',
 }));
 
@@ -49,7 +50,7 @@ describe('Integración auth local (email/password)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.user).toEqual(expect.objectContaining({ email: 'new@test.com' }));
-    expect(pool.query).toHaveBeenCalledTimes(2);
+    expect(pool.query).toHaveBeenCalledTimes(3);
     const [, values] = pool.query.mock.calls[1];
     expect(values[2]).toBeDefined();
     expect(values[2]).not.toBe('123456');
@@ -105,5 +106,28 @@ describe('Integración auth local (email/password)', () => {
         username: 'okuser',
       })
     );
+  });
+
+  test('POST /auth/local/login devuelve 403 para usuario baneado', async () => {
+    const passwordHash = await bcrypt.hash('secret123', 10);
+    pool.query.mockResolvedValue({
+      rows: [
+        {
+          id: 9,
+          email: 'banned@test.com',
+          username: 'banned',
+          password_hash: passwordHash,
+          is_banned: true,
+          created_at: '2026-01-01',
+          updated_at: '2026-01-01',
+        },
+      ],
+    });
+
+    const res = await request(app).post('/auth/local/login').send({
+      email: 'banned@test.com',
+      password: 'secret123',
+    });
+    expect(res.status).toBe(403);
   });
 });
