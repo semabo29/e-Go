@@ -1,6 +1,6 @@
 
 ## 🌐 Idioma / Language
-* Español (Versión actual)
+* Español (Versión actual) 
 * [English (English version)](README.en.md)
 ---
 
