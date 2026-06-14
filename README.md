@@ -165,7 +165,8 @@ cd backend
 $env:RUN_DB_INTEGRATION="true"
 npm run test:integration
 ```
----
+
+Estas pruebas verifican flujos críticos como:
 
 - `GET /` (health check completo con conexión a DB).
 - Flujo real de `POST /car`, `GET /car`, `DELETE /car` usando datos de prueba aislados.
