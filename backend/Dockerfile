@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # 4. Instal·lem NOMÉS les dependències de producció
-# (--omit=dev evita instal·lar jest, nodemon, etc. per estalviar espai)
-RUN npm ci --omit=dev
+# El '--ignore-scripts' desactiva l'execució de scripts post-instal·lació, millorant la seguretat
+RUN npm ci --omit=dev --ignore-scripts
 
 # 5. Copiem la resta del codi del backend (rutes, llibres, sql, etc.)
 COPY . .
