@@ -163,7 +163,8 @@ cd backend
 $env:RUN_DB_INTEGRATION="true"
 npm run test:integration
 ```
----
+
+These tests verify critical flows such as:
 
 - `GET /` (complete health check including database connectivity).
 - Full `POST /car`, `GET /car`, and `DELETE /car` workflow using isolated test data.
